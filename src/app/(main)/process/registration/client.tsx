@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
-import { MoreHorizontal, Eye, UserPlus, Trash2, Loader2 } from "lucide-react"
+import { Eye, UserPlus, Trash2, Loader2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -31,12 +31,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 import {
   createSample,
@@ -272,39 +266,41 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
       cell: ({ row }) => {
         const sample = row.original
         return (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              asChild
+            >
+              <Link href={`/process/registration/${sample.id}`}>
+                <Eye className="h-4 w-4" />
+              </Link>
+            </Button>
+            {["pending", "registered"].includes(sample.status) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => handleOpenAssign(sample)}
+              >
+                <UserPlus className="h-4 w-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem asChild>
-                <Link href={`/process/registration/${sample.id}`}>
-                  <Eye className="mr-2 h-4 w-4" />
-                  View
-                </Link>
-              </DropdownMenuItem>
-              {["pending", "registered"].includes(sample.status) && (
-                <DropdownMenuItem onClick={() => handleOpenAssign(sample)}>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Assign
-                </DropdownMenuItem>
-              )}
-              {["pending", "registered"].includes(sample.status) && (
-                <DropdownMenuItem
-                  className="text-destructive"
-                  onClick={() => {
-                    setSelectedSample(sample)
-                    setDeleteOpen(true)
-                  }}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
+            {["pending", "registered"].includes(sample.status) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                onClick={() => {
+                  setSelectedSample(sample)
+                  setDeleteOpen(true)
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         )
       },
     },

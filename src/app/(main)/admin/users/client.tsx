@@ -24,13 +24,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  MoreHorizontal,
   Pencil,
   Trash2,
   UserCheck,
@@ -228,57 +221,50 @@ export function UsersClient({
       header: "",
       enableSorting: false,
       cell: ({ row }) => (
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => {
-                setSelectedUser(row.original)
-                setUserForm({
-                  name: row.original.name,
-                  email: row.original.email || "",
-                  username: row.original.username,
-                  password: "",
-                  phone: row.original.phone || "",
-                  roleId: row.original.roleId,
-                })
-                setEditUserOpen(true)
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => handleToggleUserActive(row.original)}
-            >
-              {row.original.isActive ? (
-                <>
-                  <UserX className="mr-2 h-4 w-4" />
-                  Deactivate
-                </>
-              ) : (
-                <>
-                  <UserCheck className="mr-2 h-4 w-4" />
-                  Activate
-                </>
-              )}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setSelectedUser(row.original)
-                setDeleteUserOpen(true)
-              }}
-              className="text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => {
+              setSelectedUser(row.original)
+              setUserForm({
+                name: row.original.name,
+                email: row.original.email || "",
+                username: row.original.username,
+                password: "",
+                phone: row.original.phone || "",
+                roleId: row.original.roleId,
+              })
+              setEditUserOpen(true)
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => handleToggleUserActive(row.original)}
+          >
+            {row.original.isActive ? (
+              <UserX className="h-4 w-4" />
+            ) : (
+              <UserCheck className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            onClick={() => {
+              setSelectedUser(row.original)
+              setDeleteUserOpen(true)
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ]
@@ -321,38 +307,34 @@ export function UsersClient({
       header: "",
       enableSorting: false,
       cell: ({ row }) => (
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => {
-                setSelectedPortalUser(row.original)
-                setEditPortalForm({
-                  isActive: row.original.isActive,
-                  password: "",
-                })
-                setEditPortalOpen(true)
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setSelectedPortalUser(row.original)
-                setDeletePortalOpen(true)
-              }}
-              className="text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => {
+              setSelectedPortalUser(row.original)
+              setEditPortalForm({
+                isActive: row.original.isActive,
+                password: "",
+              })
+              setEditPortalOpen(true)
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            onClick={() => {
+              setSelectedPortalUser(row.original)
+              setDeletePortalOpen(true)
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ]

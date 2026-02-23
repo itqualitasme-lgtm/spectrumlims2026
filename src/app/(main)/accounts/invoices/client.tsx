@@ -4,7 +4,6 @@ import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
-  MoreHorizontal,
   Send,
   CheckCircle,
   XCircle,
@@ -44,13 +43,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Table,
   TableBody,
@@ -404,85 +397,121 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
+      enableSorting: false,
       cell: ({ row }) => {
         const invoice = row.original
         return (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => handleViewDetail(invoice)}>
-                <Eye className="mr-2 h-4 w-4" />
-                View Details
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                onClick={() =>
-                  window.open(`/api/invoices/${invoice.id}/print`, "_blank")
-                }
-              >
-                <FileText className="mr-2 h-4 w-4" />
-                Print PDF
-              </DropdownMenuItem>
-              {invoice.status === "draft" && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => handleStatusChange(invoice, "sent")}
+          <TooltipProvider delayDuration={300}>
+            <div className="flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() => handleViewDetail(invoice)}
                   >
-                    <Send className="mr-2 h-4 w-4" />
-                    Mark as Sent
-                  </DropdownMenuItem>
-                </>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>View Details</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    onClick={() =>
+                      window.open(`/api/invoices/${invoice.id}/print`, "_blank")
+                    }
+                  >
+                    <FileText className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Print PDF</TooltipContent>
+              </Tooltip>
+              {invoice.status === "draft" && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleStatusChange(invoice, "sent")}
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Mark as Sent</TooltipContent>
+                </Tooltip>
               )}
               {invoice.status === "sent" && (
                 <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => handleStatusChange(invoice, "paid")}
-                  >
-                    <CheckCircle className="mr-2 h-4 w-4" />
-                    Mark as Paid
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleStatusChange(invoice, "overdue")}
-                  >
-                    <AlertTriangle className="mr-2 h-4 w-4" />
-                    Mark as Overdue
-                  </DropdownMenuItem>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleStatusChange(invoice, "paid")}
+                      >
+                        <CheckCircle className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Mark as Paid</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => handleStatusChange(invoice, "overdue")}
+                      >
+                        <AlertTriangle className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Mark as Overdue</TooltipContent>
+                  </Tooltip>
                 </>
               )}
               {(invoice.status === "draft" || invoice.status === "sent") && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => handleStatusChange(invoice, "cancelled")}
-                  >
-                    <XCircle className="mr-2 h-4 w-4" />
-                    Cancel
-                  </DropdownMenuItem>
-                </>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleStatusChange(invoice, "cancelled")}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Cancel</TooltipContent>
+                </Tooltip>
               )}
               {invoice.status === "draft" && (
-                <>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={() => {
-                      setSelectedInvoice(invoice)
-                      setDeleteOpen(true)
-                    }}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                      onClick={() => {
+                        setSelectedInvoice(invoice)
+                        setDeleteOpen(true)
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete</TooltipContent>
+                </Tooltip>
               )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            </div>
+          </TooltipProvider>
         )
       },
     },

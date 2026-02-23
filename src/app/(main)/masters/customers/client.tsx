@@ -15,13 +15,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
 import { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -129,43 +123,39 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
       header: "",
       enableSorting: false,
       cell: ({ row }) => (
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => {
-                setSelectedCustomer(row.original)
-                setFormData({
-                  name: row.original.name,
-                  email: row.original.email || "",
-                  company: row.original.company || "",
-                  phone: row.original.phone || "",
-                  address: row.original.address || "",
-                  contactPerson: row.original.contactPerson || "",
-                  trn: row.original.trn || "",
-                })
-                setEditOpen(true)
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setSelectedCustomer(row.original)
-                setDeleteOpen(true)
-              }}
-              className="text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => {
+              setSelectedCustomer(row.original)
+              setFormData({
+                name: row.original.name,
+                email: row.original.email || "",
+                company: row.original.company || "",
+                phone: row.original.phone || "",
+                address: row.original.address || "",
+                contactPerson: row.original.contactPerson || "",
+                trn: row.original.trn || "",
+              })
+              setEditOpen(true)
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            onClick={() => {
+              setSelectedCustomer(row.original)
+              setDeleteOpen(true)
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ]

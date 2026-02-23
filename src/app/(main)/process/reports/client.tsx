@@ -4,7 +4,6 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
-  MoreHorizontal,
   Send,
   CheckCircle,
   Globe,
@@ -31,13 +30,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 
 import {
   createReport,
@@ -237,56 +229,66 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
       cell: ({ row }) => {
         const report = row.original
         return (
-          <DropdownMenu modal={false}>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
-                <MoreHorizontal className="h-4 w-4" />
+          <div className="flex items-center gap-1">
+            {report.status === "draft" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => handleSubmit(report)}
+                title="Submit for Review"
+              >
+                <Send className="h-4 w-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {report.status === "draft" && (
-                <>
-                  <DropdownMenuItem onClick={() => handleSubmit(report)}>
-                    <Send className="mr-2 h-4 w-4" />
-                    Submit for Review
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    className="text-destructive"
-                    onClick={() => {
-                      setSelectedReport(report)
-                      setDeleteOpen(true)
-                    }}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              )}
-              {report.status === "review" && (
-                <DropdownMenuItem onClick={() => handleApprove(report)}>
-                  <CheckCircle className="mr-2 h-4 w-4" />
-                  Approve
-                </DropdownMenuItem>
-              )}
-              {report.status === "approved" && (
-                <DropdownMenuItem onClick={() => handlePublish(report)}>
-                  <Globe className="mr-2 h-4 w-4" />
-                  Publish
-                </DropdownMenuItem>
-              )}
-              {report.status === "published" && (
-                <DropdownMenuItem
-                  onClick={() =>
-                    window.open(`/api/reports/${report.id}/coa`, "_blank")
-                  }
-                >
-                  <FileText className="mr-2 h-4 w-4" />
-                  View COA
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
+            {report.status === "review" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => handleApprove(report)}
+                title="Approve"
+              >
+                <CheckCircle className="h-4 w-4" />
+              </Button>
+            )}
+            {report.status === "approved" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => handlePublish(report)}
+                title="Publish"
+              >
+                <Globe className="h-4 w-4" />
+              </Button>
+            )}
+            {report.status === "published" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                onClick={() => window.open(`/api/reports/${report.id}/coa`, "_blank")}
+                title="View COA"
+              >
+                <FileText className="h-4 w-4" />
+              </Button>
+            )}
+            {report.status === "draft" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                onClick={() => {
+                  setSelectedReport(report)
+                  setDeleteOpen(true)
+                }}
+                title="Delete"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         )
       },
     },

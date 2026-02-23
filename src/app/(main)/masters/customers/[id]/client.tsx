@@ -25,13 +25,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { ArrowLeft, Plus, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { ArrowLeft, Plus, Pencil, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 import {
   createContactPerson,
@@ -318,44 +312,36 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
                       <TableCell>{contact.phone || "-"}</TableCell>
                       <TableCell>{contact.designation || "-"}</TableCell>
                       <TableCell>
-                        <DropdownMenu modal={false}>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 w-8 p-0"
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedContact(contact)
-                                setContactForm({
-                                  name: contact.name,
-                                  email: contact.email || "",
-                                  phone: contact.phone || "",
-                                  designation: contact.designation || "",
-                                })
-                                setEditOpen(true)
-                              }}
-                            >
-                              <Pencil className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => {
-                                setSelectedContact(contact)
-                                setDeleteOpen(true)
-                              }}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => {
+                              setSelectedContact(contact)
+                              setContactForm({
+                                name: contact.name,
+                                email: contact.email || "",
+                                phone: contact.phone || "",
+                                designation: contact.designation || "",
+                              })
+                              setEditOpen(true)
+                            }}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                            onClick={() => {
+                              setSelectedContact(contact)
+                              setDeleteOpen(true)
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))

@@ -23,13 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2 } from "lucide-react"
 import { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -125,41 +119,37 @@ export function SampleTypesClient({
       header: "",
       enableSorting: false,
       cell: ({ row }) => (
-        <DropdownMenu modal={false}>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => {
-                setSelectedType(row.original)
-                setFormData({
-                  name: row.original.name,
-                  description: row.original.description || "",
-                  defaultTests: formatJson(row.original.defaultTests),
-                  status: row.original.status,
-                })
-                setJsonError(null)
-                setEditOpen(true)
-              }}
-            >
-              <Pencil className="mr-2 h-4 w-4" />
-              Edit
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setSelectedType(row.original)
-                setDeleteOpen(true)
-              }}
-              className="text-destructive"
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            onClick={() => {
+              setSelectedType(row.original)
+              setFormData({
+                name: row.original.name,
+                description: row.original.description || "",
+                defaultTests: formatJson(row.original.defaultTests),
+                status: row.original.status,
+              })
+              setJsonError(null)
+              setEditOpen(true)
+            }}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+            onClick={() => {
+              setSelectedType(row.original)
+              setDeleteOpen(true)
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
       ),
     },
   ]
