@@ -328,25 +328,29 @@ export function SampleTypesClient({
         searchKey="name"
       />
 
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Add Sample Type</DialogTitle>
-          </DialogHeader>
-          {renderForm(handleCreate, "Create Sample Type")}
-        </DialogContent>
-      </Dialog>
+      {/* Create Dialog - conditionally rendered to avoid duplicate id conflicts */}
+      {createOpen && (
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Add Sample Type</DialogTitle>
+            </DialogHeader>
+            {renderForm(handleCreate, "Create Sample Type")}
+          </DialogContent>
+        </Dialog>
+      )}
 
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Edit Sample Type</DialogTitle>
-          </DialogHeader>
-          {renderForm(handleUpdate, "Update Sample Type")}
-        </DialogContent>
-      </Dialog>
+      {/* Edit Dialog - conditionally rendered to avoid duplicate id conflicts */}
+      {editOpen && (
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Edit Sample Type</DialogTitle>
+            </DialogHeader>
+            {renderForm(handleUpdate, "Update Sample Type")}
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Delete Confirm */}
       <ConfirmDialog

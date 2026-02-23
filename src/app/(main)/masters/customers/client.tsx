@@ -343,25 +343,29 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
         searchKey="name"
       />
 
-      {/* Create Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add Customer</DialogTitle>
-          </DialogHeader>
-          {renderForm(handleCreate, "Create Customer")}
-        </DialogContent>
-      </Dialog>
+      {/* Create Dialog - conditionally rendered to avoid duplicate id conflicts */}
+      {createOpen && (
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add Customer</DialogTitle>
+            </DialogHeader>
+            {renderForm(handleCreate, "Create Customer")}
+          </DialogContent>
+        </Dialog>
+      )}
 
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Customer</DialogTitle>
-          </DialogHeader>
-          {renderForm(handleUpdate, "Update Customer")}
-        </DialogContent>
-      </Dialog>
+      {/* Edit Dialog - conditionally rendered to avoid duplicate id conflicts */}
+      {editOpen && (
+        <Dialog open={editOpen} onOpenChange={setEditOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit Customer</DialogTitle>
+            </DialogHeader>
+            {renderForm(handleUpdate, "Update Customer")}
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Delete Confirm */}
       <ConfirmDialog

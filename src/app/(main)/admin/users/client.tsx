@@ -651,25 +651,29 @@ export function UsersClient({
         </TabsContent>
       </Tabs>
 
-      {/* Create User Dialog */}
-      <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Add User</DialogTitle>
-          </DialogHeader>
-          {renderUserForm(handleCreateUser, "Create User")}
-        </DialogContent>
-      </Dialog>
+      {/* Create User Dialog - conditionally rendered to avoid duplicate id conflicts */}
+      {createUserOpen && (
+        <Dialog open={createUserOpen} onOpenChange={setCreateUserOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Add User</DialogTitle>
+            </DialogHeader>
+            {renderUserForm(handleCreateUser, "Create User")}
+          </DialogContent>
+        </Dialog>
+      )}
 
-      {/* Edit User Dialog */}
-      <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit User</DialogTitle>
-          </DialogHeader>
-          {renderUserForm(handleUpdateUser, "Update User")}
-        </DialogContent>
-      </Dialog>
+      {/* Edit User Dialog - conditionally rendered to avoid duplicate id conflicts */}
+      {editUserOpen && (
+        <Dialog open={editUserOpen} onOpenChange={setEditUserOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit User</DialogTitle>
+            </DialogHeader>
+            {renderUserForm(handleUpdateUser, "Update User")}
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Delete User Confirm */}
       <ConfirmDialog
