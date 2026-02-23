@@ -75,8 +75,8 @@ const emptyContactForm: ContactFormData = {
 
 export function CustomerDetailClient({ customer }: { customer: Customer }) {
   const router = useRouter()
-  const [createOpen, setCreateOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
+  const [formMode, setFormMode] = useState<"create" | "edit">("create")
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [contactForm, setContactForm] =
@@ -84,7 +84,7 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
   const [selectedContact, setSelectedContact] =
     useState<ContactPerson | null>(null)
 
-  async function handleCreateContact() {
+  async function handleSubmit() {
     if (!contactForm.name.trim()) {
       toast.error("Contact person name is required")
       return
@@ -92,46 +92,32 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
 
     setLoading(true)
     try {
-      await createContactPerson({
-        customerId: customer.id,
-        name: contactForm.name,
-        email: contactForm.email || undefined,
-        phone: contactForm.phone || undefined,
-        designation: contactForm.designation || undefined,
-      })
-      toast.success("Contact person added successfully")
-      setCreateOpen(false)
-      setContactForm(emptyContactForm)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to add contact person")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleUpdateContact() {
-    if (!selectedContact || !contactForm.name.trim()) {
-      toast.error("Contact person name is required")
-      return
-    }
-
-    setLoading(true)
-    try {
-      await updateContactPerson(selectedContact.id, {
-        customerId: customer.id,
-        name: contactForm.name,
-        email: contactForm.email || undefined,
-        phone: contactForm.phone || undefined,
-        designation: contactForm.designation || undefined,
-      })
-      toast.success("Contact person updated successfully")
-      setEditOpen(false)
+      if (formMode === "create") {
+        await createContactPerson({
+          customerId: customer.id,
+          name: contactForm.name,
+          email: contactForm.email || undefined,
+          phone: contactForm.phone || undefined,
+          designation: contactForm.designation || undefined,
+        })
+        toast.success("Contact person added successfully")
+      } else {
+        if (!selectedContact) return
+        await updateContactPerson(selectedContact.id, {
+          customerId: customer.id,
+          name: contactForm.name,
+          email: contactForm.email || undefined,
+          phone: contactForm.phone || undefined,
+          designation: contactForm.designation || undefined,
+        })
+        toast.success("Contact person updated successfully")
+      }
+      setFormOpen(false)
       setSelectedContact(null)
       setContactForm(emptyContactForm)
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Failed to update contact person")
+      toast.error(error.message || "Failed to save contact person")
     } finally {
       setLoading(false)
     }
@@ -152,63 +138,6 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
     } finally {
       setLoading(false)
     }
-  }
-
-  function renderContactForm(onSubmit: () => void, submitLabel: string) {
-    return (
-      <div className="grid gap-4 py-4">
-        <div className="grid gap-2">
-          <Label htmlFor="contactName">Name *</Label>
-          <Input
-            id="contactName"
-            value={contactForm.name}
-            onChange={(e) =>
-              setContactForm({ ...contactForm, name: e.target.value })
-            }
-            placeholder="Contact person name"
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="contactEmail">Email</Label>
-          <Input
-            id="contactEmail"
-            type="email"
-            value={contactForm.email}
-            onChange={(e) =>
-              setContactForm({ ...contactForm, email: e.target.value })
-            }
-            placeholder="email@example.com"
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="contactPhone">Phone</Label>
-          <Input
-            id="contactPhone"
-            value={contactForm.phone}
-            onChange={(e) =>
-              setContactForm({ ...contactForm, phone: e.target.value })
-            }
-            placeholder="Phone number"
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="contactDesignation">Designation</Label>
-          <Input
-            id="contactDesignation"
-            value={contactForm.designation}
-            onChange={(e) =>
-              setContactForm({ ...contactForm, designation: e.target.value })
-            }
-            placeholder="e.g. Lab Manager, Quality Head"
-          />
-        </div>
-        <DialogFooter>
-          <Button onClick={onSubmit} disabled={loading}>
-            {loading ? "Saving..." : submitLabel}
-          </Button>
-        </DialogFooter>
-      </div>
-    )
   }
 
   return (
@@ -282,7 +211,9 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
             <Button
               onClick={() => {
                 setContactForm(emptyContactForm)
-                setCreateOpen(true)
+                setSelectedContact(null)
+                setFormMode("create")
+                setFormOpen(true)
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -325,7 +256,8 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
                                 phone: contact.phone || "",
                                 designation: contact.designation || "",
                               })
-                              setEditOpen(true)
+                              setFormMode("edit")
+                              setFormOpen(true)
                             }}
                           >
                             <Pencil className="h-4 w-4" />
@@ -358,23 +290,71 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
         </TabsContent>
       </Tabs>
 
-      {/* Create Contact Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      {/* Single Contact Dialog */}
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Add Contact Person</DialogTitle>
+            <DialogTitle>
+              {formMode === "create"
+                ? "Add Contact Person"
+                : "Edit Contact Person"}
+            </DialogTitle>
           </DialogHeader>
-          {renderContactForm(handleCreateContact, "Add Contact")}
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Contact Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit Contact Person</DialogTitle>
-          </DialogHeader>
-          {renderContactForm(handleUpdateContact, "Update Contact")}
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Name *</Label>
+              <Input
+                value={contactForm.name}
+                onChange={(e) =>
+                  setContactForm({ ...contactForm, name: e.target.value })
+                }
+                placeholder="Contact person name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Email</Label>
+              <Input
+                type="email"
+                value={contactForm.email}
+                onChange={(e) =>
+                  setContactForm({ ...contactForm, email: e.target.value })
+                }
+                placeholder="email@example.com"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Phone</Label>
+              <Input
+                value={contactForm.phone}
+                onChange={(e) =>
+                  setContactForm({ ...contactForm, phone: e.target.value })
+                }
+                placeholder="Phone number"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Designation</Label>
+              <Input
+                value={contactForm.designation}
+                onChange={(e) =>
+                  setContactForm({
+                    ...contactForm,
+                    designation: e.target.value,
+                  })
+                }
+                placeholder="e.g. Lab Manager, Quality Head"
+              />
+            </div>
+            <DialogFooter>
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading
+                  ? "Saving..."
+                  : formMode === "create"
+                    ? "Add Contact"
+                    : "Update Contact"}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 

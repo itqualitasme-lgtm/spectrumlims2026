@@ -58,9 +58,9 @@ export function RolesClient({
   const router = useRouter()
   const [loading, setLoading] = useState(false)
 
-  // Dialog state
-  const [createOpen, setCreateOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
+  // Single dialog state
+  const [formOpen, setFormOpen] = useState(false)
+  const [formMode, setFormMode] = useState<"create" | "edit">("create")
   const [deleteOpen, setDeleteOpen] = useState(false)
 
   // Form state
@@ -202,7 +202,8 @@ export function RolesClient({
     setRoleName("")
     setSelectedPermissionIds(new Set())
     setSelectedRole(null)
-    setCreateOpen(true)
+    setFormMode("create")
+    setFormOpen(true)
   }
 
   async function handleOpenEdit(role: Role) {
@@ -214,7 +215,8 @@ export function RolesClient({
       setSelectedPermissionIds(
         new Set(fullRole.rolePermissions.map((rp: any) => rp.permissionId))
       )
-      setEditOpen(true)
+      setFormMode("edit")
+      setFormOpen(true)
     } catch (error: any) {
       toast.error(error.message || "Failed to load role")
     } finally {
@@ -222,45 +224,45 @@ export function RolesClient({
     }
   }
 
-  async function handleCreateRole() {
-    if (!roleName.trim()) {
-      toast.error("Role name is required")
-      return
-    }
+  async function handleSubmit() {
+    if (formMode === "create") {
+      if (!roleName.trim()) {
+        toast.error("Role name is required")
+        return
+      }
 
-    setLoading(true)
-    try {
-      await createRole({
-        name: roleName.trim(),
-        permissionIds: Array.from(selectedPermissionIds),
-      })
-      toast.success("Role created successfully")
-      setCreateOpen(false)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create role")
-    } finally {
-      setLoading(false)
-    }
-  }
+      setLoading(true)
+      try {
+        await createRole({
+          name: roleName.trim(),
+          permissionIds: Array.from(selectedPermissionIds),
+        })
+        toast.success("Role created successfully")
+        setFormOpen(false)
+        router.refresh()
+      } catch (error: any) {
+        toast.error(error.message || "Failed to create role")
+      } finally {
+        setLoading(false)
+      }
+    } else {
+      if (!selectedRole) return
 
-  async function handleUpdateRole() {
-    if (!selectedRole) return
-
-    setLoading(true)
-    try {
-      await updateRole(selectedRole.id, {
-        name: roleName.trim() || undefined,
-        permissionIds: Array.from(selectedPermissionIds),
-      })
-      toast.success("Role updated successfully")
-      setEditOpen(false)
-      setSelectedRole(null)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update role")
-    } finally {
-      setLoading(false)
+      setLoading(true)
+      try {
+        await updateRole(selectedRole.id, {
+          name: roleName.trim() || undefined,
+          permissionIds: Array.from(selectedPermissionIds),
+        })
+        toast.success("Role updated successfully")
+        setFormOpen(false)
+        setSelectedRole(null)
+        router.refresh()
+      } catch (error: any) {
+        toast.error(error.message || "Failed to update role")
+      } finally {
+        setLoading(false)
+      }
     }
   }
 
@@ -282,68 +284,7 @@ export function RolesClient({
   }
 
   // ========== Permission Grid ==========
-  function renderPermissionGrid(isSystemRole: boolean) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm font-medium">Permissions</Label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={toggleAll}
-            disabled={isSystemRole}
-          >
-            {isAllChecked() ? "Deselect All" : "Select All"}
-          </Button>
-        </div>
-        <div className="rounded-md border">
-          <div className="overflow-auto max-h-[400px]">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-muted">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium">Module</th>
-                  {ACTIONS.map((action) => (
-                    <th key={action} className="text-center px-4 py-2 font-medium capitalize">
-                      {action}
-                    </th>
-                  ))}
-                  <th className="text-center px-4 py-2 font-medium">All</th>
-                </tr>
-              </thead>
-              <tbody>
-                {MODULES.map((module) => (
-                  <tr key={module} className="border-t">
-                    <td className="px-4 py-2 font-medium capitalize">{module}</td>
-                    {ACTIONS.map((action) => (
-                      <td key={action} className="text-center px-4 py-2">
-                        <div className="flex justify-center">
-                          <Checkbox
-                            checked={isPermissionChecked(module, action)}
-                            onCheckedChange={() => togglePermission(module, action)}
-                            disabled={isSystemRole}
-                          />
-                        </div>
-                      </td>
-                    ))}
-                    <td className="text-center px-4 py-2">
-                      <div className="flex justify-center">
-                        <Checkbox
-                          checked={isModuleAllChecked(module)}
-                          onCheckedChange={() => toggleModuleAll(module)}
-                          disabled={isSystemRole}
-                        />
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-    )
-  }
+  const isSystemRole = formMode === "edit" && (selectedRole?.isSystem ?? false)
 
   return (
     <div className="space-y-6">
@@ -361,56 +302,92 @@ export function RolesClient({
         searchKey="name"
       />
 
-      {/* Create Role Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+      {/* Single Role Dialog */}
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Role</DialogTitle>
+            <DialogTitle>
+              {formMode === "create" ? "Create Role" : "Edit Role"}
+            </DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="role-name">Role Name *</Label>
+              <Label>Role Name {formMode === "create" ? "*" : ""}</Label>
               <Input
-                id="role-name"
                 value={roleName}
                 onChange={(e) => setRoleName(e.target.value)}
                 placeholder="Enter role name"
+                disabled={isSystemRole}
               />
             </div>
-            {renderPermissionGrid(false)}
-            <DialogFooter>
-              <Button onClick={handleCreateRole} disabled={loading}>
-                {loading ? "Saving..." : "Create Role"}
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Role Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Role</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="edit-role-name">Role Name</Label>
-              <Input
-                id="edit-role-name"
-                value={roleName}
-                onChange={(e) => setRoleName(e.target.value)}
-                placeholder="Enter role name"
-                disabled={selectedRole?.isSystem}
-              />
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Permissions</Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleAll}
+                  disabled={isSystemRole}
+                >
+                  {isAllChecked() ? "Deselect All" : "Select All"}
+                </Button>
+              </div>
+              <div className="rounded-md border">
+                <div className="overflow-auto max-h-[400px]">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted">
+                      <tr>
+                        <th className="text-left px-4 py-2 font-medium">Module</th>
+                        {ACTIONS.map((action) => (
+                          <th key={action} className="text-center px-4 py-2 font-medium capitalize">
+                            {action}
+                          </th>
+                        ))}
+                        <th className="text-center px-4 py-2 font-medium">All</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {MODULES.map((module) => (
+                        <tr key={module} className="border-t">
+                          <td className="px-4 py-2 font-medium capitalize">{module}</td>
+                          {ACTIONS.map((action) => (
+                            <td key={action} className="text-center px-4 py-2">
+                              <div className="flex justify-center">
+                                <Checkbox
+                                  checked={isPermissionChecked(module, action)}
+                                  onCheckedChange={() => togglePermission(module, action)}
+                                  disabled={isSystemRole}
+                                />
+                              </div>
+                            </td>
+                          ))}
+                          <td className="text-center px-4 py-2">
+                            <div className="flex justify-center">
+                              <Checkbox
+                                checked={isModuleAllChecked(module)}
+                                onCheckedChange={() => toggleModuleAll(module)}
+                                disabled={isSystemRole}
+                              />
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             </div>
-            {renderPermissionGrid(selectedRole?.isSystem ?? false)}
             <DialogFooter>
               <Button
-                onClick={handleUpdateRole}
-                disabled={loading || (selectedRole?.isSystem ?? false)}
+                onClick={handleSubmit}
+                disabled={loading || isSystemRole}
               >
-                {loading ? "Saving..." : "Update Role"}
+                {loading
+                  ? "Saving..."
+                  : formMode === "create"
+                    ? "Create Role"
+                    : "Update Role"}
               </Button>
             </DialogFooter>
           </div>

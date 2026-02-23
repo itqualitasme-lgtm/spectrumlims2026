@@ -80,8 +80,8 @@ export function SampleTypesClient({
   sampleTypes: SampleType[]
 }) {
   const router = useRouter()
-  const [createOpen, setCreateOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
+  const [formOpen, setFormOpen] = useState(false)
+  const [formMode, setFormMode] = useState<"create" | "edit">("create")
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [formData, setFormData] = useState<FormData>(emptyForm)
@@ -133,7 +133,8 @@ export function SampleTypesClient({
                 status: row.original.status,
               })
               setJsonError(null)
-              setEditOpen(true)
+              setFormMode("edit")
+              setFormOpen(true)
             }}
           >
             <Pencil className="h-4 w-4" />
@@ -154,7 +155,7 @@ export function SampleTypesClient({
     },
   ]
 
-  function validateAndSubmit(onSubmit: () => void) {
+  async function handleSubmit() {
     // Validate JSON
     try {
       JSON.parse(formData.defaultTests)
@@ -169,49 +170,33 @@ export function SampleTypesClient({
       return
     }
 
-    onSubmit()
-  }
-
-  async function handleCreate() {
     setLoading(true)
     try {
-      await createSampleType({
-        name: formData.name,
-        description: formData.description || undefined,
-        defaultTests: formData.defaultTests,
-        status: formData.status,
-      })
-      toast.success("Sample type created successfully")
-      setCreateOpen(false)
-      setFormData(emptyForm)
-      setJsonError(null)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create sample type")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  async function handleUpdate() {
-    if (!selectedType) return
-
-    setLoading(true)
-    try {
-      await updateSampleType(selectedType.id, {
-        name: formData.name,
-        description: formData.description || undefined,
-        defaultTests: formData.defaultTests,
-        status: formData.status,
-      })
-      toast.success("Sample type updated successfully")
-      setEditOpen(false)
+      if (formMode === "create") {
+        await createSampleType({
+          name: formData.name,
+          description: formData.description || undefined,
+          defaultTests: formData.defaultTests,
+          status: formData.status,
+        })
+        toast.success("Sample type created successfully")
+      } else {
+        if (!selectedType) return
+        await updateSampleType(selectedType.id, {
+          name: formData.name,
+          description: formData.description || undefined,
+          defaultTests: formData.defaultTests,
+          status: formData.status,
+        })
+        toast.success("Sample type updated successfully")
+      }
+      setFormOpen(false)
       setSelectedType(null)
       setFormData(emptyForm)
       setJsonError(null)
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Failed to update sample type")
+      toast.error(error.message || "Failed to save sample type")
     } finally {
       setLoading(false)
     }
@@ -234,80 +219,6 @@ export function SampleTypesClient({
     }
   }
 
-  function renderForm(onSubmit: () => void, submitLabel: string) {
-    return (
-      <div className="grid gap-4 py-4">
-        <div className="grid gap-2">
-          <Label htmlFor="name">Name *</Label>
-          <Input
-            id="name"
-            value={formData.name}
-            onChange={(e) =>
-              setFormData({ ...formData, name: e.target.value })
-            }
-            placeholder="Sample type name"
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="description">Description</Label>
-          <Input
-            id="description"
-            value={formData.description}
-            onChange={(e) =>
-              setFormData({ ...formData, description: e.target.value })
-            }
-            placeholder="Brief description"
-          />
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="defaultTests">Default Tests (JSON)</Label>
-          <p className="text-xs text-muted-foreground">
-            Enter a JSON array of test objects. Example:{" "}
-            {`[{"parameter": "pH", "unit": "pH", "method": "APHA 4500-H+"}]`}
-          </p>
-          <Textarea
-            id="defaultTests"
-            value={formData.defaultTests}
-            onChange={(e) => {
-              setFormData({ ...formData, defaultTests: e.target.value })
-              setJsonError(null)
-            }}
-            placeholder='[{"parameter": "pH", "unit": "pH", "method": "APHA 4500-H+"}]'
-            className="min-h-[120px] font-mono text-sm"
-          />
-          {jsonError && (
-            <p className="text-sm text-destructive">{jsonError}</p>
-          )}
-        </div>
-        <div className="grid gap-2">
-          <Label htmlFor="status">Status</Label>
-          <Select
-            value={formData.status}
-            onValueChange={(value) =>
-              setFormData({ ...formData, status: value })
-            }
-          >
-            <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <DialogFooter>
-          <Button
-            onClick={() => validateAndSubmit(onSubmit)}
-            disabled={loading}
-          >
-            {loading ? "Saving..." : submitLabel}
-          </Button>
-        </DialogFooter>
-      </div>
-    )
-  }
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -317,7 +228,9 @@ export function SampleTypesClient({
         onAction={() => {
           setFormData(emptyForm)
           setJsonError(null)
-          setCreateOpen(true)
+          setSelectedType(null)
+          setFormMode("create")
+          setFormOpen(true)
         }}
       />
 
@@ -328,31 +241,83 @@ export function SampleTypesClient({
         searchKey="name"
       />
 
-      {/* Create Dialog - conditionally rendered to avoid duplicate id conflicts */}
-      {createOpen && (
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Add Sample Type</DialogTitle>
-            </DialogHeader>
-            {renderForm(handleCreate, "Create Sample Type")}
-          </DialogContent>
-        </Dialog>
-      )}
+      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              {formMode === "create" ? "Add Sample Type" : "Edit Sample Type"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Name *</Label>
+              <Input
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="Sample type name"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Description</Label>
+              <Input
+                value={formData.description}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
+                placeholder="Brief description"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Default Tests (JSON)</Label>
+              <p className="text-xs text-muted-foreground">
+                Enter a JSON array of test objects. Example:{" "}
+                {`[{"parameter": "pH", "unit": "pH", "method": "APHA 4500-H+"}]`}
+              </p>
+              <Textarea
+                value={formData.defaultTests}
+                onChange={(e) => {
+                  setFormData({ ...formData, defaultTests: e.target.value })
+                  setJsonError(null)
+                }}
+                placeholder='[{"parameter": "pH", "unit": "pH", "method": "APHA 4500-H+"}]'
+                className="min-h-[120px] font-mono text-sm"
+              />
+              {jsonError && (
+                <p className="text-sm text-destructive">{jsonError}</p>
+              )}
+            </div>
+            <div className="grid gap-2">
+              <Label>Status</Label>
+              <Select
+                value={formData.status}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, status: value })
+                }
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <DialogFooter>
+              <Button onClick={handleSubmit} disabled={loading}>
+                {loading
+                  ? "Saving..."
+                  : formMode === "create"
+                    ? "Create Sample Type"
+                    : "Update Sample Type"}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-      {/* Edit Dialog - conditionally rendered to avoid duplicate id conflicts */}
-      {editOpen && (
-        <Dialog open={editOpen} onOpenChange={setEditOpen}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Edit Sample Type</DialogTitle>
-            </DialogHeader>
-            {renderForm(handleUpdate, "Update Sample Type")}
-          </DialogContent>
-        </Dialog>
-      )}
-
-      {/* Delete Confirm */}
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
