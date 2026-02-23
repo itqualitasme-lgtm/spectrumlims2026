@@ -240,108 +240,112 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
         searchKey="name"
       />
 
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>
-              {formMode === "create" ? "Add Customer" : "Edit Customer"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Name *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="Customer name"
-              />
+      {formOpen && (
+        <Dialog open={formOpen} onOpenChange={setFormOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>
+                {formMode === "create" ? "Add Customer" : "Edit Customer"}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Name *</Label>
+                <Input
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                  placeholder="Customer name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Email</Label>
+                <Input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Company</Label>
+                <Input
+                  value={formData.company}
+                  onChange={(e) =>
+                    setFormData({ ...formData, company: e.target.value })
+                  }
+                  placeholder="Company name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Phone</Label>
+                <Input
+                  value={formData.phone}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value })
+                  }
+                  placeholder="Phone number"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Address</Label>
+                <Input
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
+                  placeholder="Address"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Contact Person</Label>
+                <Input
+                  value={formData.contactPerson}
+                  onChange={(e) =>
+                    setFormData({ ...formData, contactPerson: e.target.value })
+                  }
+                  placeholder="Primary contact person"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>TRN</Label>
+                <Input
+                  value={formData.trn}
+                  onChange={(e) =>
+                    setFormData({ ...formData, trn: e.target.value })
+                  }
+                  placeholder="Tax Registration Number"
+                />
+              </div>
+              <DialogFooter>
+                <Button onClick={handleSubmit} disabled={loading}>
+                  {loading
+                    ? "Saving..."
+                    : formMode === "create"
+                      ? "Create Customer"
+                      : "Update Customer"}
+                </Button>
+              </DialogFooter>
             </div>
-            <div className="grid gap-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
-                placeholder="email@example.com"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Company</Label>
-              <Input
-                value={formData.company}
-                onChange={(e) =>
-                  setFormData({ ...formData, company: e.target.value })
-                }
-                placeholder="Company name"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Phone</Label>
-              <Input
-                value={formData.phone}
-                onChange={(e) =>
-                  setFormData({ ...formData, phone: e.target.value })
-                }
-                placeholder="Phone number"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Address</Label>
-              <Input
-                value={formData.address}
-                onChange={(e) =>
-                  setFormData({ ...formData, address: e.target.value })
-                }
-                placeholder="Address"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Contact Person</Label>
-              <Input
-                value={formData.contactPerson}
-                onChange={(e) =>
-                  setFormData({ ...formData, contactPerson: e.target.value })
-                }
-                placeholder="Primary contact person"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>TRN</Label>
-              <Input
-                value={formData.trn}
-                onChange={(e) =>
-                  setFormData({ ...formData, trn: e.target.value })
-                }
-                placeholder="Tax Registration Number"
-              />
-            </div>
-            <DialogFooter>
-              <Button onClick={handleSubmit} disabled={loading}>
-                {loading
-                  ? "Saving..."
-                  : formMode === "create"
-                    ? "Create Customer"
-                    : "Update Customer"}
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
+      )}
 
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Delete Customer"
-        description={`Are you sure you want to delete "${selectedCustomer?.name}"? This action cannot be undone.`}
-        onConfirm={handleDelete}
-        confirmLabel="Delete"
-        destructive
-        loading={loading}
-      />
+      {deleteOpen && (
+        <ConfirmDialog
+          open={deleteOpen}
+          onOpenChange={setDeleteOpen}
+          title="Delete Customer"
+          description={`Are you sure you want to delete "${selectedCustomer?.name}"? This action cannot be undone.`}
+          onConfirm={handleDelete}
+          confirmLabel="Delete"
+          destructive
+          loading={loading}
+        />
+      )}
     </div>
   )
 }
