@@ -48,9 +48,10 @@ export async function createCustomer(data: {
   const session = await requirePermission("masters", "create")
   const user = session.user as any
 
-  // Auto-generate customer code
+  // Auto-generate customer code: SP-{first 3 letters of name}-{sequence}
+  const namePrefix = data.name.replace(/[^a-zA-Z]/g, "").slice(0, 3).toUpperCase().padEnd(3, "X")
   const count = await db.customer.count({ where: { labId: user.labId } })
-  const code = `CUST${String(count + 1).padStart(4, "0")}`
+  const code = `SP-${namePrefix}-${String(count + 1).padStart(3, "0")}`
 
   const customer = await db.customer.create({
     data: {

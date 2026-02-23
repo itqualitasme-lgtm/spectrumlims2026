@@ -166,7 +166,7 @@ async function main() {
   // ============================================================
   const customer1 = await prisma.customer.create({
     data: {
-      code: 'CUST0001',
+      code: 'SP-AHM-001',
       name: 'Ahmed Al Maktoum',
       email: 'ahmed@petroco.ae',
       company: 'PetroCo UAE LLC',
@@ -178,7 +178,7 @@ async function main() {
 
   const customer2 = await prisma.customer.create({
     data: {
-      code: 'CUST0002',
+      code: 'SP-DEM-002',
       name: 'Demo Client',
       email: 'client@demo.com',
       company: 'Demo Company LLC',
