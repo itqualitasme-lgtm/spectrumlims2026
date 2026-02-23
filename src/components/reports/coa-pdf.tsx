@@ -1,0 +1,608 @@
+import React from "react"
+import {
+  Document,
+  Page,
+  View,
+  Text,
+  StyleSheet,
+  renderToBuffer,
+} from "@react-pdf/renderer"
+import { format } from "date-fns"
+
+// ============= TYPES =============
+
+interface LabInfo {
+  id: string
+  name: string
+  code: string
+  address?: string | null
+  phone?: string | null
+  email?: string | null
+  website?: string | null
+  trn?: string | null
+  logo?: string | null
+}
+
+interface CustomerInfo {
+  id: string
+  code: string
+  name: string
+  email?: string | null
+  company?: string | null
+  phone?: string | null
+  address?: string | null
+  contactPerson?: string | null
+  trn?: string | null
+}
+
+interface SampleTypeInfo {
+  id: string
+  name: string
+  description?: string | null
+}
+
+interface TestResultInfo {
+  id: string
+  parameter: string
+  testMethod?: string | null
+  resultValue?: string | null
+  unit?: string | null
+  specMin?: string | null
+  specMax?: string | null
+  status: string
+}
+
+interface SampleInfo {
+  id: string
+  sampleNumber: string
+  description?: string | null
+  quantity?: string | null
+  priority: string
+  status: string
+  collectionDate?: Date | string | null
+  collectionLocation?: string | null
+  notes?: string | null
+  client: CustomerInfo
+  sampleType: SampleTypeInfo
+  testResults: TestResultInfo[]
+}
+
+interface UserInfo {
+  id: string
+  name: string
+}
+
+interface ReportInfo {
+  id: string
+  reportNumber: string
+  reportType: string
+  title?: string | null
+  summary?: string | null
+  status: string
+  createdAt: Date | string
+  reviewedAt?: Date | string | null
+  createdBy: UserInfo
+  reviewedBy?: UserInfo | null
+}
+
+export interface COAPDFProps {
+  report: ReportInfo
+  sample: SampleInfo
+  testResults: TestResultInfo[]
+  lab: LabInfo
+  customer: CustomerInfo
+}
+
+// ============= COLORS =============
+
+const BRAND_COLOR = "#1e3a5f"
+const BRAND_LIGHT = "#e8eef5"
+const HEADER_BG = "#f0f4f8"
+const BORDER_COLOR = "#c8d6e5"
+const PASS_COLOR = "#16a34a"
+const FAIL_COLOR = "#dc2626"
+const TEXT_PRIMARY = "#1a1a1a"
+const TEXT_SECONDARY = "#4a5568"
+
+// ============= STYLES =============
+
+const styles = StyleSheet.create({
+  page: {
+    fontFamily: "Helvetica",
+    fontSize: 9,
+    paddingTop: 40,
+    paddingBottom: 60,
+    paddingHorizontal: 40,
+    color: TEXT_PRIMARY,
+  },
+
+  // Header
+  header: {
+    textAlign: "center",
+    marginBottom: 20,
+    borderBottomWidth: 2,
+    borderBottomColor: BRAND_COLOR,
+    paddingBottom: 12,
+  },
+  labName: {
+    fontSize: 18,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_COLOR,
+    marginBottom: 4,
+    letterSpacing: 1,
+  },
+  labDetail: {
+    fontSize: 8,
+    color: TEXT_SECONDARY,
+    marginBottom: 1,
+  },
+
+  // Title
+  title: {
+    textAlign: "center",
+    fontSize: 14,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_COLOR,
+    marginTop: 12,
+    marginBottom: 16,
+    letterSpacing: 2,
+  },
+
+  // Section containers
+  sectionRow: {
+    flexDirection: "row",
+    gap: 16,
+    marginBottom: 12,
+  },
+  sectionHalf: {
+    flex: 1,
+  },
+  section: {
+    marginBottom: 12,
+  },
+  sectionTitle: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_COLOR,
+    marginBottom: 6,
+    paddingBottom: 3,
+    borderBottomWidth: 1,
+    borderBottomColor: BRAND_COLOR,
+  },
+
+  // Info rows
+  infoRow: {
+    flexDirection: "row",
+    marginBottom: 3,
+  },
+  infoLabel: {
+    width: 110,
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: TEXT_SECONDARY,
+  },
+  infoValue: {
+    flex: 1,
+    fontSize: 8,
+    color: TEXT_PRIMARY,
+  },
+
+  // Report info bar
+  reportInfoBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    backgroundColor: BRAND_LIGHT,
+    padding: 8,
+    borderRadius: 3,
+    marginBottom: 16,
+  },
+  reportInfoItem: {
+    textAlign: "center",
+  },
+  reportInfoLabel: {
+    fontSize: 7,
+    color: TEXT_SECONDARY,
+    fontFamily: "Helvetica-Bold",
+    marginBottom: 2,
+    textTransform: "uppercase",
+  },
+  reportInfoValue: {
+    fontSize: 10,
+    fontFamily: "Helvetica-Bold",
+    color: BRAND_COLOR,
+  },
+
+  // Table
+  table: {
+    marginBottom: 16,
+  },
+  tableHeader: {
+    flexDirection: "row",
+    backgroundColor: BRAND_COLOR,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    borderTopLeftRadius: 3,
+    borderTopRightRadius: 3,
+  },
+  tableHeaderCell: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: "#ffffff",
+    textAlign: "center",
+  },
+  tableRow: {
+    flexDirection: "row",
+    paddingVertical: 5,
+    paddingHorizontal: 4,
+    borderBottomWidth: 0.5,
+    borderBottomColor: BORDER_COLOR,
+  },
+  tableRowAlt: {
+    backgroundColor: "#f8fafc",
+  },
+  tableCell: {
+    fontSize: 8,
+    textAlign: "center",
+    color: TEXT_PRIMARY,
+  },
+
+  // Column widths
+  colParameter: { width: "22%" },
+  colTestMethod: { width: "18%" },
+  colUnit: { width: "10%" },
+  colResult: { width: "14%" },
+  colSpecMin: { width: "12%" },
+  colSpecMax: { width: "12%" },
+  colStatus: { width: "12%" },
+
+  // Status text
+  statusPass: {
+    color: PASS_COLOR,
+    fontFamily: "Helvetica-Bold",
+  },
+  statusFail: {
+    color: FAIL_COLOR,
+    fontFamily: "Helvetica-Bold",
+  },
+
+  // Summary
+  summaryBox: {
+    backgroundColor: HEADER_BG,
+    padding: 10,
+    borderRadius: 3,
+    marginBottom: 16,
+    borderLeftWidth: 3,
+    borderLeftColor: BRAND_COLOR,
+  },
+  summaryText: {
+    fontSize: 8,
+    color: TEXT_PRIMARY,
+    lineHeight: 1.5,
+  },
+
+  // Signatures
+  signaturesContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 30,
+    paddingHorizontal: 20,
+  },
+  signatureBlock: {
+    width: "40%",
+    alignItems: "center",
+  },
+  signatureLine: {
+    width: "100%",
+    borderBottomWidth: 1,
+    borderBottomColor: TEXT_PRIMARY,
+    marginBottom: 6,
+    marginTop: 40,
+  },
+  signatureLabel: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: TEXT_PRIMARY,
+    marginBottom: 2,
+  },
+  signatureName: {
+    fontSize: 8,
+    color: TEXT_SECONDARY,
+  },
+  signatureDate: {
+    fontSize: 7,
+    color: TEXT_SECONDARY,
+    marginTop: 2,
+  },
+
+  // Footer
+  footer: {
+    position: "absolute",
+    bottom: 25,
+    left: 40,
+    right: 40,
+    textAlign: "center",
+    borderTopWidth: 1,
+    borderTopColor: BORDER_COLOR,
+    paddingTop: 8,
+  },
+  footerText: {
+    fontSize: 6.5,
+    color: TEXT_SECONDARY,
+    fontStyle: "italic",
+    marginBottom: 2,
+  },
+  footerWebsite: {
+    fontSize: 7,
+    color: BRAND_COLOR,
+    fontFamily: "Helvetica-Bold",
+  },
+
+  // Page number
+  pageNumber: {
+    position: "absolute",
+    bottom: 12,
+    right: 40,
+    fontSize: 7,
+    color: TEXT_SECONDARY,
+  },
+})
+
+// ============= HELPERS =============
+
+function formatDate(date: Date | string | null | undefined): string {
+  if (!date) return "N/A"
+  try {
+    const d = typeof date === "string" ? new Date(date) : date
+    return format(d, "dd MMM yyyy")
+  } catch {
+    return "N/A"
+  }
+}
+
+function formatDateTime(date: Date | string | null | undefined): string {
+  if (!date) return "N/A"
+  try {
+    const d = typeof date === "string" ? new Date(date) : date
+    return format(d, "dd MMM yyyy, HH:mm")
+  } catch {
+    return "N/A"
+  }
+}
+
+function capitalize(str: string): string {
+  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+}
+
+// ============= PDF COMPONENT =============
+
+export function COAPDF({ report, sample, testResults, lab, customer }: COAPDFProps) {
+  return (
+    <Document
+      title={`COA - ${report.reportNumber}`}
+      author={lab.name}
+      subject="Certificate of Analysis"
+      creator="Spectrum LIMS"
+    >
+      <Page size="A4" style={styles.page}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.labName}>Spectrum Testing &amp; Inspection</Text>
+          {lab.address && <Text style={styles.labDetail}>{lab.address}</Text>}
+          <Text style={styles.labDetail}>
+            {[lab.phone && `Tel: ${lab.phone}`, lab.email && `Email: ${lab.email}`]
+              .filter(Boolean)
+              .join("  |  ")}
+          </Text>
+          {lab.trn && <Text style={styles.labDetail}>TRN: {lab.trn}</Text>}
+        </View>
+
+        {/* Title */}
+        <Text style={styles.title}>CERTIFICATE OF ANALYSIS</Text>
+
+        {/* Report Info Bar */}
+        <View style={styles.reportInfoBar}>
+          <View style={styles.reportInfoItem}>
+            <Text style={styles.reportInfoLabel}>Report Number</Text>
+            <Text style={styles.reportInfoValue}>{report.reportNumber}</Text>
+          </View>
+          <View style={styles.reportInfoItem}>
+            <Text style={styles.reportInfoLabel}>Date Issued</Text>
+            <Text style={styles.reportInfoValue}>
+              {formatDate(report.reviewedAt || report.createdAt)}
+            </Text>
+          </View>
+          <View style={styles.reportInfoItem}>
+            <Text style={styles.reportInfoLabel}>Page</Text>
+            <Text
+              style={styles.reportInfoValue}
+              render={({ pageNumber, totalPages }) => `${pageNumber} of ${totalPages}`}
+            />
+          </View>
+        </View>
+
+        {/* Client and Sample Info Side by Side */}
+        <View style={styles.sectionRow}>
+          {/* Client Info */}
+          <View style={styles.sectionHalf}>
+            <Text style={styles.sectionTitle}>Client Information</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Client Name:</Text>
+              <Text style={styles.infoValue}>{customer.name}</Text>
+            </View>
+            {customer.company && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Company:</Text>
+                <Text style={styles.infoValue}>{customer.company}</Text>
+              </View>
+            )}
+            {customer.address && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Address:</Text>
+                <Text style={styles.infoValue}>{customer.address}</Text>
+              </View>
+            )}
+            {customer.trn && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>TRN:</Text>
+                <Text style={styles.infoValue}>{customer.trn}</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Sample Info */}
+          <View style={styles.sectionHalf}>
+            <Text style={styles.sectionTitle}>Sample Information</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Sample Number:</Text>
+              <Text style={styles.infoValue}>{sample.sampleNumber}</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Sample Type:</Text>
+              <Text style={styles.infoValue}>{sample.sampleType.name}</Text>
+            </View>
+            {sample.description && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Description:</Text>
+                <Text style={styles.infoValue}>{sample.description}</Text>
+              </View>
+            )}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Collection Date:</Text>
+              <Text style={styles.infoValue}>{formatDate(sample.collectionDate)}</Text>
+            </View>
+            {sample.collectionLocation && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Location:</Text>
+                <Text style={styles.infoValue}>{sample.collectionLocation}</Text>
+              </View>
+            )}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Priority:</Text>
+              <Text style={styles.infoValue}>{capitalize(sample.priority)}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Test Results Table */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Test Results</Text>
+          <View style={styles.table}>
+            {/* Table Header */}
+            <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderCell, styles.colParameter, { textAlign: "left" }]}>
+                Parameter
+              </Text>
+              <Text style={[styles.tableHeaderCell, styles.colTestMethod]}>Test Method</Text>
+              <Text style={[styles.tableHeaderCell, styles.colUnit]}>Unit</Text>
+              <Text style={[styles.tableHeaderCell, styles.colResult]}>Result</Text>
+              <Text style={[styles.tableHeaderCell, styles.colSpecMin]}>Spec Min</Text>
+              <Text style={[styles.tableHeaderCell, styles.colSpecMax]}>Spec Max</Text>
+              <Text style={[styles.tableHeaderCell, styles.colStatus]}>Status</Text>
+            </View>
+
+            {/* Table Rows */}
+            {testResults.map((result, index) => {
+              const isAlt = index % 2 === 1
+              const statusLabel =
+                result.status === "pass"
+                  ? "Pass"
+                  : result.status === "fail"
+                    ? "Fail"
+                    : capitalize(result.status)
+              const statusStyle =
+                result.status === "pass"
+                  ? styles.statusPass
+                  : result.status === "fail"
+                    ? styles.statusFail
+                    : {}
+
+              return (
+                <View
+                  key={result.id}
+                  style={[styles.tableRow, isAlt ? styles.tableRowAlt : {}]}
+                >
+                  <Text style={[styles.tableCell, styles.colParameter, { textAlign: "left" }]}>
+                    {result.parameter}
+                  </Text>
+                  <Text style={[styles.tableCell, styles.colTestMethod]}>
+                    {result.testMethod || "-"}
+                  </Text>
+                  <Text style={[styles.tableCell, styles.colUnit]}>
+                    {result.unit || "-"}
+                  </Text>
+                  <Text style={[styles.tableCell, styles.colResult, { fontFamily: "Helvetica-Bold" }]}>
+                    {result.resultValue || "-"}
+                  </Text>
+                  <Text style={[styles.tableCell, styles.colSpecMin]}>
+                    {result.specMin || "-"}
+                  </Text>
+                  <Text style={[styles.tableCell, styles.colSpecMax]}>
+                    {result.specMax || "-"}
+                  </Text>
+                  <Text style={[styles.tableCell, styles.colStatus, statusStyle]}>
+                    {statusLabel}
+                  </Text>
+                </View>
+              )
+            })}
+          </View>
+        </View>
+
+        {/* Summary / Remarks */}
+        {report.summary && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Remarks</Text>
+            <View style={styles.summaryBox}>
+              <Text style={styles.summaryText}>{report.summary}</Text>
+            </View>
+          </View>
+        )}
+
+        {/* Signatures */}
+        <View style={styles.signaturesContainer}>
+          <View style={styles.signatureBlock}>
+            <View style={styles.signatureLine} />
+            <Text style={styles.signatureLabel}>Prepared By</Text>
+            <Text style={styles.signatureName}>{report.createdBy.name}</Text>
+            <Text style={styles.signatureDate}>
+              Date: {formatDate(report.createdAt)}
+            </Text>
+          </View>
+          <View style={styles.signatureBlock}>
+            <View style={styles.signatureLine} />
+            <Text style={styles.signatureLabel}>Approved By</Text>
+            <Text style={styles.signatureName}>
+              {report.reviewedBy?.name || "___________________"}
+            </Text>
+            <Text style={styles.signatureDate}>
+              Date: {report.reviewedAt ? formatDate(report.reviewedAt) : "___________________"}
+            </Text>
+          </View>
+        </View>
+
+        {/* Footer */}
+        <View style={styles.footer} fixed>
+          <Text style={styles.footerText}>
+            This report shall not be reproduced except in full, without the written approval of the
+            laboratory.
+          </Text>
+          {lab.website && <Text style={styles.footerWebsite}>{lab.website}</Text>}
+        </View>
+
+        {/* Page Number */}
+        <Text
+          style={styles.pageNumber}
+          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+          fixed
+        />
+      </Page>
+    </Document>
+  )
+}
+
+// ============= PDF GENERATION UTILITY =============
+
+export async function generateCOAPDF(props: COAPDFProps): Promise<Buffer> {
+  const buffer = await renderToBuffer(<COAPDF {...props} />)
+  return buffer as Buffer
+}

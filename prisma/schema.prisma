@@ -1,0 +1,307 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ============= CORE ENTITIES =============
+
+model Lab {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  address   String?
+  phone     String?
+  email     String?
+  website   String?
+  trn       String?
+  logo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users       User[]
+  customers   Customer[]
+  sampleTypes SampleType[]
+  samples     Sample[]
+  reports     Report[]
+  invoices    Invoice[]
+  formatIds   FormatID[]
+  roles       Role[]
+  portalUsers PortalUser[]
+  auditLogs   AuditLog[]
+}
+
+model Role {
+  id        String   @id @default(cuid())
+  name      String
+  labId     String
+  isSystem  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  lab             Lab              @relation(fields: [labId], references: [id])
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@unique([labId, name])
+}
+
+model Permission {
+  id     String @id @default(cuid())
+  module String
+  action String
+
+  rolePermissions RolePermission[]
+
+  @@unique([module, action])
+}
+
+model RolePermission {
+  id           String @id @default(cuid())
+  roleId       String
+  permissionId String
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+}
+
+// ============= USERS =============
+
+model User {
+  id           String    @id @default(cuid())
+  name         String
+  email        String?
+  username     String    @unique
+  passwordHash String
+  phone        String?
+  roleId       String
+  labId        String
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  role Role @relation(fields: [roleId], references: [id])
+  lab  Lab  @relation(fields: [labId], references: [id])
+
+  samplesAssigned    Sample[]     @relation("AssignedTo")
+  samplesCollected   Sample[]     @relation("CollectedBy")
+  samplesRegistered  Sample[]     @relation("RegisteredBy")
+  testResultsEntered TestResult[] @relation("EnteredBy")
+  reportsCreated     Report[]     @relation("CreatedBy")
+  reportsReviewed    Report[]     @relation("ReviewedBy")
+  invoicesCreated    Invoice[]    @relation("InvoiceCreatedBy")
+}
+
+model PortalUser {
+  id         String    @id @default(cuid())
+  username   String    @unique
+  password   String
+  customerId String
+  labId      String
+  isActive   Boolean   @default(true)
+  lastLogin  DateTime?
+  createdAt  DateTime  @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id])
+  lab      Lab      @relation(fields: [labId], references: [id])
+}
+
+// ============= CUSTOMERS =============
+
+model Customer {
+  id            String   @id @default(cuid())
+  code          String
+  name          String
+  email         String?
+  company       String?
+  phone         String?
+  address       String?
+  contactPerson String?
+  trn           String?
+  status        String   @default("active")
+  labId         String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  lab            Lab             @relation(fields: [labId], references: [id])
+  contactPersons ContactPerson[]
+  samples        Sample[]
+  invoices       Invoice[]
+  portalUsers    PortalUser[]
+
+  @@unique([labId, code])
+}
+
+model ContactPerson {
+  id          String  @id @default(cuid())
+  customerId  String
+  name        String
+  email       String?
+  phone       String?
+  designation String?
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+}
+
+// ============= SAMPLE TYPES =============
+
+model SampleType {
+  id           String   @id @default(cuid())
+  name         String
+  description  String?
+  defaultTests String   @default("[]")
+  status       String   @default("active")
+  labId        String
+  createdAt    DateTime @default(now())
+
+  lab     Lab      @relation(fields: [labId], references: [id])
+  samples Sample[]
+
+  @@unique([labId, name])
+}
+
+// ============= SAMPLES =============
+
+model Sample {
+  id                 String    @id @default(cuid())
+  sampleNumber       String    @unique
+  clientId           String
+  sampleTypeId       String
+  description        String?
+  quantity           String?
+  priority           String    @default("normal")
+  status             String    @default("pending")
+  assignedToId       String?
+  collectedById      String?
+  collectionDate     DateTime?
+  collectionLocation String?
+  registeredById     String?
+  registeredAt       DateTime?
+  notes              String?
+  labId              String
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  client       Customer    @relation(fields: [clientId], references: [id])
+  sampleType   SampleType  @relation(fields: [sampleTypeId], references: [id])
+  assignedTo   User?       @relation("AssignedTo", fields: [assignedToId], references: [id])
+  collectedBy  User?       @relation("CollectedBy", fields: [collectedById], references: [id])
+  registeredBy User?       @relation("RegisteredBy", fields: [registeredById], references: [id])
+  lab          Lab         @relation(fields: [labId], references: [id])
+
+  testResults  TestResult[]
+  reports      Report[]
+  invoiceItems InvoiceItem[]
+}
+
+// ============= TEST RESULTS =============
+
+model TestResult {
+  id          String    @id @default(cuid())
+  sampleId    String
+  parameter   String
+  testMethod  String?
+  resultValue String?
+  unit        String?
+  specMin     String?
+  specMax     String?
+  status      String    @default("pending")
+  enteredById String?
+  enteredAt   DateTime?
+
+  sample    Sample @relation(fields: [sampleId], references: [id], onDelete: Cascade)
+  enteredBy User?  @relation("EnteredBy", fields: [enteredById], references: [id])
+}
+
+// ============= REPORTS =============
+
+model Report {
+  id           String    @id @default(cuid())
+  reportNumber String    @unique
+  sampleId     String
+  reportType   String    @default("test_report")
+  title        String?
+  summary      String?
+  createdById  String
+  reviewedById String?
+  reviewedAt   DateTime?
+  status       String    @default("draft")
+  labId        String
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  sample     Sample @relation(fields: [sampleId], references: [id])
+  createdBy  User   @relation("CreatedBy", fields: [createdById], references: [id])
+  reviewedBy User?  @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  lab        Lab    @relation(fields: [labId], references: [id])
+}
+
+// ============= INVOICES =============
+
+model Invoice {
+  id            String    @id @default(cuid())
+  invoiceNumber String    @unique
+  clientId      String
+  subtotal      Float     @default(0)
+  taxRate       Float     @default(5)
+  taxAmount     Float     @default(0)
+  total         Float     @default(0)
+  status        String    @default("draft")
+  dueDate       DateTime?
+  paidDate      DateTime?
+  notes         String?
+  createdById   String
+  labId         String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  client    Customer      @relation(fields: [clientId], references: [id])
+  createdBy User          @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  lab       Lab           @relation(fields: [labId], references: [id])
+  items     InvoiceItem[]
+}
+
+model InvoiceItem {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  sampleId    String?
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Float
+  total       Float
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  sample  Sample? @relation(fields: [sampleId], references: [id])
+}
+
+// ============= SYSTEM =============
+
+model FormatID {
+  id         String @id @default(cuid())
+  module     String
+  prefix     String
+  lastNumber Int    @default(0)
+  labId      String
+
+  lab Lab @relation(fields: [labId], references: [id])
+
+  @@unique([labId, module])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  userName  String?
+  module    String
+  action    String
+  details   String?
+  labId     String
+  createdAt DateTime @default(now())
+
+  lab Lab @relation(fields: [labId], references: [id])
+}
