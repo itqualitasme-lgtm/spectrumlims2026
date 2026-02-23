@@ -10,17 +10,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 
-const demoCredentials = [
-  { username: "admin", password: "admin123", label: "Admin" },
-  { username: "manager", password: "manager123", label: "Lab Manager" },
-  { username: "accounts", password: "accounts123", label: "Accounts" },
-  { username: "chemist", password: "chemist123", label: "Chemist" },
-  { username: "registration", password: "reg123", label: "Registration" },
-  { username: "sampler", password: "sampler123", label: "Sampler" },
-  { username: "petroco", password: "client123", label: "Portal - PetroCo" },
-  { username: "demo", password: "client123", label: "Portal - Demo Co" },
-]
-
 export function LoginForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -65,12 +54,6 @@ export function LoginForm() {
       setError("An unexpected error occurred. Please try again.")
       setLoading(false)
     }
-  }
-
-  function handleDemoClick(demoUsername: string, demoPassword: string) {
-    setUsername(demoUsername)
-    setPassword(demoPassword)
-    setError("")
   }
 
   return (
@@ -159,29 +142,9 @@ export function LoginForm() {
           </CardContent>
         </Card>
 
-        {/* Demo Credentials */}
-        <Card className="border-dashed">
-          <CardHeader className="pb-2">
-            <p className="text-center text-sm font-medium text-muted-foreground">
-              Demo Credentials
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 gap-2">
-              {demoCredentials.map((cred) => (
-                <button
-                  key={cred.username}
-                  type="button"
-                  onClick={() => handleDemoClick(cred.username, cred.password)}
-                  className="rounded-md border px-3 py-2 text-left text-sm transition-colors hover:bg-accent hover:text-accent-foreground"
-                >
-                  <div className="font-medium">{cred.username}</div>
-                  <div className="text-xs text-muted-foreground">{cred.label}</div>
-                </button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <p className="text-center text-xs text-slate-500">
+          Spectrum Testing &amp; Inspection
+        </p>
       </div>
     </div>
   )
