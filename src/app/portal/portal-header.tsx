@@ -23,6 +23,7 @@ const navLinks = [
   { href: "/portal/dashboard", label: "Dashboard" },
   { href: "/portal/samples", label: "Samples" },
   { href: "/portal/reports", label: "Reports" },
+  { href: "/portal/quotations", label: "Quotations" },
   { href: "/portal/invoices", label: "Invoices" },
 ]
 

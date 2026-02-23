@@ -28,6 +28,7 @@ model Lab {
   samples     Sample[]
   reports     Report[]
   invoices    Invoice[]
+  quotations  Quotation[]
   formatIds   FormatID[]
   roles       Role[]
   portalUsers PortalUser[]
@@ -95,6 +96,7 @@ model User {
   reportsCreated     Report[]     @relation("CreatedBy")
   reportsReviewed    Report[]     @relation("ReviewedBy")
   invoicesCreated    Invoice[]    @relation("InvoiceCreatedBy")
+  quotationsCreated  Quotation[]  @relation("QuotationCreatedBy")
 }
 
 model PortalUser {
@@ -132,6 +134,7 @@ model Customer {
   contactPersons ContactPerson[]
   samples        Sample[]
   invoices       Invoice[]
+  quotations     Quotation[]
   portalUsers    PortalUser[]
 
   @@unique([labId, code])
@@ -196,7 +199,8 @@ model Sample {
 
   testResults  TestResult[]
   reports      Report[]
-  invoiceItems InvoiceItem[]
+  invoiceItems   InvoiceItem[]
+  quotationItems QuotationItem[]
 }
 
 // ============= TEST RESULTS =============
@@ -277,6 +281,44 @@ model InvoiceItem {
 
   invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   sample  Sample? @relation(fields: [sampleId], references: [id])
+}
+
+// ============= QUOTATIONS =============
+
+model Quotation {
+  id              String    @id @default(cuid())
+  quotationNumber String    @unique
+  clientId        String
+  subtotal        Float     @default(0)
+  taxRate         Float     @default(5)
+  taxAmount       Float     @default(0)
+  total           Float     @default(0)
+  status          String    @default("draft")
+  validUntil      DateTime?
+  acceptedDate    DateTime?
+  notes           String?
+  createdById     String
+  labId           String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  client    Customer        @relation(fields: [clientId], references: [id])
+  createdBy User            @relation("QuotationCreatedBy", fields: [createdById], references: [id])
+  lab       Lab             @relation(fields: [labId], references: [id])
+  items     QuotationItem[]
+}
+
+model QuotationItem {
+  id          String  @id @default(cuid())
+  quotationId String
+  sampleId    String?
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Float
+  total       Float
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  sample    Sample?   @relation(fields: [sampleId], references: [id])
 }
 
 // ============= SYSTEM =============

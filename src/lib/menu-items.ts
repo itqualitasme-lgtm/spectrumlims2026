@@ -7,6 +7,7 @@ import {
   FileText,
   MapPin,
   Receipt,
+  FileSpreadsheet,
   Settings,
   Shield,
   ScrollText,
@@ -86,6 +87,12 @@ export const menuGroups: MenuGroup[] = [
   {
     title: "Accounts",
     items: [
+      {
+        title: "Quotations",
+        href: "/accounts/quotations",
+        icon: FileSpreadsheet,
+        permission: "accounts:view",
+      },
       {
         title: "Invoices",
         href: "/accounts/invoices",

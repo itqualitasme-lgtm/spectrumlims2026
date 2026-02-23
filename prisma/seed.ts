@@ -386,7 +386,11 @@ async function main() {
   const formatInvoice = await prisma.formatID.create({
     data: { module: 'invoice', prefix: 'INV', lastNumber: 1, labId: lab.id },
   });
-  console.log('Created 3 format ID records.');
+
+  const formatQuotation = await prisma.formatID.create({
+    data: { module: 'quotation', prefix: 'QUO', lastNumber: 0, labId: lab.id },
+  });
+  console.log('Created 4 format ID records.');
 
   // ============================================================
   // 9. Demo samples (4)

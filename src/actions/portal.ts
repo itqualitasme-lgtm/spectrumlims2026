@@ -128,6 +128,20 @@ export async function getPortalReports() {
   return JSON.parse(JSON.stringify(reports))
 }
 
+export async function getPortalQuotations() {
+  const { customerId, labId } = await getPortalSession()
+
+  const quotations = await db.quotation.findMany({
+    where: { clientId: customerId, labId },
+    include: {
+      items: true,
+    },
+    orderBy: { createdAt: "desc" },
+  })
+
+  return JSON.parse(JSON.stringify(quotations))
+}
+
 export async function getPortalInvoices() {
   const { customerId, labId } = await getPortalSession()
 
