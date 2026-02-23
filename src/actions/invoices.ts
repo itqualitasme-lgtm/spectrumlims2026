@@ -164,6 +164,10 @@ export async function updateInvoiceStatus(id: string, status: string) {
   const user = session.user as any
   const labId = user.labId
 
+  // Verify invoice belongs to this lab
+  const existing = await db.invoice.findFirst({ where: { id, labId } })
+  if (!existing) throw new Error("Invoice not found")
+
   const updateData: any = { status }
 
   if (status === "paid") {
@@ -194,7 +198,7 @@ export async function deleteInvoice(id: string) {
   const user = session.user as any
   const labId = user.labId
 
-  const invoice = await db.invoice.findUnique({ where: { id } })
+  const invoice = await db.invoice.findFirst({ where: { id, labId } })
   if (!invoice) throw new Error("Invoice not found")
 
   if (invoice.status !== "draft") {

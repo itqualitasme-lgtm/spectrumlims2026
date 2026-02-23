@@ -164,6 +164,10 @@ export async function updateQuotationStatus(id: string, status: string) {
   const user = session.user as any
   const labId = user.labId
 
+  // Verify quotation belongs to this lab
+  const existing = await db.quotation.findFirst({ where: { id, labId } })
+  if (!existing) throw new Error("Quotation not found")
+
   const updateData: any = { status }
 
   if (status === "accepted") {
@@ -194,7 +198,7 @@ export async function deleteQuotation(id: string) {
   const user = session.user as any
   const labId = user.labId
 
-  const quotation = await db.quotation.findUnique({ where: { id } })
+  const quotation = await db.quotation.findFirst({ where: { id, labId } })
   if (!quotation) throw new Error("Quotation not found")
 
   if (quotation.status !== "draft") {

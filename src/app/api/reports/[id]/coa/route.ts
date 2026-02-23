@@ -21,9 +21,11 @@ export async function GET(
     // Await params (Next.js 16 pattern)
     const { id } = await params
 
-    // Fetch report with all related data
-    const report = await db.report.findUnique({
-      where: { id },
+    const user = session.user as any
+
+    // Fetch report with all related data (filtered by labId for security)
+    const report = await db.report.findFirst({
+      where: { id, labId: user.labId },
       include: {
         sample: {
           include: {

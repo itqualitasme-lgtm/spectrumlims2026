@@ -96,6 +96,10 @@ export async function updateCustomer(
   const session = await requirePermission("masters", "edit")
   const user = session.user as any
 
+  // Verify customer belongs to this lab
+  const existing = await db.customer.findFirst({ where: { id, labId: user.labId } })
+  if (!existing) throw new Error("Customer not found")
+
   const customer = await db.customer.update({
     where: { id },
     data: {
@@ -128,9 +132,13 @@ export async function deleteCustomer(id: string) {
   const session = await requirePermission("masters", "delete")
   const user = session.user as any
 
+  // Verify customer belongs to this lab
+  const existing = await db.customer.findFirst({ where: { id, labId: user.labId } })
+  if (!existing) throw new Error("Customer not found")
+
   // Check for associated samples
   const sampleCount = await db.sample.count({
-    where: { clientId: id },
+    where: { clientId: id, labId: user.labId },
   })
 
   if (sampleCount > 0) {

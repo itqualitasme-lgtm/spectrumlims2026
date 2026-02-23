@@ -36,6 +36,11 @@ export async function getSamplesForTestEntry() {
 
 export async function getTestResults(sampleId: string) {
   const session = await getSession()
+  const user = session.user as any
+
+  // Verify sample belongs to this lab
+  const sample = await db.sample.findFirst({ where: { id: sampleId, labId: user.labId } })
+  if (!sample) throw new Error("Sample not found")
 
   const testResults = await db.testResult.findMany({
     where: { sampleId },
@@ -55,6 +60,10 @@ export async function batchUpdateTestResults(
   const session = await requirePermission("process", "edit")
   const user = session.user as any
   const labId = user.labId
+
+  // Verify sample belongs to this lab
+  const sampleCheck = await db.sample.findFirst({ where: { id: sampleId, labId } })
+  if (!sampleCheck) throw new Error("Sample not found")
 
   // Update each test result
   for (const result of results) {

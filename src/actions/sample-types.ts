@@ -61,6 +61,10 @@ export async function updateSampleType(
   const session = await requirePermission("masters", "edit")
   const user = session.user as any
 
+  // Verify sample type belongs to this lab
+  const existing = await db.sampleType.findFirst({ where: { id, labId: user.labId } })
+  if (!existing) throw new Error("Sample type not found")
+
   const sampleType = await db.sampleType.update({
     where: { id },
     data: {
@@ -88,9 +92,13 @@ export async function deleteSampleType(id: string) {
   const session = await requirePermission("masters", "delete")
   const user = session.user as any
 
+  // Verify sample type belongs to this lab
+  const existing = await db.sampleType.findFirst({ where: { id, labId: user.labId } })
+  if (!existing) throw new Error("Sample type not found")
+
   // Check for associated samples
   const sampleCount = await db.sample.count({
-    where: { sampleTypeId: id },
+    where: { sampleTypeId: id, labId: user.labId },
   })
 
   if (sampleCount > 0) {

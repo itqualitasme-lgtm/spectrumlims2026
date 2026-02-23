@@ -30,8 +30,8 @@ export async function getSample(id: string) {
   const session = await getSession()
   const user = session.user as any
 
-  const sample = await db.sample.findUnique({
-    where: { id },
+  const sample = await db.sample.findFirst({
+    where: { id, labId: user.labId },
     include: {
       client: true,
       sampleType: true,
@@ -200,6 +200,10 @@ export async function assignSample(sampleId: string, assignedToId: string) {
   const user = session.user as any
   const labId = user.labId
 
+  // Verify sample belongs to this lab
+  const existing = await db.sample.findFirst({ where: { id: sampleId, labId } })
+  if (!existing) throw new Error("Sample not found")
+
   const sample = await db.sample.update({
     where: { id: sampleId },
     data: {
@@ -224,8 +228,13 @@ export async function assignSample(sampleId: string, assignedToId: string) {
 }
 
 export async function updateSampleStatus(sampleId: string, status: string) {
-  const session = await getSession()
+  const session = await requirePermission("process", "edit")
   const user = session.user as any
+  const labId = user.labId
+
+  // Verify sample belongs to this lab
+  const existing = await db.sample.findFirst({ where: { id: sampleId, labId } })
+  if (!existing) throw new Error("Sample not found")
 
   const sample = await db.sample.update({
     where: { id: sampleId },
@@ -233,6 +242,7 @@ export async function updateSampleStatus(sampleId: string, status: string) {
   })
 
   revalidatePath("/process/registration")
+  revalidatePath("/process/sample-collection")
 
   return sample
 }
@@ -242,7 +252,7 @@ export async function deleteSample(sampleId: string) {
   const user = session.user as any
   const labId = user.labId
 
-  const sample = await db.sample.findUnique({ where: { id: sampleId } })
+  const sample = await db.sample.findFirst({ where: { id: sampleId, labId } })
   if (!sample) throw new Error("Sample not found")
 
   if (!["pending", "registered"].includes(sample.status)) {
