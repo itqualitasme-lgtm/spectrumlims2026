@@ -237,7 +237,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
       cell: ({ row }) => {
         const report = row.original
         return (
-          <DropdownMenu>
+          <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm">
                 <MoreHorizontal className="h-4 w-4" />

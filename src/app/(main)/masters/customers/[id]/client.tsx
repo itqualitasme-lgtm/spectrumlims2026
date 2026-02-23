@@ -318,7 +318,7 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
                       <TableCell>{contact.phone || "-"}</TableCell>
                       <TableCell>{contact.designation || "-"}</TableCell>
                       <TableCell>
-                        <DropdownMenu>
+                        <DropdownMenu modal={false}>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
