@@ -3,6 +3,7 @@
 import { db } from "@/lib/db"
 import { requirePermission, getSession } from "@/lib/permissions"
 import { logAudit } from "@/lib/audit"
+import { generateNextNumber, generateLinkedNumber } from "@/lib/auto-number"
 import { revalidatePath } from "next/cache"
 
 export async function getSamplesForTestEntry() {
@@ -99,6 +100,53 @@ export async function batchUpdateTestResults(
       where: { id: sampleId },
       data: { status: "completed" },
     })
+
+    // Auto-create a report if one doesn't already exist for this sample
+    const existingReport = await db.report.findFirst({
+      where: { sampleId, labId },
+    })
+
+    if (!existingReport) {
+      // Get default template
+      const defaultTemplate = await db.reportTemplate.findFirst({
+        where: { labId, isDefault: true },
+      })
+
+      // Generate report number linked to sample sequence
+      let reportNumber: string
+      if (sample?.sequenceNumber) {
+        reportNumber = await generateLinkedNumber(labId, "report", sample.sequenceNumber)
+      } else {
+        const result = await generateNextNumber(labId, "report", "RPT")
+        reportNumber = result.formatted
+      }
+
+      const sampleWithType = await db.sample.findUnique({
+        where: { id: sampleId },
+        include: { sampleType: true },
+      })
+
+      await db.report.create({
+        data: {
+          reportNumber,
+          sampleId,
+          title: `Certificate of Quality - ${sampleWithType?.sampleType.name || "Test Report"}`,
+          templateId: defaultTemplate?.id || null,
+          status: "draft",
+          createdById: user.id,
+          labId,
+        },
+      })
+
+      await logAudit(
+        labId,
+        user.id,
+        user.name,
+        "process",
+        "create",
+        `Auto-created report ${reportNumber} for completed sample ${sample?.sampleNumber || sampleId}`
+      )
+    }
   } else {
     // Still has pending results - set to "testing" if it was "assigned" or "registered"
     if (sample?.status === "assigned" || sample?.status === "registered") {
@@ -120,6 +168,7 @@ export async function batchUpdateTestResults(
 
   revalidatePath("/process/test-results")
   revalidatePath("/process/registration")
+  revalidatePath("/process/reports")
 
   return { success: true }
 }

@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
   Send,
-  CheckCircle,
+  ShieldCheck,
+  RotateCcw,
   Globe,
   Trash2,
   FileText,
   Loader2,
-  FileCheck,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -36,11 +36,11 @@ import {
   createReport,
   submitReport,
   approveReport,
+  requestRevision,
   publishReport,
   deleteReport,
   getCompletedSamplesForSelect,
   getReportTemplatesForSelect,
-  updateReportTemplate as updateReportTemplateAction,
 } from "@/actions/reports"
 
 type Report = {
@@ -50,29 +50,43 @@ type Report = {
   summary: string | null
   status: string
   createdAt: string
+  reviewedAt: string | null
   sample: {
     id: string
     sampleNumber: string
     client: { id: string; name: string; company: string | null }
     sampleType: { id: string; name: string }
+    assignedTo: { id: string; name: string } | null
+    testResults: { enteredById: string | null; enteredBy: { id: string; name: string } | null }[]
   }
-  createdBy: { name: string }
-  reviewedBy: { name: string } | null
+  createdBy: { id: string; name: string }
+  reviewedBy: { id: string; name: string } | null
 }
 
 const statusBadge = (status: string) => {
   switch (status) {
     case "draft":
-      return <Badge variant="secondary">Draft</Badge>
+      return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Authentication Pending</Badge>
     case "review":
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Review</Badge>
+      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Under Review</Badge>
+    case "revision":
+      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Revision Required</Badge>
     case "approved":
-      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Approved</Badge>
+      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Authenticated</Badge>
     case "published":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Published</Badge>
+      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Published</Badge>
     default:
       return <Badge variant="secondary">{status}</Badge>
   }
+}
+
+function getChemistName(report: Report): string {
+  // First check test results for who entered them
+  const enteredBy = report.sample.testResults?.[0]?.enteredBy
+  if (enteredBy) return enteredBy.name
+  // Fallback to assigned chemist
+  if (report.sample.assignedTo) return report.sample.assignedTo.name
+  return "-"
 }
 
 export function ReportsClient({ reports }: { reports: Report[] }) {
@@ -81,10 +95,12 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
   // Dialog states
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [revisionOpen, setRevisionOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
   // Selected report for actions
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
+  const [revisionReason, setRevisionReason] = useState("")
 
   // Create form
   const [sampleId, setSampleId] = useState("")
@@ -154,20 +170,40 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
   const handleSubmit = async (report: Report) => {
     try {
       await submitReport(report.id)
-      toast.success(`Report ${report.reportNumber} submitted for review`)
+      toast.success(`Report ${report.reportNumber} submitted for authentication`)
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to submit report")
     }
   }
 
-  const handleApprove = async (report: Report) => {
+  const handleAuthenticate = async (report: Report) => {
     try {
       await approveReport(report.id)
-      toast.success(`Report ${report.reportNumber} approved`)
+      toast.success(`Report ${report.reportNumber} authenticated`)
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Failed to approve report")
+      toast.error(error.message || "Failed to authenticate report")
+    }
+  }
+
+  const handleRevision = async () => {
+    if (!selectedReport || !revisionReason.trim()) {
+      toast.error("Please provide a reason for revision")
+      return
+    }
+
+    setLoading(true)
+    try {
+      await requestRevision(selectedReport.id, revisionReason.trim())
+      toast.success(`Revision requested for ${selectedReport.reportNumber}`)
+      setRevisionOpen(false)
+      setRevisionReason("")
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to request revision")
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -219,13 +255,8 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
     },
     {
       id: "type",
-      header: "Type",
+      header: "Sample Type",
       cell: ({ row }) => row.original.sample.sampleType.name,
-    },
-    {
-      accessorKey: "title",
-      header: "Title",
-      cell: ({ row }) => row.original.title || "-",
     },
     {
       accessorKey: "status",
@@ -233,8 +264,26 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
       cell: ({ row }) => statusBadge(row.original.status),
     },
     {
-      accessorKey: "createdBy.name",
-      header: "Created By",
+      id: "chemist",
+      header: "Tested By",
+      cell: ({ row }) => (
+        <span className="text-sm">{getChemistName(row.original)}</span>
+      ),
+    },
+    {
+      id: "authenticatedBy",
+      header: "Authenticated By",
+      cell: ({ row }) => {
+        const r = row.original
+        if (r.status === "approved" || r.status === "published") {
+          return (
+            <span className="text-sm font-medium text-green-700">
+              {r.reviewedBy?.name || "-"}
+            </span>
+          )
+        }
+        return <span className="text-sm text-muted-foreground">-</span>
+      },
     },
     {
       accessorKey: "createdAt",
@@ -249,28 +298,48 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
         const report = row.original
         return (
           <div className="flex items-center gap-1">
+            {/* Draft → Submit for authentication */}
             {report.status === "draft" && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0"
                 onClick={() => handleSubmit(report)}
-                title="Submit for Review"
+                title="Submit for Authentication"
               >
                 <Send className="h-4 w-4" />
               </Button>
             )}
+
+            {/* Under Review → Authenticate or Request Revision */}
             {report.status === "review" && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => handleApprove(report)}
-                title="Approve"
-              >
-                <CheckCircle className="h-4 w-4" />
-              </Button>
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                  onClick={() => handleAuthenticate(report)}
+                  title="Authenticate"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
+                  onClick={() => {
+                    setSelectedReport(report)
+                    setRevisionReason("")
+                    setRevisionOpen(true)
+                  }}
+                  title="Request Revision"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </>
             )}
+
+            {/* Authenticated → Publish */}
             {report.status === "approved" && (
               <Button
                 variant="ghost"
@@ -282,6 +351,8 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
                 <Globe className="h-4 w-4" />
               </Button>
             )}
+
+            {/* View COA PDF (approved or published) */}
             {(report.status === "approved" || report.status === "published") && (
               <Button
                 variant="ghost"
@@ -293,6 +364,8 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
                 <FileText className="h-4 w-4" />
               </Button>
             )}
+
+            {/* Delete only drafts */}
             {report.status === "draft" && (
               <Button
                 variant="ghost"
@@ -307,6 +380,13 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
                 <Trash2 className="h-4 w-4" />
               </Button>
             )}
+
+            {/* Revision: show the reason */}
+            {report.status === "revision" && report.summary && (
+              <span className="text-xs text-red-600 max-w-[150px] truncate" title={report.summary}>
+                {report.summary}
+              </span>
+            )}
           </div>
         )
       },
@@ -316,8 +396,8 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Reports"
-        description="Create and manage laboratory reports"
+        title="Reports & Authentication"
+        description="View reports, authenticate completed test results, and publish COA certificates"
         actionLabel="Create Report"
         onAction={handleOpenCreate}
       />
@@ -372,12 +452,12 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
               </div>
             )}
             <div className="grid gap-2">
-              <Label>Summary</Label>
+              <Label>Remarks</Label>
               <Textarea
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
-                placeholder="Report summary..."
-                rows={4}
+                placeholder="Report remarks..."
+                rows={3}
               />
             </div>
           </div>
@@ -397,6 +477,53 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
                 </>
               ) : (
                 "Create Report"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revision Request Dialog */}
+      <Dialog open={revisionOpen} onOpenChange={setRevisionOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>Request Revision</DialogTitle>
+            <DialogDescription>
+              Send report {selectedReport?.reportNumber} back to the chemist for corrections.
+              The test results will be reset to pending status.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Reason for Revision *</Label>
+              <Textarea
+                value={revisionReason}
+                onChange={(e) => setRevisionReason(e.target.value)}
+                placeholder="e.g. Flash point value seems incorrect, please re-test..."
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRevisionOpen(false)}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRevision}
+              disabled={loading || !revisionReason.trim()}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                "Send for Revision"
               )}
             </Button>
           </DialogFooter>

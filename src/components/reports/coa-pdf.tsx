@@ -65,6 +65,8 @@ interface SampleInfo {
   collectionDate?: Date | string | null
   collectionLocation?: string | null
   samplePoint?: string | null
+  reference?: string | null
+  registeredAt?: Date | string | null
   notes?: string | null
   client: CustomerInfo
   sampleType: SampleTypeInfo
@@ -76,6 +78,11 @@ interface UserInfo {
   name: string
   designation?: string | null
   signatureUrl?: string | null
+}
+
+interface TestedByInfo {
+  id: string
+  name: string
 }
 
 interface ReportInfo {
@@ -106,6 +113,7 @@ export interface COAPDFProps {
   testResults: TestResultInfo[]
   lab: LabInfo
   customer: CustomerInfo
+  testedBy?: TestedByInfo
   template?: TemplateInfo | null
   qrCodeDataUrl?: string
   verificationCode?: string
@@ -114,14 +122,12 @@ export interface COAPDFProps {
 
 // ============= COLORS =============
 
-const BRAND_COLOR = "#1e3a5f"
-const BRAND_LIGHT = "#e8eef5"
-const HEADER_BG = "#f0f4f8"
-const BORDER_COLOR = "#c8d6e5"
-const PASS_COLOR = "#16a34a"
-const FAIL_COLOR = "#dc2626"
-const TEXT_PRIMARY = "#1a1a1a"
-const TEXT_SECONDARY = "#4a5568"
+const RED_BRAND = "#c41e1e"
+const BLACK = "#000000"
+const BORDER = "#000000"
+const GRAY_BG = "#f5f5f5"
+const TEXT_COLOR = "#000000"
+const GRAY_TEXT = "#555555"
 
 // ============= STYLES =============
 
@@ -129,315 +135,320 @@ const styles = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     fontSize: 9,
-    paddingTop: 40,
+    paddingTop: 30,
     paddingBottom: 80,
-    paddingHorizontal: 40,
-    color: TEXT_PRIMARY,
+    paddingHorizontal: 35,
+    color: TEXT_COLOR,
   },
 
-  // Header
+  // ---- Header ----
   header: {
-    marginBottom: 16,
+    marginBottom: 6,
+    paddingBottom: 5,
     borderBottomWidth: 2,
-    borderBottomColor: BRAND_COLOR,
-    paddingBottom: 10,
+    borderBottomColor: RED_BRAND,
   },
   headerRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 6,
+    justifyContent: "space-between",
+  },
+  headerLogo: {
+    width: 60,
+    height: 60,
+    objectFit: "contain" as any,
   },
   headerCenter: {
     flex: 1,
-    textAlign: "center",
+    alignItems: "center",
+    paddingHorizontal: 8,
   },
-  headerLogo: {
-    width: 70,
-    height: 40,
-    objectFit: "contain" as any,
+  headerSubline: {
+    fontSize: 7,
+    color: GRAY_TEXT,
+    textAlign: "center",
+    marginBottom: 1,
   },
   accreditationLogo: {
-    width: 55,
-    height: 35,
+    width: 50,
+    height: 50,
     objectFit: "contain" as any,
   },
   labName: {
     fontSize: 18,
     fontFamily: "Helvetica-Bold",
-    color: BRAND_COLOR,
-    marginBottom: 3,
-    letterSpacing: 1,
+    color: RED_BRAND,
     textAlign: "center",
-  },
-  headerSubline: {
-    fontSize: 8,
-    color: TEXT_SECONDARY,
     marginBottom: 1,
-    textAlign: "center",
-  },
-  labDetail: {
-    fontSize: 8,
-    color: TEXT_SECONDARY,
-    marginBottom: 1,
-    textAlign: "center",
-  },
-  accreditationTextStyle: {
-    fontSize: 7,
-    color: BRAND_COLOR,
-    fontFamily: "Helvetica-Bold",
-    textAlign: "center",
-    marginTop: 2,
   },
 
-  // Title
+  // ---- Title ----
+  titleSection: {
+    textAlign: "center",
+    marginTop: 6,
+    marginBottom: 4,
+  },
   title: {
-    textAlign: "center",
-    fontSize: 14,
+    fontSize: 12,
     fontFamily: "Helvetica-Bold",
-    color: BRAND_COLOR,
-    marginTop: 10,
-    marginBottom: 14,
-    letterSpacing: 2,
+    color: BLACK,
+    textAlign: "center",
+    textDecoration: "underline",
+    marginBottom: 2,
   },
-
-  // Section containers
-  sectionRow: {
-    flexDirection: "row",
-    gap: 16,
-    marginBottom: 12,
-  },
-  sectionHalf: {
-    flex: 1,
-  },
-  section: {
-    marginBottom: 12,
-  },
-  sectionTitle: {
+  subtitle: {
     fontSize: 10,
     fontFamily: "Helvetica-Bold",
-    color: BRAND_COLOR,
-    marginBottom: 6,
-    paddingBottom: 3,
-    borderBottomWidth: 1,
-    borderBottomColor: BRAND_COLOR,
+    color: BLACK,
+    textAlign: "center",
   },
 
-  // Info rows
-  infoRow: {
+  // ---- Report Number line ----
+  reportNoRow: {
     flexDirection: "row",
-    marginBottom: 3,
+    justifyContent: "flex-end",
+    marginBottom: 4,
   },
-  infoLabel: {
-    width: 110,
+  reportNoText: {
     fontSize: 8,
     fontFamily: "Helvetica-Bold",
-    color: TEXT_SECONDARY,
+    color: BLACK,
+  },
+
+  // ---- Info Section ----
+  infoSection: {
+    marginBottom: 6,
+  },
+  infoRow: {
+    flexDirection: "row",
+    marginBottom: 2,
+  },
+  infoLabel: {
+    width: 145,
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: BLACK,
+  },
+  infoSep: {
+    width: 10,
+    fontSize: 8,
+    color: BLACK,
   },
   infoValue: {
     flex: 1,
     fontSize: 8,
-    color: TEXT_PRIMARY,
+    color: BLACK,
+  },
+  infoGrid: {
+    flexDirection: "row",
+  },
+  infoGridLeft: {
+    flex: 1,
+  },
+  infoGridRight: {
+    flex: 1,
+  },
+  infoGridLabel: {
+    width: 85,
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
+    color: BLACK,
   },
 
-  // Report info bar
-  reportInfoBar: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    backgroundColor: BRAND_LIGHT,
-    padding: 8,
-    borderRadius: 3,
-    marginBottom: 14,
-  },
-  reportInfoItem: {
-    textAlign: "center",
-  },
-  reportInfoLabel: {
-    fontSize: 7,
-    color: TEXT_SECONDARY,
-    fontFamily: "Helvetica-Bold",
-    marginBottom: 2,
-    textTransform: "uppercase",
-  },
-  reportInfoValue: {
+  // ---- Test Results Header ----
+  testResultsTitle: {
     fontSize: 10,
     fontFamily: "Helvetica-Bold",
-    color: BRAND_COLOR,
+    color: BLACK,
+    textAlign: "center",
+    marginBottom: 3,
+    textDecoration: "underline",
   },
 
-  // Table
+  // ---- Table ----
   table: {
-    marginBottom: 16,
+    marginBottom: 6,
+    borderWidth: 1,
+    borderColor: BORDER,
   },
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: BRAND_COLOR,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    borderTopLeftRadius: 3,
-    borderTopRightRadius: 3,
+    backgroundColor: "#e8e8e8",
+    borderBottomWidth: 1,
+    borderBottomColor: BORDER,
   },
   tableHeaderCell: {
     fontSize: 8,
     fontFamily: "Helvetica-Bold",
-    color: "#ffffff",
+    color: BLACK,
     textAlign: "center",
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+    borderRightWidth: 0.5,
+    borderRightColor: BORDER,
   },
   tableRow: {
     flexDirection: "row",
-    paddingVertical: 5,
-    paddingHorizontal: 4,
     borderBottomWidth: 0.5,
-    borderBottomColor: BORDER_COLOR,
+    borderBottomColor: BORDER,
   },
   tableRowAlt: {
-    backgroundColor: "#f8fafc",
+    backgroundColor: GRAY_BG,
   },
   tableCell: {
-    fontSize: 8,
+    fontSize: 7.5,
+    color: BLACK,
     textAlign: "center",
-    color: TEXT_PRIMARY,
+    paddingVertical: 2.5,
+    paddingHorizontal: 2,
+    borderRightWidth: 0.5,
+    borderRightColor: BORDER,
   },
 
-  // Column widths
-  colSno: { width: "6%" },
-  colParameter: { width: "20%" },
-  colTestMethod: { width: "16%" },
-  colUnit: { width: "10%" },
-  colResult: { width: "12%" },
-  colSpecMin: { width: "12%" },
-  colSpecMax: { width: "12%" },
-  colStatus: { width: "12%" },
+  // Column widths matching reference: Test | Method | Unit | Specification | Result
+  colTest: { width: "25%" },
+  colMethod: { width: "22%" },
+  colUnit: { width: "12%" },
+  colSpec: { width: "21%" },
+  colResult: { width: "20%" },
 
-  // Status text
-  statusPass: {
-    color: PASS_COLOR,
-    fontFamily: "Helvetica-Bold",
+  // ---- Meta section (below table) ----
+  metaSection: {
+    marginTop: 4,
+    marginBottom: 6,
   },
-  statusFail: {
-    color: FAIL_COLOR,
-    fontFamily: "Helvetica-Bold",
+  metaRow: {
+    flexDirection: "row",
+    marginBottom: 2,
   },
-
-  // Summary
-  summaryBox: {
-    backgroundColor: HEADER_BG,
-    padding: 10,
-    borderRadius: 3,
-    marginBottom: 16,
-    borderLeftWidth: 3,
-    borderLeftColor: BRAND_COLOR,
-  },
-  summaryText: {
+  metaLabel: {
     fontSize: 8,
-    color: TEXT_PRIMARY,
-    lineHeight: 1.5,
+    fontFamily: "Helvetica-Bold",
+    width: 145,
+    color: BLACK,
+  },
+  metaSep: {
+    fontSize: 8,
+    width: 10,
+    color: BLACK,
+  },
+  metaValue: {
+    fontSize: 8,
+    color: BLACK,
+  },
+  metaNote: {
+    fontSize: 7.5,
+    color: BLACK,
+    marginTop: 2,
   },
 
-  // Signatures + QR row
-  bottomSection: {
+  // ---- Reported By + Signatures ----
+  reportedBySection: {
+    marginTop: 8,
+  },
+  reportedByLabel: {
+    fontSize: 9,
+    fontFamily: "Helvetica-Bold",
+    color: BLACK,
+    marginBottom: 3,
+  },
+  signaturesRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    marginTop: 4,
     alignItems: "flex-end",
   },
-  signaturesContainer: {
-    flexDirection: "row",
-    gap: 30,
-    flex: 1,
-  },
   signatureBlock: {
-    width: "45%",
+    width: "28%",
     alignItems: "center",
+  },
+  signatureImage: {
+    width: 75,
+    height: 32,
+    objectFit: "contain" as any,
+    marginBottom: 3,
   },
   signatureLine: {
     width: "100%",
     borderBottomWidth: 1,
-    borderBottomColor: TEXT_PRIMARY,
-    marginBottom: 6,
-    marginTop: 10,
-  },
-  signatureImage: {
-    width: 80,
-    height: 35,
-    objectFit: "contain" as any,
-    marginTop: 8,
+    borderBottomColor: BLACK,
+    marginBottom: 3,
   },
   signatureLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
-    color: TEXT_PRIMARY,
-    marginBottom: 2,
+    color: BLACK,
+    marginBottom: 1,
+    textAlign: "center",
   },
   signatureName: {
-    fontSize: 8,
-    color: TEXT_SECONDARY,
+    fontSize: 7,
+    color: GRAY_TEXT,
+    textAlign: "center",
   },
   signatureDesignation: {
-    fontSize: 7,
-    color: TEXT_SECONDARY,
+    fontSize: 6.5,
+    color: GRAY_TEXT,
     fontStyle: "italic",
-  },
-  signatureDate: {
-    fontSize: 7,
-    color: TEXT_SECONDARY,
-    marginTop: 2,
+    textAlign: "center",
   },
 
-  // QR Code
+  // ---- QR Code ----
   qrContainer: {
     alignItems: "center",
-    width: 90,
+    width: 75,
   },
   qrImage: {
-    width: 70,
-    height: 70,
+    width: 60,
+    height: 60,
   },
   qrLabel: {
-    fontSize: 6,
-    color: TEXT_SECONDARY,
+    fontSize: 5,
+    color: GRAY_TEXT,
     textAlign: "center",
-    marginTop: 3,
+    marginTop: 1,
   },
   qrCode: {
-    fontSize: 5.5,
-    color: BRAND_COLOR,
+    fontSize: 4.5,
+    color: RED_BRAND,
     textAlign: "center",
     fontFamily: "Helvetica-Bold",
     marginTop: 1,
   },
 
-  // Footer
+  // ---- Footer ----
   footer: {
     position: "absolute",
-    bottom: 25,
-    left: 40,
-    right: 40,
-    borderTopWidth: 1,
-    borderTopColor: BORDER_COLOR,
-    paddingTop: 6,
+    bottom: 18,
+    left: 35,
+    right: 35,
   },
-  footerText: {
-    fontSize: 6.5,
-    color: TEXT_SECONDARY,
-    fontStyle: "italic",
+  footerDisclaimer: {
+    fontSize: 5.5,
+    color: GRAY_TEXT,
     marginBottom: 1,
+    lineHeight: 1.4,
+  },
+  footerBar: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: RED_BRAND,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
+    marginTop: 3,
+  },
+  footerBarText: {
+    fontSize: 6,
+    color: "#ffffff",
     textAlign: "center",
   },
-  footerWebsite: {
-    fontSize: 7,
-    color: BRAND_COLOR,
-    fontFamily: "Helvetica-Bold",
-    textAlign: "center",
-  },
-
-  // Page number
   pageNumber: {
     position: "absolute",
-    bottom: 12,
-    right: 40,
-    fontSize: 7,
-    color: TEXT_SECONDARY,
+    bottom: 8,
+    right: 35,
+    fontSize: 6.5,
+    color: GRAY_TEXT,
   },
 })
 
@@ -447,14 +458,17 @@ function formatDate(date: Date | string | null | undefined): string {
   if (!date) return "N/A"
   try {
     const d = typeof date === "string" ? new Date(date) : date
-    return format(d, "dd MMM yyyy")
+    return format(d, "dd-MM-yyyy")
   } catch {
     return "N/A"
   }
 }
 
-function capitalize(str: string): string {
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
+function buildSpecString(specMin?: string | null, specMax?: string | null): string {
+  if (specMin && specMax) return `${specMin} - ${specMax}`
+  if (specMin) return `Min ${specMin}`
+  if (specMax) return `Max ${specMax}`
+  return "-"
 }
 
 // ============= PDF COMPONENT =============
@@ -465,6 +479,7 @@ export function COAPDF({
   testResults,
   lab,
   customer,
+  testedBy,
   template,
   qrCodeDataUrl,
   verificationCode,
@@ -475,8 +490,9 @@ export function COAPDF({
   const footerLines = footerText
     ? footerText.split("\n").filter((l) => l.trim())
     : [
-        "This report shall not be reproduced except in full, without the written approval of the laboratory.",
-        "The results relate only to the items tested.",
+        "The test Report shall not be reproduced (except in full) without the written approval of SPECTRUM.",
+        "When analysis is witnessed by us or carried out by sub contract labs, our responsibility is solely to ensure that the analysis is conducted to standard test methods in accordance with industry accepted practice.",
+        "We are not responsible for apparatus, instrumentation and measuring devices, their calibration or working order, reagents and solutions are accepted as prepared.",
       ]
 
   const headerText = template?.headerText || lab.reportHeaderText
@@ -485,299 +501,334 @@ export function COAPDF({
     : []
 
   const showLabLogo = template?.showLabLogo !== false
-  const logoUrl = template?.logoUrl || null
+  const logoUrl = template?.logoUrl || lab.logo || null
   const accreditationLogoUrl = template?.accreditationLogoUrl || null
   const accreditationText = template?.accreditationText || null
-  const hasLogos = (showLabLogo && logoUrl) || accreditationLogoUrl
+
+  // Determine title
+  const reportTitle = report.title || "CERTIFICATE OF QUALITY"
+  const sampleTypeName = sample.sampleType.name
+
+  // Chemist / tested by name
+  const testedByName = testedBy?.name || "-"
 
   return (
     <Document
-      title={`COA - ${report.reportNumber}`}
+      title={`${report.reportNumber} - ${reportTitle}`}
       author={lab.name}
-      subject="Certificate of Analysis"
+      subject={reportTitle}
       creator="Spectrum LIMS"
     >
       <Page size="A4" style={styles.page}>
-        {/* Header */}
+        {/* ===== HEADER (fixed on every page) ===== */}
         <View style={styles.header} fixed>
-          {hasLogos ? (
-            <View style={styles.headerRow}>
-              {showLabLogo && logoUrl ? (
-                <Image style={styles.headerLogo} src={logoUrl} />
-              ) : (
-                <View style={{ width: 70 }} />
+          <View style={styles.headerRow}>
+            {showLabLogo && logoUrl ? (
+              <Image style={styles.headerLogo} src={logoUrl} />
+            ) : (
+              <View style={{ width: 60 }} />
+            )}
+            <View style={styles.headerCenter}>
+              {headerSubLines.length > 0 && (
+                <Text style={{ fontSize: 7, color: GRAY_TEXT, marginBottom: 1, textAlign: "center" }}>
+                  {headerSubLines[0]}
+                </Text>
               )}
-              <View style={styles.headerCenter}>
-                <Text style={styles.labName}>{lab.name}</Text>
-                {headerSubLines.map((line, idx) => (
-                  <Text key={idx} style={styles.headerSubline}>{line}</Text>
-                ))}
-                {accreditationText && (
-                  <Text style={styles.accreditationTextStyle}>{accreditationText}</Text>
-                )}
-              </View>
-              {accreditationLogoUrl ? (
-                <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
-              ) : (
-                <View style={{ width: 55 }} />
-              )}
-            </View>
-          ) : (
-            <>
               <Text style={styles.labName}>{lab.name}</Text>
-              {headerSubLines.map((line, idx) => (
+              {headerSubLines.slice(1).map((line, idx) => (
                 <Text key={idx} style={styles.headerSubline}>{line}</Text>
               ))}
-            </>
-          )}
-          {lab.address && <Text style={styles.labDetail}>{lab.address}</Text>}
-          <Text style={styles.labDetail}>
-            {[lab.phone && `Tel: ${lab.phone}`, lab.email && `Email: ${lab.email}`]
-              .filter(Boolean)
-              .join("  |  ")}
-          </Text>
-          {lab.trn && <Text style={styles.labDetail}>TRN: {lab.trn}</Text>}
+              {accreditationText && (
+                <Text style={{ fontSize: 6.5, color: RED_BRAND, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>
+                  {accreditationText}
+                </Text>
+              )}
+            </View>
+            {accreditationLogoUrl ? (
+              <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
+            ) : (
+              <View style={{ width: 50 }} />
+            )}
+          </View>
         </View>
 
-        {/* Title */}
-        <Text style={styles.title}>CERTIFICATE OF ANALYSIS</Text>
+        {/* ===== TITLE ===== */}
+        <View style={styles.titleSection}>
+          <Text style={styles.title}>{reportTitle.toUpperCase()}</Text>
+          <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
+        </View>
 
-        {/* Report Info Bar */}
-        <View style={styles.reportInfoBar}>
-          <View style={styles.reportInfoItem}>
-            <Text style={styles.reportInfoLabel}>Report Number</Text>
-            <Text style={styles.reportInfoValue}>{report.reportNumber}</Text>
-          </View>
-          <View style={styles.reportInfoItem}>
-            <Text style={styles.reportInfoLabel}>Sample Number</Text>
-            <Text style={styles.reportInfoValue}>{sample.sampleNumber}</Text>
-          </View>
-          <View style={styles.reportInfoItem}>
-            <Text style={styles.reportInfoLabel}>Date Issued</Text>
-            <Text style={styles.reportInfoValue}>
-              {formatDate(report.reviewedAt || report.createdAt)}
+        {/* ===== REPORT NO ===== */}
+        <View style={styles.reportNoRow}>
+          <Text style={styles.reportNoText}>
+            REPORT NO.: {report.reportNumber}
+          </Text>
+        </View>
+
+        {/* ===== CLIENT & SAMPLE INFO ===== */}
+        <View style={styles.infoSection}>
+          {/* Client */}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Client</Text>
+            <Text style={styles.infoSep}>:</Text>
+            <Text style={[styles.infoValue, { fontFamily: "Helvetica-Bold" }]}>
+              {customer.company || customer.name}{customer.address ? `, ${customer.address}` : ""}
             </Text>
           </View>
-          <View style={styles.reportInfoItem}>
-            <Text style={styles.reportInfoLabel}>Page</Text>
-            <Text
-              style={styles.reportInfoValue}
-              render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
-            />
-          </View>
-        </View>
 
-        {/* Client and Sample Info Side by Side */}
-        <View style={styles.sectionRow}>
-          {/* Client Info */}
-          <View style={styles.sectionHalf}>
-            <Text style={styles.sectionTitle}>Client Information</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Client Name:</Text>
-              <Text style={styles.infoValue}>{customer.name}</Text>
-            </View>
-            {customer.company && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Company:</Text>
-                <Text style={styles.infoValue}>{customer.company}</Text>
-              </View>
-            )}
-            {customer.address && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Address:</Text>
-                <Text style={styles.infoValue}>{customer.address}</Text>
-              </View>
-            )}
-            {customer.contactPerson && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Contact Person:</Text>
-                <Text style={styles.infoValue}>{customer.contactPerson}</Text>
-              </View>
-            )}
-            {customer.trn && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>TRN:</Text>
-                <Text style={styles.infoValue}>{customer.trn}</Text>
-              </View>
-            )}
+          {/* Sample Description */}
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Sample Description</Text>
+            <Text style={styles.infoSep}>:</Text>
+            <Text style={styles.infoValue}>
+              {sample.description || sampleTypeName}
+              {sample.samplePoint ? ` | ${sample.samplePoint}` : ""}
+            </Text>
           </View>
 
-          {/* Sample Info */}
-          <View style={styles.sectionHalf}>
-            <Text style={styles.sectionTitle}>Sample Information</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Sample Type:</Text>
-              <Text style={styles.infoValue}>{sample.sampleType.name}</Text>
-            </View>
-            {sample.description && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Description:</Text>
-                <Text style={styles.infoValue}>{sample.description}</Text>
+          {/* Sample Delivered By */}
+          {customer.contactPerson && (
+            <View style={styles.infoGrid}>
+              <View style={styles.infoGridLeft}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Sample Delivered By</Text>
+                  <Text style={styles.infoSep}>:</Text>
+                  <Text style={styles.infoValue}>{customer.contactPerson}</Text>
+                </View>
               </View>
-            )}
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Collection Date:</Text>
-              <Text style={styles.infoValue}>{formatDate(sample.collectionDate)}</Text>
-            </View>
-            {sample.samplePoint && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Sample Point:</Text>
-                <Text style={styles.infoValue}>{sample.samplePoint}</Text>
-              </View>
-            )}
-            {sample.collectionLocation && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Location:</Text>
-                <Text style={styles.infoValue}>{sample.collectionLocation}</Text>
-              </View>
-            )}
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Priority:</Text>
-              <Text style={styles.infoValue}>{capitalize(sample.priority)}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Test Results Table */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Test Results</Text>
-          <View style={styles.table}>
-            {/* Table Header */}
-            <View style={styles.tableHeader}>
-              <Text style={[styles.tableHeaderCell, styles.colSno]}>S.No</Text>
-              <Text style={[styles.tableHeaderCell, styles.colParameter, { textAlign: "left" }]}>
-                Parameter
-              </Text>
-              <Text style={[styles.tableHeaderCell, styles.colTestMethod]}>Test Method</Text>
-              <Text style={[styles.tableHeaderCell, styles.colUnit]}>Unit</Text>
-              <Text style={[styles.tableHeaderCell, styles.colResult]}>Result</Text>
-              <Text style={[styles.tableHeaderCell, styles.colSpecMin]}>Spec Min</Text>
-              <Text style={[styles.tableHeaderCell, styles.colSpecMax]}>Spec Max</Text>
-              <Text style={[styles.tableHeaderCell, styles.colStatus]}>Status</Text>
-            </View>
-
-            {/* Table Rows */}
-            {testResults.map((result, index) => {
-              const isAlt = index % 2 === 1
-              const statusLabel =
-                result.status === "pass"
-                  ? "Pass"
-                  : result.status === "fail"
-                    ? "Fail"
-                    : capitalize(result.status)
-              const statusStyle =
-                result.status === "pass"
-                  ? styles.statusPass
-                  : result.status === "fail"
-                    ? styles.statusFail
-                    : {}
-
-              return (
-                <View
-                  key={result.id}
-                  style={[styles.tableRow, isAlt ? styles.tableRowAlt : {}]}
-                  wrap={false}
-                >
-                  <Text style={[styles.tableCell, styles.colSno]}>{index + 1}</Text>
-                  <Text style={[styles.tableCell, styles.colParameter, { textAlign: "left" }]}>
-                    {result.parameter}
-                  </Text>
-                  <Text style={[styles.tableCell, styles.colTestMethod]}>
-                    {result.testMethod || "-"}
-                  </Text>
-                  <Text style={[styles.tableCell, styles.colUnit]}>
-                    {result.unit || "-"}
-                  </Text>
-                  <Text style={[styles.tableCell, styles.colResult, { fontFamily: "Helvetica-Bold" }]}>
-                    {result.resultValue || "-"}
-                  </Text>
-                  <Text style={[styles.tableCell, styles.colSpecMin]}>
-                    {result.specMin || "-"}
-                  </Text>
-                  <Text style={[styles.tableCell, styles.colSpecMax]}>
-                    {result.specMax || "-"}
-                  </Text>
-                  <Text style={[styles.tableCell, styles.colStatus, statusStyle]}>
-                    {statusLabel}
+              <View style={styles.infoGridRight}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoGridLabel}>Sample Drawn By</Text>
+                  <Text style={styles.infoSep}>:</Text>
+                  <Text style={styles.infoValue}>
+                    {sample.collectionLocation || "N/A"}
                   </Text>
                 </View>
-              )
-            })}
+              </View>
+            </View>
+          )}
+
+          {/* Condition of Sample Received */}
+          {sample.quantity && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Condition of Sample Received</Text>
+              <Text style={styles.infoSep}>:</Text>
+              <Text style={styles.infoValue}>{sample.quantity}</Text>
+            </View>
+          )}
+
+          {/* Reference */}
+          {sample.reference && (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Reference</Text>
+              <Text style={styles.infoSep}>:</Text>
+              <Text style={styles.infoValue}>{sample.reference}</Text>
+            </View>
+          )}
+
+          {/* Dates: Received + Tested | Reported */}
+          <View style={styles.infoGrid}>
+            <View style={styles.infoGridLeft}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Date Received</Text>
+                <Text style={styles.infoSep}>:</Text>
+                <Text style={styles.infoValue}>
+                  {formatDate(sample.registeredAt || sample.collectionDate)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.infoGridRight}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoGridLabel}>Date Reported</Text>
+                <Text style={styles.infoSep}>:</Text>
+                <Text style={styles.infoValue}>
+                  {formatDate(report.reviewedAt || report.createdAt)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.infoGrid}>
+            <View style={styles.infoGridLeft}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Date Tested</Text>
+                <Text style={styles.infoSep}>:</Text>
+                <Text style={styles.infoValue}>
+                  {formatDate(report.createdAt)}
+                </Text>
+              </View>
+            </View>
+            <View style={styles.infoGridRight}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoGridLabel}>Sample No</Text>
+                <Text style={styles.infoSep}>:</Text>
+                <Text style={styles.infoValue}>{sample.sampleNumber}</Text>
+              </View>
+            </View>
           </View>
         </View>
 
-        {/* Summary / Remarks */}
+        {/* ===== TEST RESULTS ===== */}
+        <Text style={styles.testResultsTitle}>TEST RESULTS</Text>
+
+        <View style={styles.table}>
+          {/* Table Header */}
+          <View style={styles.tableHeader}>
+            <Text style={[styles.tableHeaderCell, styles.colTest, { textAlign: "left", paddingLeft: 4 }]}>Test</Text>
+            <Text style={[styles.tableHeaderCell, styles.colMethod]}>Method</Text>
+            <Text style={[styles.tableHeaderCell, styles.colUnit]}>Unit</Text>
+            <Text style={[styles.tableHeaderCell, styles.colSpec]}>Specification</Text>
+            <Text style={[styles.tableHeaderCell, styles.colResult, { borderRightWidth: 0 }]}>Result</Text>
+          </View>
+
+          {/* Table Rows */}
+          {testResults.map((result, index) => {
+            const isAlt = index % 2 === 1
+            const isFail = result.status === "fail"
+            return (
+              <View
+                key={result.id}
+                style={[styles.tableRow, isAlt ? styles.tableRowAlt : {}]}
+                wrap={false}
+              >
+                <Text style={[styles.tableCell, styles.colTest, { textAlign: "left", paddingLeft: 4 }]}>
+                  {result.parameter}
+                </Text>
+                <Text style={[styles.tableCell, styles.colMethod]}>
+                  {result.testMethod || "-"}
+                </Text>
+                <Text style={[styles.tableCell, styles.colUnit]}>
+                  {result.unit || "-"}
+                </Text>
+                <Text style={[styles.tableCell, styles.colSpec]}>
+                  {buildSpecString(result.specMin, result.specMax)}
+                </Text>
+                <Text
+                  style={[
+                    styles.tableCell,
+                    styles.colResult,
+                    { borderRightWidth: 0, fontFamily: "Helvetica-Bold" },
+                    isFail ? { color: "#dc2626" } : {},
+                  ]}
+                >
+                  {result.resultValue || "-"}
+                </Text>
+              </View>
+            )
+          })}
+        </View>
+
+        {/* ===== REMARKS ===== */}
         {report.summary && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Remarks</Text>
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryText}>{report.summary}</Text>
-            </View>
+          <View style={{ marginBottom: 4 }}>
+            <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", marginBottom: 2 }}>
+              *Remarks:
+            </Text>
+            <Text style={{ fontSize: 7.5, color: BLACK, lineHeight: 1.5 }}>
+              {report.summary}
+            </Text>
           </View>
         )}
 
-        {/* Signatures + QR Code */}
-        <View style={styles.bottomSection}>
-          <View style={styles.signaturesContainer}>
+        {/* ===== META INFO ===== */}
+        <View style={styles.metaSection}>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Test method deviation</Text>
+            <Text style={styles.metaSep}>:</Text>
+            <Text style={styles.metaValue}>None</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Test conducted by</Text>
+            <Text style={styles.metaSep}>:</Text>
+            <Text style={styles.metaValue}>{testedByName}</Text>
+          </View>
+          <View style={styles.metaRow}>
+            <Text style={styles.metaLabel}>Report prepared by</Text>
+            <Text style={styles.metaSep}>:</Text>
+            <Text style={styles.metaValue}>{report.createdBy.name}</Text>
+          </View>
+          <Text style={styles.metaNote}>
+            The above test results are only applicable to the sample(s) referred above
+          </Text>
+        </View>
+
+        {/* ===== REPORTED BY + SIGNATURES + QR ===== */}
+        <View style={styles.reportedBySection}>
+          <Text style={styles.reportedByLabel}>Reported by:</Text>
+
+          <View style={styles.signaturesRow}>
+            {/* Tested By (Chemist) */}
             <View style={styles.signatureBlock}>
-              {report.createdBy.signatureUrl ? (
+              {report.createdBy.signatureUrl && (
                 <Image style={styles.signatureImage} src={report.createdBy.signatureUrl} />
-              ) : (
-                <View style={styles.signatureLine} />
               )}
               <View style={styles.signatureLine} />
-              <Text style={styles.signatureLabel}>Prepared By</Text>
               <Text style={styles.signatureName}>{report.createdBy.name}</Text>
               {report.createdBy.designation && (
                 <Text style={styles.signatureDesignation}>{report.createdBy.designation}</Text>
               )}
-              <Text style={styles.signatureDate}>
-                Date: {formatDate(report.createdAt)}
-              </Text>
             </View>
+
+            {/* QR Code in center */}
+            {qrCodeDataUrl ? (
+              <View style={styles.qrContainer}>
+                <Image style={styles.qrImage} src={qrCodeDataUrl} />
+                <Text style={styles.qrLabel}>Scan to verify</Text>
+                {verificationCode && (
+                  <Text style={styles.qrCode}>{verificationCode}</Text>
+                )}
+              </View>
+            ) : (
+              <View style={{ width: 75 }} />
+            )}
+
+            {/* Authenticated By (Lab Manager) */}
             <View style={styles.signatureBlock}>
-              {report.reviewedBy?.signatureUrl ? (
+              {report.reviewedBy?.signatureUrl && (
                 <Image style={styles.signatureImage} src={report.reviewedBy.signatureUrl} />
-              ) : (
-                <View style={{ marginTop: report.createdBy.signatureUrl ? 35 : 0 }} />
               )}
               <View style={styles.signatureLine} />
-              <Text style={styles.signatureLabel}>Approved By</Text>
-              <Text style={styles.signatureName}>
-                {report.reviewedBy?.name || "___________________"}
-              </Text>
-              {report.reviewedBy?.designation && (
-                <Text style={styles.signatureDesignation}>{report.reviewedBy.designation}</Text>
+              <Text style={styles.signatureLabel}>LABORATORY OPERATIONS</Text>
+              {report.reviewedBy ? (
+                <>
+                  <Text style={styles.signatureName}>{report.reviewedBy.name}</Text>
+                  {report.reviewedBy.designation && (
+                    <Text style={styles.signatureDesignation}>{report.reviewedBy.designation}</Text>
+                  )}
+                </>
+              ) : (
+                <Text style={styles.signatureName}>Laboratory Manager</Text>
               )}
-              <Text style={styles.signatureDate}>
-                Date: {report.reviewedAt ? formatDate(report.reviewedAt) : "___________________"}
-              </Text>
             </View>
           </View>
-
-          {/* QR Code for verification */}
-          {qrCodeDataUrl && (
-            <View style={styles.qrContainer}>
-              <Image style={styles.qrImage} src={qrCodeDataUrl} />
-              <Text style={styles.qrLabel}>Scan to verify</Text>
-              {verificationCode && (
-                <Text style={styles.qrCode}>{verificationCode}</Text>
-              )}
-            </View>
-          )}
         </View>
 
-        {/* Footer */}
+        {/* ===== FOOTER (fixed on every page) ===== */}
         <View style={styles.footer} fixed>
+          {/* Disclaimer text */}
           {footerLines.map((line, idx) => (
-            <Text key={idx} style={styles.footerText}>{line}</Text>
+            <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
           ))}
-          {lab.website && <Text style={styles.footerWebsite}>{lab.website}</Text>}
+
           {verificationUrl && (
-            <Text style={[styles.footerText, { marginTop: 2, fontStyle: "normal" }]}>
+            <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
               Verify this report: {verificationUrl}
             </Text>
           )}
+
+          {/* Red contact bar */}
+          <View style={styles.footerBar}>
+            <Text style={styles.footerBarText}>
+              {[
+                lab.phone && `Tel.: ${lab.phone}`,
+                lab.address,
+                lab.email && `E-mail: ${lab.email}`,
+                lab.website,
+              ]
+                .filter(Boolean)
+                .join("  |  ")}
+            </Text>
+          </View>
         </View>
 
         {/* Page Number */}

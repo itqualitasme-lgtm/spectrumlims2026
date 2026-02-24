@@ -18,10 +18,16 @@ export async function getReports() {
         include: {
           client: true,
           sampleType: true,
+          assignedTo: { select: { id: true, name: true } },
+          testResults: {
+            select: { enteredById: true, enteredBy: { select: { id: true, name: true } } },
+            where: { enteredById: { not: null } },
+            take: 1,
+          },
         },
       },
-      createdBy: { select: { name: true } },
-      reviewedBy: { select: { name: true } },
+      createdBy: { select: { id: true, name: true } },
+      reviewedBy: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: "desc" },
   })
@@ -149,7 +155,7 @@ export async function submitReport(reportId: string) {
     user.name,
     "process",
     "edit",
-    `Submitted report ${report.reportNumber} for review`
+    `Submitted report ${report.reportNumber} for authentication`
   )
 
   revalidatePath("/process/reports")
@@ -174,16 +180,67 @@ export async function approveReport(reportId: string) {
     },
   })
 
+  // Also update sample status to "reported"
+  await db.sample.update({
+    where: { id: report.sampleId },
+    data: { status: "reported" },
+  })
+
   await logAudit(
     labId,
     user.id,
     user.name,
     "process",
     "edit",
-    `Approved report ${report.reportNumber}`
+    `Authenticated report ${report.reportNumber}`
   )
 
   revalidatePath("/process/reports")
+  revalidatePath("/process/registration")
+
+  return report
+}
+
+export async function requestRevision(reportId: string, reason: string) {
+  const session = await requirePermission("process", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const existing = await db.report.findFirst({ where: { id: reportId, labId } })
+  if (!existing) throw new Error("Report not found")
+
+  const report = await db.report.update({
+    where: { id: reportId },
+    data: {
+      status: "revision",
+      summary: reason,
+    },
+  })
+
+  // Set sample back to "testing" so chemist can correct results
+  await db.sample.update({
+    where: { id: report.sampleId },
+    data: { status: "testing" },
+  })
+
+  // Reset completed test results back to pending so chemist can re-enter
+  await db.testResult.updateMany({
+    where: { sampleId: report.sampleId, status: "completed" },
+    data: { status: "pending" },
+  })
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "process",
+    "edit",
+    `Requested revision for report ${report.reportNumber}: ${reason}`
+  )
+
+  revalidatePath("/process/reports")
+  revalidatePath("/process/test-results")
+  revalidatePath("/process/registration")
 
   return report
 }
@@ -199,12 +256,6 @@ export async function publishReport(reportId: string) {
   const report = await db.report.update({
     where: { id: reportId },
     data: { status: "published" },
-  })
-
-  // Update sample status to "reported"
-  await db.sample.update({
-    where: { id: report.sampleId },
-    data: { status: "reported" },
   })
 
   await logAudit(

@@ -35,7 +35,12 @@ export async function GET(
           include: {
             client: true,
             sampleType: true,
-            testResults: true,
+            assignedTo: { select: { id: true, name: true, designation: true, signatureUrl: true } },
+            testResults: {
+              include: {
+                enteredBy: { select: { id: true, name: true } },
+              },
+            },
           },
         },
         template: true,
@@ -112,6 +117,13 @@ export async function GET(
       color: { dark: "#1e3a5f", light: "#ffffff" },
     })
 
+    // Get the chemist who entered test results
+    const testedByUser = report.sample.testResults.find(tr => tr.enteredBy)?.enteredBy
+    const chemist = testedByUser || (report.sample.assignedTo ? {
+      id: report.sample.assignedTo.id,
+      name: report.sample.assignedTo.name,
+    } : null)
+
     // Build props for the PDF component
     const pdfProps: COAPDFProps = {
       report: {
@@ -136,11 +148,14 @@ export async function GET(
         collectionDate: report.sample.collectionDate,
         collectionLocation: report.sample.collectionLocation,
         samplePoint: report.sample.samplePoint,
+        reference: report.sample.reference,
+        registeredAt: report.sample.registeredAt,
         notes: report.sample.notes,
         client: report.sample.client,
         sampleType: report.sample.sampleType,
         testResults: report.sample.testResults,
       },
+      testedBy: chemist ? { id: chemist.id, name: chemist.name } : undefined,
       testResults: report.sample.testResults,
       lab: {
         id: report.lab.id,
