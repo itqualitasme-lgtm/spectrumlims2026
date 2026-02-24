@@ -33,9 +33,15 @@ export async function GET(
       )
     }
 
+    // Build base URL from request headers
+    const proto = request.headers.get("x-forwarded-proto") || "http"
+    const host = request.headers.get("host") || "localhost:3000"
+    const baseUrl = `${proto}://${host}`
+
     const buffer = await generateLabelPDF({
       samples: [
         {
+          id: sample.id,
           sampleNumber: sample.sampleNumber,
           clientName: sample.client.company || sample.client.name,
           sampleTypeName: sample.sampleType.name,
@@ -44,6 +50,7 @@ export async function GET(
         },
       ],
       labName: sample.lab.name,
+      baseUrl,
     })
 
     return new Response(new Uint8Array(buffer), {

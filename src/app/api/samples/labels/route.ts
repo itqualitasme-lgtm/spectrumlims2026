@@ -51,6 +51,7 @@ export async function GET(request: NextRequest) {
     }
 
     const labelSamples = samples.map((s) => ({
+      id: s.id,
       sampleNumber: s.sampleNumber,
       clientName: s.client.company || s.client.name,
       sampleTypeName: s.sampleType.name,
@@ -58,9 +59,15 @@ export async function GET(request: NextRequest) {
       date: format(s.createdAt, "dd MMM yyyy"),
     }))
 
+    // Build base URL from request headers
+    const proto = request.headers.get("x-forwarded-proto") || "http"
+    const host = request.headers.get("host") || "localhost:3000"
+    const baseUrl = `${proto}://${host}`
+
     const buffer = await generateLabelPDF({
       samples: labelSamples,
       labName: samples[0].lab.name,
+      baseUrl,
     })
 
     return new Response(new Uint8Array(buffer), {

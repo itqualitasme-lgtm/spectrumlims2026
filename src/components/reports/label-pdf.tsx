@@ -13,6 +13,7 @@ import QRCode from "qrcode"
 // ============= TYPES =============
 
 export interface LabelSample {
+  id: string
   sampleNumber: string
   clientName: string
   sampleTypeName: string
@@ -23,6 +24,7 @@ export interface LabelSample {
 export interface LabelPDFProps {
   samples: LabelSample[]
   labName: string
+  baseUrl: string
 }
 
 interface LabelPDFInternalProps extends LabelPDFProps {
@@ -168,10 +170,10 @@ function LabelPDF({ samples, labName, qrDataUrls }: LabelPDFInternalProps) {
 export async function generateLabelPDF(
   props: LabelPDFProps
 ): Promise<Buffer> {
-  // Pre-generate all QR code data URLs
+  // Pre-generate all QR code data URLs — encode scan URL so scanning shows live data
   const qrDataUrls = await Promise.all(
     props.samples.map((s) =>
-      QRCode.toDataURL(s.sampleNumber, {
+      QRCode.toDataURL(`${props.baseUrl}/scan/${s.id}`, {
         width: 150,
         margin: 1,
         errorCorrectionLevel: "M",
