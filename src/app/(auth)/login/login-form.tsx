@@ -62,7 +62,7 @@ export function LoginForm() {
         <Card>
           <CardHeader className="flex flex-col items-center text-center space-y-3 pb-4">
             <Image
-              src="/images/with name black bg transp 3@4x.png"
+              src="/images/logo-spectrum.png"
               alt="Spectrum Inspection and Testing Services"
               width={280}
               height={80}

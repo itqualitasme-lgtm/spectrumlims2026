@@ -2,19 +2,18 @@
 
 import { useState, useMemo, useCallback } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, ClipboardList } from "lucide-react"
+import { ArrowLeft, Loader2, ClipboardList, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { SearchableSelect } from "@/components/shared/searchable-select"
 import { AsyncSearchableSelect } from "@/components/shared/async-searchable-select"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -25,7 +24,6 @@ import {
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -59,6 +57,38 @@ type TestParam = {
   specMax?: string
 }
 
+const BOTTLE_SIZES = [
+  { value: "1 Ltr", label: "1 Ltr" },
+  { value: "500 Ml", label: "500 Ml" },
+  { value: "300 Ml", label: "300 Ml" },
+]
+
+type SampleRow = {
+  id: number
+  sampleTypeId: string
+  bottleQty: string
+  samplePoint: string
+  description: string
+  remarks: string
+  selectedTests: Set<number>
+  expanded: boolean
+}
+
+let rowIdCounter = 1
+
+function createEmptyRow(): SampleRow {
+  return {
+    id: rowIdCounter++,
+    sampleTypeId: "",
+    bottleQty: "1 Ltr",
+    samplePoint: "",
+    description: "",
+    remarks: "",
+    selectedTests: new Set(),
+    expanded: false,
+  }
+}
+
 export function NewRegistrationClient({
   sampleTypes,
   samplers,
@@ -66,24 +96,18 @@ export function NewRegistrationClient({
   sampleTypes: SampleTypeOption[]
   samplers: Sampler[]
 }) {
-  const router = useRouter()
   const [loading, setLoading] = useState(false)
 
-  // Form state
+  // Shared header state
   const [clientId, setClientId] = useState("")
-  const [sampleTypeId, setSampleTypeId] = useState("")
   const [jobType, setJobType] = useState("testing")
   const [priority, setPriority] = useState("normal")
   const [reference, setReference] = useState("")
-  const [description, setDescription] = useState("")
   const [collectedById, setCollectedById] = useState("")
-  const [samplePoint, setSamplePoint] = useState("")
   const [collectionLocation, setCollectionLocation] = useState("")
-  const [quantity, setQuantity] = useState("")
-  const [notes, setNotes] = useState("")
 
-  // Test selection
-  const [selectedTests, setSelectedTests] = useState<Set<number>>(new Set())
+  // Multi-sample rows
+  const [samples, setSamples] = useState<SampleRow[]>([createEmptyRow()])
 
   // Async customer search
   const handleSearchCustomers = useCallback(
@@ -95,7 +119,6 @@ export function NewRegistrationClient({
     []
   )
 
-  // Build select options
   const sampleTypeOptions = useMemo(
     () => sampleTypes.map((st) => ({ value: st.id, label: st.name })),
     [sampleTypes]
@@ -106,8 +129,8 @@ export function NewRegistrationClient({
     [samplers]
   )
 
-  // Parse tests from selected sample type
-  const availableTests: TestParam[] = useMemo(() => {
+  // Get available tests for a specific sample type
+  const getTestsForType = (sampleTypeId: string): TestParam[] => {
     if (!sampleTypeId) return []
     const st = sampleTypes.find((s) => s.id === sampleTypeId)
     if (!st?.defaultTests) return []
@@ -117,97 +140,129 @@ export function NewRegistrationClient({
     } catch {
       return []
     }
-  }, [sampleTypeId, sampleTypes])
-
-  // When sample type changes, select all tests by default
-  const handleSampleTypeChange = (value: string) => {
-    setSampleTypeId(value)
-    const st = sampleTypes.find((s) => s.id === value)
-    if (st?.defaultTests) {
-      try {
-        const parsed = JSON.parse(st.defaultTests)
-        if (Array.isArray(parsed)) {
-          setSelectedTests(new Set(parsed.map((_: any, i: number) => i)))
-          return
-        }
-      } catch {}
-    }
-    setSelectedTests(new Set())
   }
 
-  const toggleTest = (index: number) => {
-    setSelectedTests((prev) => {
-      const next = new Set(prev)
-      if (next.has(index)) {
-        next.delete(index)
-      } else {
-        next.add(index)
-      }
-      return next
+  const updateSampleRow = (id: number, updates: Partial<SampleRow>) => {
+    setSamples((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, ...updates } : s))
+    )
+  }
+
+  const handleSampleTypeChange = (rowId: number, value: string) => {
+    const tests = getTestsForType(value)
+    updateSampleRow(rowId, {
+      sampleTypeId: value,
+      selectedTests: new Set(tests.map((_, i) => i)),
     })
   }
 
-  const toggleAllTests = () => {
-    if (selectedTests.size === availableTests.length) {
-      setSelectedTests(new Set())
-    } else {
-      setSelectedTests(new Set(availableTests.map((_, i) => i)))
-    }
+  const toggleTest = (rowId: number, index: number) => {
+    setSamples((prev) =>
+      prev.map((s) => {
+        if (s.id !== rowId) return s
+        const next = new Set(s.selectedTests)
+        if (next.has(index)) next.delete(index)
+        else next.add(index)
+        return { ...s, selectedTests: next }
+      })
+    )
+  }
+
+  const toggleAllTests = (rowId: number) => {
+    setSamples((prev) =>
+      prev.map((s) => {
+        if (s.id !== rowId) return s
+        const tests = getTestsForType(s.sampleTypeId)
+        if (s.selectedTests.size === tests.length) {
+          return { ...s, selectedTests: new Set() }
+        }
+        return { ...s, selectedTests: new Set(tests.map((_, i) => i)) }
+      })
+    )
+  }
+
+  const addSampleRow = () => {
+    setSamples((prev) => [...prev, createEmptyRow()])
+  }
+
+  const removeSampleRow = (id: number) => {
+    if (samples.length <= 1) return
+    setSamples((prev) => prev.filter((s) => s.id !== id))
+  }
+
+  const toggleExpanded = (id: number) => {
+    updateSampleRow(id, {
+      expanded: !samples.find((s) => s.id === id)?.expanded,
+    })
   }
 
   const resetForm = () => {
     setClientId("")
-    setSampleTypeId("")
     setJobType("testing")
     setPriority("normal")
     setReference("")
-    setDescription("")
     setCollectedById("")
-    setSamplePoint("")
     setCollectionLocation("")
-    setQuantity("")
-    setNotes("")
-    setSelectedTests(new Set())
+    rowIdCounter = 1
+    setSamples([createEmptyRow()])
   }
 
   const handleSubmit = async () => {
-    if (!clientId || !sampleTypeId) {
-      toast.error("Please select a customer and sample type")
+    if (!clientId) {
+      toast.error("Please select a customer")
       return
     }
 
-    if (availableTests.length > 0 && selectedTests.size === 0) {
-      toast.error("Please select at least one test parameter")
+    const validSamples = samples.filter((s) => s.sampleTypeId)
+    if (validSamples.length === 0) {
+      toast.error("Please add at least one sample with a sample type")
       return
+    }
+
+    for (const s of validSamples) {
+      const tests = getTestsForType(s.sampleTypeId)
+      if (tests.length > 0 && s.selectedTests.size === 0) {
+        toast.error("Each sample must have at least one test selected")
+        return
+      }
     }
 
     setLoading(true)
     try {
-      const sample = await createSample({
-        clientId,
-        sampleTypeId,
-        jobType,
-        priority,
-        reference: reference || undefined,
-        description: description || undefined,
-        collectedById: collectedById || undefined,
-        samplePoint: samplePoint || undefined,
-        collectionLocation: collectionLocation || undefined,
-        quantity: quantity || undefined,
-        notes: notes || undefined,
-        selectedTests: availableTests.length > 0 ? Array.from(selectedTests) : undefined,
-      })
-      toast.success(`Sample ${sample.sampleNumber} registered successfully`)
+      const results = []
+      for (const s of validSamples) {
+        const tests = getTestsForType(s.sampleTypeId)
+        const sample = await createSample({
+          clientId,
+          sampleTypeId: s.sampleTypeId,
+          jobType,
+          priority,
+          reference: reference || undefined,
+          description: s.description || undefined,
+          collectedById: collectedById || undefined,
+          samplePoint: s.samplePoint || undefined,
+          collectionLocation: collectionLocation || undefined,
+          quantity: s.bottleQty || undefined,
+          notes: s.remarks || undefined,
+          selectedTests: tests.length > 0 ? Array.from(s.selectedTests) : undefined,
+        })
+        results.push(sample.sampleNumber)
+      }
+      toast.success(
+        results.length === 1
+          ? `Sample ${results[0]} registered successfully`
+          : `${results.length} samples registered: ${results.join(", ")}`
+      )
       resetForm()
     } catch (error: any) {
-      toast.error(error.message || "Failed to register sample")
+      toast.error(error.message || "Failed to register samples")
     } finally {
       setLoading(false)
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="sm" asChild>
           <Link href="/process/registration">
@@ -215,20 +270,19 @@ export function NewRegistrationClient({
             Back
           </Link>
         </Button>
-        <PageHeader title="Register New Sample" />
+        <PageHeader title="Register New Samples" />
       </div>
 
-      {/* Sample & Collection Details - Compact Layout */}
+      {/* Shared Header: Client, Job Type, Priority, Reference, Sampler, Location */}
       <Card>
-        <CardHeader className="pb-4">
-          <CardTitle>Sample Details</CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Job Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4">
-            {/* Row 1: Customer + Sample Type + Job Type */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="grid gap-2 md:col-span-2">
-                <Label>Customer *</Label>
+          <div className="grid gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid gap-1.5 col-span-2">
+                <Label className="text-xs">Customer *</Label>
                 <AsyncSearchableSelect
                   value={clientId}
                   onValueChange={setClientId}
@@ -238,38 +292,20 @@ export function NewRegistrationClient({
                   searchPlaceholder="Type customer name..."
                 />
               </div>
-              <div className="grid gap-2">
-                <Label>Sample Type *</Label>
-                <SearchableSelect
-                  options={sampleTypeOptions}
-                  value={sampleTypeId}
-                  onValueChange={handleSampleTypeChange}
-                  placeholder="Select type..."
-                  searchPlaceholder="Search types..."
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Job Type</Label>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Job Type</Label>
                 <Select value={jobType} onValueChange={setJobType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="testing">Testing</SelectItem>
                     <SelectItem value="survey">Survey</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            {/* Row 2: Priority + Reference + Quantity + Sampler */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="grid gap-2">
-                <Label>Priority</Label>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Priority</Label>
                 <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="normal">Normal</SelectItem>
                     <SelectItem value="urgent">Urgent</SelectItem>
@@ -277,24 +313,18 @@ export function NewRegistrationClient({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid gap-2">
-                <Label>Reference / PO</Label>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Reference / PO</Label>
                 <Input
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
                   placeholder="PO number"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label>Quantity</Label>
-                <Input
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="e.g. 500ml"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Collected By</Label>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Collected By (Sampler)</Label>
                 <SearchableSelect
                   options={samplerOptions}
                   value={collectedById}
@@ -303,121 +333,181 @@ export function NewRegistrationClient({
                   searchPlaceholder="Search..."
                 />
               </div>
-            </div>
-
-            {/* Row 3: Sample Point + Location + Description */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="grid gap-2">
-                <Label>Sample Point</Label>
-                <Input
-                  value={samplePoint}
-                  onChange={(e) => setSamplePoint(e.target.value)}
-                  placeholder="e.g. Tank No-4"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Collection Location</Label>
+              <div className="grid gap-1.5">
+                <Label className="text-xs">Collection Location</Label>
                 <Input
                   value={collectionLocation}
                   onChange={(e) => setCollectionLocation(e.target.value)}
                   placeholder="e.g. Ajman Port"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label>Description</Label>
-                <Input
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Sample description"
-                />
-              </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Card 3: Test Parameters */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <ClipboardList className="h-5 w-5" />
-                Test Parameters
-              </CardTitle>
-              <CardDescription>
-                {sampleTypeId
-                  ? `${selectedTests.size} of ${availableTests.length} test(s) selected`
-                  : "Select a sample type to see available tests"}
-              </CardDescription>
-            </div>
-            {availableTests.length > 0 && (
-              <Button variant="outline" size="sm" onClick={toggleAllTests}>
-                {selectedTests.size === availableTests.length
-                  ? "Deselect All"
-                  : "Select All"}
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {availableTests.length > 0 ? (
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[50px]"></TableHead>
-                    <TableHead>Parameter</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Unit</TableHead>
-                    <TableHead>Spec Min</TableHead>
-                    <TableHead>Spec Max</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {availableTests.map((test, index) => (
-                    <TableRow
-                      key={index}
-                      className="cursor-pointer"
-                      onClick={() => toggleTest(index)}
+      {/* Sample Rows */}
+      {samples.map((row, idx) => {
+        const tests = getTestsForType(row.sampleTypeId)
+        const typeName = sampleTypes.find((st) => st.id === row.sampleTypeId)?.name
+
+        return (
+          <Card key={row.id} className="border-l-4 border-l-primary/30">
+            <CardHeader className="pb-3 pt-4 px-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="font-mono">#{idx + 1}</Badge>
+                  {typeName && <span className="text-sm font-medium">{typeName}</span>}
+                  {row.samplePoint && <span className="text-xs text-muted-foreground">- {row.samplePoint}</span>}
+                  {tests.length > 0 && (
+                    <Badge variant="secondary" className="text-xs">
+                      {row.selectedTests.size}/{tests.length} tests
+                    </Badge>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {tests.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 px-2"
+                      onClick={() => toggleExpanded(row.id)}
                     >
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedTests.has(index)}
-                          onCheckedChange={() => toggleTest(index)}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium">{test.parameter}</TableCell>
-                      <TableCell>{test.testMethod || "-"}</TableCell>
-                      <TableCell>{test.unit || "-"}</TableCell>
-                      <TableCell>{test.specMin || "-"}</TableCell>
-                      <TableCell>{test.specMax || "-"}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              {sampleTypeId
-                ? "No default tests defined for this sample type."
-                : "Select a sample type above to load test parameters."}
-            </p>
-          )}
-        </CardContent>
-      </Card>
+                      {row.expanded ? (
+                        <ChevronUp className="h-4 w-4" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4" />
+                      )}
+                      <span className="ml-1 text-xs">Tests</span>
+                    </Button>
+                  )}
+                  {samples.length > 1 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                      onClick={() => removeSampleRow(row.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <div className="grid gap-3">
+                {/* Sample row fields */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Sample Type *</Label>
+                    <SearchableSelect
+                      options={sampleTypeOptions}
+                      value={row.sampleTypeId}
+                      onValueChange={(v) => handleSampleTypeChange(row.id, v)}
+                      placeholder="Select type..."
+                      searchPlaceholder="Search..."
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Bottle Size</Label>
+                    <Select
+                      value={row.bottleQty}
+                      onValueChange={(v) => updateSampleRow(row.id, { bottleQty: v })}
+                    >
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {BOTTLE_SIZES.map((size) => (
+                          <SelectItem key={size.value} value={size.value}>{size.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Sample Point</Label>
+                    <Input
+                      value={row.samplePoint}
+                      onChange={(e) => updateSampleRow(row.id, { samplePoint: e.target.value })}
+                      placeholder="Tank No-4"
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Description</Label>
+                    <Input
+                      value={row.description}
+                      onChange={(e) => updateSampleRow(row.id, { description: e.target.value })}
+                      placeholder="e.g. MHC Oil"
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-xs">Remarks</Label>
+                    <Input
+                      value={row.remarks}
+                      onChange={(e) => updateSampleRow(row.id, { remarks: e.target.value })}
+                      placeholder="Notes..."
+                    />
+                  </div>
+                </div>
 
-      {/* Notes + Action Bar */}
-      <div className="flex items-center gap-4 pb-6">
-        <div className="flex-1">
-          <Textarea
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
-            placeholder="Notes (optional)..."
-            rows={2}
-          />
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
+                {/* Expandable test parameters */}
+                {row.expanded && tests.length > 0 && (
+                  <div className="rounded-md border mt-2">
+                    <div className="flex items-center justify-between px-3 py-2 bg-muted/50 border-b">
+                      <span className="text-xs font-medium">
+                        {row.selectedTests.size} of {tests.length} test(s) selected
+                      </span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => toggleAllTests(row.id)}
+                      >
+                        {row.selectedTests.size === tests.length ? "Deselect All" : "Select All"}
+                      </Button>
+                    </div>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[40px]"></TableHead>
+                          <TableHead className="text-xs">Parameter</TableHead>
+                          <TableHead className="text-xs">Method</TableHead>
+                          <TableHead className="text-xs">Unit</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {tests.map((test, testIdx) => (
+                          <TableRow
+                            key={testIdx}
+                            className="cursor-pointer"
+                            onClick={() => toggleTest(row.id, testIdx)}
+                          >
+                            <TableCell className="py-1.5">
+                              <Checkbox
+                                checked={row.selectedTests.has(testIdx)}
+                                onCheckedChange={() => toggleTest(row.id, testIdx)}
+                              />
+                            </TableCell>
+                            <TableCell className="py-1.5 text-xs font-medium">{test.parameter}</TableCell>
+                            <TableCell className="py-1.5 text-xs">{test.testMethod || "-"}</TableCell>
+                            <TableCell className="py-1.5 text-xs">{test.unit || "-"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
+
+      {/* Add Sample + Submit */}
+      <div className="flex items-center justify-between pb-6">
+        <Button variant="outline" onClick={addSampleRow}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Sample
+        </Button>
+        <div className="flex items-center gap-2">
           <Button variant="outline" asChild>
             <Link href="/process/registration">Cancel</Link>
           </Button>
@@ -425,10 +515,10 @@ export function NewRegistrationClient({
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Registering...
+                Registering {samples.filter((s) => s.sampleTypeId).length} sample(s)...
               </>
             ) : (
-              "Register Sample"
+              `Register ${samples.filter((s) => s.sampleTypeId).length} Sample(s)`
             )}
           </Button>
         </div>
