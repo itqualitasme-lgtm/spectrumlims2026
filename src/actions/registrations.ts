@@ -118,6 +118,7 @@ export async function createSample(data: {
   notes?: string
   collectedByCurrentUser?: boolean
   collectionLocation?: string
+  samplePoint?: string
 }) {
   const session = await requirePermission("process", "create")
   const user = session.user as any
@@ -146,6 +147,7 @@ export async function createSample(data: {
       collectedById,
       collectionDate: collectedById ? new Date() : null,
       collectionLocation: data.collectionLocation || null,
+      samplePoint: data.samplePoint || null,
       notes: data.notes || null,
       labId,
     },

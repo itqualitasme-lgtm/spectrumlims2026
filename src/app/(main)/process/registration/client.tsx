@@ -112,6 +112,7 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
   const [description, setDescription] = useState("")
   const [quantity, setQuantity] = useState("")
   const [priority, setPriority] = useState("normal")
+  const [samplePoint, setSamplePoint] = useState("")
   const [notes, setNotes] = useState("")
 
   // Assign form
@@ -144,6 +145,7 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
     setDescription("")
     setQuantity("")
     setPriority("normal")
+    setSamplePoint("")
     setNotes("")
     setRegisterOpen(true)
   }
@@ -162,6 +164,7 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
         description: description || undefined,
         quantity: quantity || undefined,
         priority,
+        samplePoint: samplePoint || undefined,
         notes: notes || undefined,
       })
       toast.success(`Sample ${sample.sampleNumber} registered successfully`)
@@ -366,7 +369,7 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
                 <Input
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="e.g. 500ml"
+                  placeholder="e.g. 500ml, 1L"
                 />
               </div>
               <div className="grid gap-2">
@@ -382,6 +385,14 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Sample Point</Label>
+              <Input
+                value={samplePoint}
+                onChange={(e) => setSamplePoint(e.target.value)}
+                placeholder="e.g. Tank No-4, Engine Room, Storage Vessel"
+              />
             </div>
             <div className="grid gap-2">
               <Label>Notes</Label>

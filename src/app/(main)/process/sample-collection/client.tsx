@@ -106,6 +106,7 @@ export function SampleCollectionClient({
   const [sampleTypeId, setSampleTypeId] = useState("")
   const [quantity, setQuantity] = useState("")
   const [collectionLocation, setCollectionLocation] = useState("")
+  const [samplePoint, setSamplePoint] = useState("")
   const [description, setDescription] = useState("")
   const [notes, setNotes] = useState("")
   const [priority, setPriority] = useState("normal")
@@ -125,6 +126,7 @@ export function SampleCollectionClient({
     setSampleTypeId("")
     setQuantity("")
     setCollectionLocation("")
+    setSamplePoint("")
     setDescription("")
     setNotes("")
     setPriority("normal")
@@ -147,6 +149,7 @@ export function SampleCollectionClient({
         notes: notes || undefined,
         collectedByCurrentUser: true,
         collectionLocation: collectionLocation || undefined,
+        samplePoint: samplePoint || undefined,
       })
       toast.success(`Sample ${sample.sampleNumber} collected and registered`)
       resetForm()
@@ -241,21 +244,13 @@ export function SampleCollectionClient({
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Quantity</Label>
                 <Input
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="e.g. 500ml"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Collection Location</Label>
-                <Input
-                  value={collectionLocation}
-                  onChange={(e) => setCollectionLocation(e.target.value)}
-                  placeholder="e.g. Site A, Block 3"
+                  placeholder="e.g. 500ml, 1L"
                 />
               </div>
               <div className="grid gap-2">
@@ -270,6 +265,24 @@ export function SampleCollectionClient({
                     <SelectItem value="rush">Rush</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Sample Point</Label>
+                <Input
+                  value={samplePoint}
+                  onChange={(e) => setSamplePoint(e.target.value)}
+                  placeholder="e.g. Tank No-4, Engine Room, Storage Vessel"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Collection Location</Label>
+                <Input
+                  value={collectionLocation}
+                  onChange={(e) => setCollectionLocation(e.target.value)}
+                  placeholder="e.g. Site A, Block 3, Ajman Port"
+                />
               </div>
             </div>
             <div className="grid gap-2">

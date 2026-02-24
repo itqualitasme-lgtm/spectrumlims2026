@@ -184,6 +184,7 @@ model Sample {
   collectedById      String?
   collectionDate     DateTime?
   collectionLocation String?
+  samplePoint        String?
   registeredById     String?
   registeredAt       DateTime?
   notes              String?
