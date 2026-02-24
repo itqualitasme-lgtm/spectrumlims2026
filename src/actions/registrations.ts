@@ -243,6 +243,7 @@ export async function createSample(data: {
         unit?: string
         specMin?: string
         specMax?: string
+        tat?: number
       }>
 
       if (Array.isArray(tests) && tests.length > 0) {
@@ -254,15 +255,23 @@ export async function createSample(data: {
 
         if (testsToCreate.length > 0) {
           await db.testResult.createMany({
-            data: testsToCreate.map((test) => ({
-              sampleId: sample.id,
-              parameter: test.parameter,
-              testMethod: test.method || test.testMethod || null,
-              unit: test.unit || null,
-              specMin: test.specMin || null,
-              specMax: test.specMax || null,
-              status: "pending",
-            })),
+            data: testsToCreate.map((test) => {
+              const tatDays = test.tat || null
+              const dueDate = tatDays
+                ? new Date(recordDate.getTime() + tatDays * 24 * 60 * 60 * 1000)
+                : null
+              return {
+                sampleId: sample.id,
+                parameter: test.parameter,
+                testMethod: test.method || test.testMethod || null,
+                unit: test.unit || null,
+                specMin: test.specMin || null,
+                specMax: test.specMax || null,
+                tat: tatDays,
+                dueDate,
+                status: "pending",
+              }
+            }),
           })
         }
       }
@@ -281,6 +290,73 @@ export async function createSample(data: {
   )
 
   revalidatePath("/process/registration")
+  revalidatePath("/process/sample-collection")
+
+  return sample
+}
+
+export async function updateSample(
+  sampleId: string,
+  data: {
+    clientId: string
+    sampleTypeId: string
+    description?: string
+    quantity?: string
+    priority: string
+    notes?: string
+    jobType?: string
+    reference?: string
+    collectedById?: string
+    collectionLocation?: string
+    samplePoint?: string
+    collectionDate?: string
+  }
+) {
+  const session = await requirePermission("process", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const existing = await db.sample.findFirst({ where: { id: sampleId, labId } })
+  if (!existing) throw new Error("Sample not found")
+
+  if (!["pending", "registered", "assigned"].includes(existing.status)) {
+    throw new Error("Can only edit samples with pending, registered, or assigned status")
+  }
+
+  const recordDate = data.collectionDate ? new Date(data.collectionDate) : undefined
+
+  const sample = await db.sample.update({
+    where: { id: sampleId },
+    data: {
+      clientId: data.clientId,
+      sampleTypeId: data.sampleTypeId,
+      description: data.description || null,
+      quantity: data.quantity || null,
+      priority: data.priority,
+      jobType: data.jobType || "testing",
+      reference: data.reference || null,
+      collectedById: data.collectedById || null,
+      collectionLocation: data.collectionLocation || null,
+      samplePoint: data.samplePoint || null,
+      notes: data.notes || null,
+      ...(recordDate && {
+        registeredAt: recordDate,
+        collectionDate: recordDate,
+      }),
+    },
+  })
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "process",
+    "edit",
+    `Updated sample ${sample.sampleNumber}`
+  )
+
+  revalidatePath("/process/registration")
+  revalidatePath(`/process/registration/${sampleId}`)
   revalidatePath("/process/sample-collection")
 
   return sample

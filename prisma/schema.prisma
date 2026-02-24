@@ -219,6 +219,8 @@ model TestResult {
   unit        String?
   specMin     String?
   specMax     String?
+  tat         Int?
+  dueDate     DateTime?
   status      String    @default("pending")
   enteredById String?
   enteredAt   DateTime?

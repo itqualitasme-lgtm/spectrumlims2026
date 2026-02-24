@@ -26,6 +26,8 @@ export default async function ScanPage({
           testMethod: true,
           unit: true,
           resultValue: true,
+          tat: true,
+          dueDate: true,
           status: true,
         },
       },

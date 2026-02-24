@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
-import { Eye, UserPlus, Trash2, Loader2, QrCode } from "lucide-react"
+import { Eye, Pencil, UserPlus, Trash2, Loader2, QrCode } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -217,6 +217,18 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
                 <Eye className="h-4 w-4" />
               </Link>
             </Button>
+            {["pending", "registered", "assigned"].includes(sample.status) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 p-0"
+                asChild
+              >
+                <Link href={`/process/registration/${sample.id}/edit`}>
+                  <Pencil className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"

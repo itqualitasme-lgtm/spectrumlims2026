@@ -45,6 +45,7 @@ type TestParam = {
   unit?: string
   specMin?: string
   specMax?: string
+  tat?: number
 }
 
 const BOTTLE_SIZES = [
@@ -95,6 +96,7 @@ export function NewRegistrationClient({
   // Success state
   const [registeredIds, setRegisteredIds] = useState<string[]>([])
   const [registeredNumbers, setRegisteredNumbers] = useState<string[]>([])
+  const [registeredDetails, setRegisteredDetails] = useState<{ sampleType: string; samplePoint: string; bottleQty: string; description: string }[]>([])
 
   // Shared fields
   const [clientId, setClientId] = useState("")
@@ -202,6 +204,7 @@ export function NewRegistrationClient({
     setCollectionTime(new Date().toTimeString().slice(0, 5))
     setRegisteredIds([])
     setRegisteredNumbers([])
+    setRegisteredDetails([])
     rowIdCounter = 1
     setSamples([createEmptyRow()])
   }
@@ -232,6 +235,7 @@ export function NewRegistrationClient({
     try {
       const resultIds: string[] = []
       const resultNumbers: string[] = []
+      const resultDetails: { sampleType: string; samplePoint: string; bottleQty: string; description: string }[] = []
       for (const s of validSamples) {
         const tests = getTestsForType(s.sampleTypeId)
         const sample = await createSample({
@@ -251,9 +255,12 @@ export function NewRegistrationClient({
         })
         resultIds.push(sample.id)
         resultNumbers.push(sample.sampleNumber)
+        const stName = sampleTypes.find((st) => st.id === s.sampleTypeId)?.name || ""
+        resultDetails.push({ sampleType: stName, samplePoint: s.samplePoint, bottleQty: s.bottleQty, description: s.description })
       }
       setRegisteredIds(resultIds)
       setRegisteredNumbers(resultNumbers)
+      setRegisteredDetails(resultDetails)
       toast.success(
         resultNumbers.length === 1
           ? `Sample ${resultNumbers[0]} registered`
@@ -289,24 +296,42 @@ export function NewRegistrationClient({
               </h3>
             </div>
 
-            {/* Individual sample bottles */}
-            <div className="rounded border divide-y text-sm mb-4">
-              {registeredNumbers.map((num, idx) => (
-                <div key={num} className="flex items-center justify-between px-3 py-2">
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-muted-foreground font-mono w-5">{idx + 1}</span>
-                    <Badge variant="outline" className="font-mono">{num}</Badge>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => window.open(`/api/samples/${registeredIds[idx]}/label`, "_blank")}
-                  >
-                    <Printer className="mr-1 h-3 w-3" /> Print Label
-                  </Button>
-                </div>
-              ))}
+            {/* Individual sample bottles with details */}
+            <div className="rounded border text-sm mb-4 overflow-hidden">
+              {/* Table header */}
+              <div className="grid grid-cols-[32px_140px_1fr_90px_100px_1fr_auto] gap-x-3 px-3 py-1.5 bg-muted/50 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                <span>#</span>
+                <span>Sample No.</span>
+                <span>Sample Type</span>
+                <span>Bottle</span>
+                <span>Sample Point</span>
+                <span>Description</span>
+                <span></span>
+              </div>
+              {/* Rows */}
+              <div className="divide-y">
+                {registeredNumbers.map((num, idx) => {
+                  const detail = registeredDetails[idx]
+                  return (
+                    <div key={num} className="grid grid-cols-[32px_140px_1fr_90px_100px_1fr_auto] gap-x-3 items-center px-3 py-2">
+                      <span className="text-xs text-muted-foreground font-mono">{idx + 1}</span>
+                      <Badge variant="outline" className="font-mono w-fit">{num}</Badge>
+                      <span className="truncate">{detail?.sampleType || "-"}</span>
+                      <span className="text-muted-foreground">{detail?.bottleQty || "-"}</span>
+                      <span className="truncate text-muted-foreground">{detail?.samplePoint || "-"}</span>
+                      <span className="truncate text-muted-foreground">{detail?.description || "-"}</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => window.open(`/api/samples/${registeredIds[idx]}/label`, "_blank")}
+                      >
+                        <Printer className="mr-1 h-3 w-3" /> Print
+                      </Button>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
 
             {/* Action buttons */}
@@ -342,8 +367,9 @@ export function NewRegistrationClient({
       {/* Job Details */}
       <Card>
         <CardContent className="py-2 px-3">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-1.5">
-            <div className="col-span-2 grid gap-1">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-x-3 gap-y-1.5">
+            {/* Row 1 */}
+            <div className="col-span-2 grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Customer *</Label>
               <AsyncSearchableSelect
                 value={clientId}
@@ -354,7 +380,7 @@ export function NewRegistrationClient({
                 searchPlaceholder="Type customer name..."
               />
             </div>
-            <div className="grid gap-1">
+            <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Job Type</Label>
               <Select value={jobType} onValueChange={setJobType}>
                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
@@ -364,7 +390,7 @@ export function NewRegistrationClient({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-1">
+            <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Priority</Label>
               <Select value={priority} onValueChange={setPriority}>
                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
@@ -375,31 +401,31 @@ export function NewRegistrationClient({
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid gap-1">
+            <div className="grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Rec. Date & Time</Label>
+              <div className="flex gap-1.5">
+                <Input className="h-9 flex-1" type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
+                <Input className="h-9 w-[100px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
+              </div>
+            </div>
+            {/* Row 2 */}
+            <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Reference / PO</Label>
               <Input className="h-9" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number" />
             </div>
-            <div className="grid gap-1">
+            <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Location</Label>
               <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="e.g. Ajman Port" />
             </div>
-            <div className="grid gap-1">
+            <div className="col-span-2 grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampler</Label>
               <SearchableSelect
                 options={samplerOptions}
                 value={collectedById}
                 onValueChange={setCollectedById}
-                placeholder="Select..."
+                placeholder="Select sampler..."
                 searchPlaceholder="Search..."
               />
-            </div>
-            <div className="grid gap-1">
-              <Label className="text-xs text-muted-foreground">Rec. Date</Label>
-              <Input className="h-9" type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
-            </div>
-            <div className="grid gap-1">
-              <Label className="text-xs text-muted-foreground">Rec. Time</Label>
-              <Input className="h-9" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
             </div>
           </div>
         </CardContent>
@@ -484,6 +510,7 @@ export function NewRegistrationClient({
                             <span className="font-medium min-w-0 flex-1">{test.parameter}</span>
                             <span className="text-muted-foreground shrink-0 w-24">{getTestMethod(test) || "-"}</span>
                             <span className="text-muted-foreground shrink-0 w-16 text-right">{test.unit || "-"}</span>
+                            <span className="text-muted-foreground shrink-0 w-14 text-right">{test.tat ? `${test.tat}d` : "-"}</span>
                           </label>
                         ))}
                       </div>

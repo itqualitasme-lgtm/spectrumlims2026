@@ -77,10 +77,10 @@ export async function GET(request: NextRequest) {
         "Cache-Control": "no-store",
       },
     })
-  } catch (error) {
-    console.error("Error generating label PDF:", error)
+  } catch (error: any) {
+    console.error("Error generating label PDF:", error?.message, error?.stack)
     return NextResponse.json(
-      { error: "Failed to generate labels" },
+      { error: "Failed to generate labels", detail: error?.message },
       { status: 500 }
     )
   }

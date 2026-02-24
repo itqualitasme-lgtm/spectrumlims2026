@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, UserPlus, Loader2, Printer } from "lucide-react"
+import { ArrowLeft, Pencil, UserPlus, Loader2, Printer } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -45,6 +45,8 @@ type TestResult = {
   resultValue: string | null
   specMin: string | null
   specMax: string | null
+  tat: number | null
+  dueDate: string | null
   status: string
   enteredBy: { name: string } | null
 }
@@ -180,6 +182,14 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
               <CardDescription>Details for sample {sample.sampleNumber}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
+              {["pending", "registered", "assigned"].includes(sample.status) && (
+                <Button variant="outline" asChild>
+                  <Link href={`/process/registration/${sample.id}/edit`}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </Link>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={() => window.open(`/api/samples/${sample.id}/label`, "_blank")}
@@ -300,6 +310,8 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
                     <TableHead>Result</TableHead>
                     <TableHead>Spec Min</TableHead>
                     <TableHead>Spec Max</TableHead>
+                    <TableHead>TAT</TableHead>
+                    <TableHead>Due Date</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -312,6 +324,8 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
                       <TableCell>{tr.resultValue || "-"}</TableCell>
                       <TableCell>{tr.specMin || "-"}</TableCell>
                       <TableCell>{tr.specMax || "-"}</TableCell>
+                      <TableCell>{tr.tat ? `${tr.tat} day${tr.tat > 1 ? "s" : ""}` : "-"}</TableCell>
+                      <TableCell>{tr.dueDate ? new Date(tr.dueDate).toLocaleDateString() : "-"}</TableCell>
                       <TableCell>{testStatusBadge(tr.status)}</TableCell>
                     </TableRow>
                   ))}
