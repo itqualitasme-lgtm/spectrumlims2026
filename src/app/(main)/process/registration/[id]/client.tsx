@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, UserPlus, Loader2 } from "lucide-react"
+import { ArrowLeft, UserPlus, Loader2, Printer } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -179,12 +179,21 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
               <CardTitle>Sample Information</CardTitle>
               <CardDescription>Details for sample {sample.sampleNumber}</CardDescription>
             </div>
-            {["pending", "registered"].includes(sample.status) && (
-              <Button onClick={handleOpenAssign}>
-                <UserPlus className="mr-2 h-4 w-4" />
-                Assign
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                onClick={() => window.open(`/api/samples/${sample.id}/label`, "_blank")}
+              >
+                <Printer className="mr-2 h-4 w-4" />
+                Print Label
               </Button>
-            )}
+              {["pending", "registered"].includes(sample.status) && (
+                <Button onClick={handleOpenAssign}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  Assign
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>

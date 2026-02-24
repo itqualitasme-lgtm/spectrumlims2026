@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react"
 import Link from "next/link"
-import { ArrowLeft, Loader2, ClipboardList, Plus, Trash2, ChevronDown, ChevronUp } from "lucide-react"
+import { ArrowLeft, Loader2, Plus, Trash2, ChevronDown, ChevronUp, Printer, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -97,6 +97,10 @@ export function NewRegistrationClient({
   samplers: Sampler[]
 }) {
   const [loading, setLoading] = useState(false)
+
+  // Success state after registration
+  const [registeredIds, setRegisteredIds] = useState<string[]>([])
+  const [registeredNumbers, setRegisteredNumbers] = useState<string[]>([])
 
   // Shared header state
   const [clientId, setClientId] = useState("")
@@ -203,8 +207,18 @@ export function NewRegistrationClient({
     setReference("")
     setCollectedById("")
     setCollectionLocation("")
+    setRegisteredIds([])
+    setRegisteredNumbers([])
     rowIdCounter = 1
     setSamples([createEmptyRow()])
+  }
+
+  const handlePrintLabels = () => {
+    window.open(`/api/samples/labels?ids=${registeredIds.join(",")}`, "_blank")
+  }
+
+  const handleRegisterMore = () => {
+    resetForm()
   }
 
   const handleSubmit = async () => {
@@ -229,7 +243,8 @@ export function NewRegistrationClient({
 
     setLoading(true)
     try {
-      const results = []
+      const resultIds: string[] = []
+      const resultNumbers: string[] = []
       for (const s of validSamples) {
         const tests = getTestsForType(s.sampleTypeId)
         const sample = await createSample({
@@ -246,19 +261,73 @@ export function NewRegistrationClient({
           notes: s.remarks || undefined,
           selectedTests: tests.length > 0 ? Array.from(s.selectedTests) : undefined,
         })
-        results.push(sample.sampleNumber)
+        resultIds.push(sample.id)
+        resultNumbers.push(sample.sampleNumber)
       }
+      setRegisteredIds(resultIds)
+      setRegisteredNumbers(resultNumbers)
       toast.success(
-        results.length === 1
-          ? `Sample ${results[0]} registered successfully`
-          : `${results.length} samples registered: ${results.join(", ")}`
+        resultNumbers.length === 1
+          ? `Sample ${resultNumbers[0]} registered successfully`
+          : `${resultNumbers.length} samples registered successfully`
       )
-      resetForm()
     } catch (error: any) {
       toast.error(error.message || "Failed to register samples")
     } finally {
       setLoading(false)
     }
+  }
+
+  // Show success state after registration
+  if (registeredIds.length > 0) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="sm" asChild>
+            <Link href="/process/registration">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Link>
+          </Button>
+          <PageHeader title="Registration Complete" />
+        </div>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <CheckCircle2 className="h-12 w-12 text-green-600" />
+              <div>
+                <h3 className="text-lg font-semibold">
+                  {registeredNumbers.length === 1
+                    ? "Sample Registered Successfully"
+                    : `${registeredNumbers.length} Samples Registered Successfully`}
+                </h3>
+                <div className="mt-2 flex flex-wrap justify-center gap-2">
+                  {registeredNumbers.map((num) => (
+                    <Badge key={num} variant="outline" className="text-sm font-mono">
+                      {num}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-3 pt-2">
+                <Button onClick={handlePrintLabels} size="lg">
+                  <Printer className="mr-2 h-4 w-4" />
+                  Print QR Labels
+                </Button>
+                <Button variant="outline" onClick={handleRegisterMore} size="lg">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Register More
+                </Button>
+                <Button variant="ghost" asChild>
+                  <Link href="/process/registration">View All Samples</Link>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
 
   return (

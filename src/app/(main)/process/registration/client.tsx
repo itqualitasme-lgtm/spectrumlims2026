@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
-import { Eye, UserPlus, Trash2, Loader2 } from "lucide-react"
+import { Eye, UserPlus, Trash2, Loader2, QrCode } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -216,6 +216,15 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
               <Link href={`/process/registration/${sample.id}`}>
                 <Eye className="h-4 w-4" />
               </Link>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              onClick={() => window.open(`/api/samples/${sample.id}/label`, "_blank")}
+              title="Print QR Label"
+            >
+              <QrCode className="h-4 w-4" />
             </Button>
             {["pending", "registered"].includes(sample.status) && (
               <Button
