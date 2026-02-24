@@ -1,3 +1,5 @@
+"use client"
+
 import { TestDialogClient } from "./client"
 
 const MOCK_DATA = [
@@ -7,6 +9,5 @@ const MOCK_DATA = [
 ]
 
 export default function TestDialogPage() {
-  // Mimics the real customers page: server component passes serialized data to client
-  return <TestDialogClient customers={JSON.parse(JSON.stringify(MOCK_DATA))} />
+  return <TestDialogClient customers={MOCK_DATA} />
 }
