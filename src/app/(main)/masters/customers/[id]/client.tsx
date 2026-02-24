@@ -52,6 +52,7 @@ interface Customer {
   address: string | null
   contactPerson: string | null
   trn: string | null
+  paymentTerm: string | null
   status: string
   labId: string
   createdAt: string
@@ -172,6 +173,10 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
             <div>
               <p className="text-sm text-muted-foreground">TRN</p>
               <p className="font-medium">{customer.trn || "-"}</p>
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Payment Term</p>
+              <p className="font-medium">{customer.paymentTerm || "-"}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Contact Person</p>

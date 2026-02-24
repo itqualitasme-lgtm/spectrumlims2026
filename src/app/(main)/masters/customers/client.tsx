@@ -14,6 +14,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Pencil, Trash2 } from "lucide-react"
 import { ColumnDef } from "@tanstack/react-table"
@@ -35,6 +36,7 @@ interface Customer {
   address: string | null
   contactPerson: string | null
   trn: string | null
+  paymentTerm: string | null
   status: string
   labId: string
   createdAt: string
@@ -151,6 +153,7 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
           address: (formData.get("address") as string) || undefined,
           contactPerson: (formData.get("contactPerson") as string) || undefined,
           trn: (formData.get("trn") as string) || undefined,
+          paymentTerm: (formData.get("paymentTerm") as string) || undefined,
         })
         toast.success("Customer updated successfully")
       } else {
@@ -162,6 +165,7 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
           address: (formData.get("address") as string) || undefined,
           contactPerson: (formData.get("contactPerson") as string) || undefined,
           trn: (formData.get("trn") as string) || undefined,
+          paymentTerm: (formData.get("paymentTerm") as string) || undefined,
         })
         toast.success("Customer created successfully")
       }
@@ -263,10 +267,11 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
               </div>
               <div className="grid gap-2">
                 <Label>Address</Label>
-                <Input
+                <Textarea
                   name="address"
                   defaultValue={editingItem?.address || ""}
-                  placeholder="Address"
+                  placeholder="Full address"
+                  rows={3}
                 />
               </div>
               <div className="grid gap-2">
@@ -283,6 +288,14 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
                   name="trn"
                   defaultValue={editingItem?.trn || ""}
                   placeholder="Tax Registration Number"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Payment Term</Label>
+                <Input
+                  name="paymentTerm"
+                  defaultValue={editingItem?.paymentTerm || ""}
+                  placeholder="e.g. Net 30, Due on Receipt"
                 />
               </div>
             </div>

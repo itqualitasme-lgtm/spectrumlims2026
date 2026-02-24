@@ -125,6 +125,7 @@ model Customer {
   address       String?
   contactPerson String?
   trn           String?
+  paymentTerm   String?
   status        String   @default("active")
   labId         String
   createdAt     DateTime @default(now())

@@ -44,6 +44,7 @@ export async function createCustomer(data: {
   address?: string
   contactPerson?: string
   trn?: string
+  paymentTerm?: string
 }) {
   const session = await requirePermission("masters", "create")
   const user = session.user as any
@@ -63,6 +64,7 @@ export async function createCustomer(data: {
       address: data.address || null,
       contactPerson: data.contactPerson || null,
       trn: data.trn || null,
+      paymentTerm: data.paymentTerm || null,
       labId: user.labId,
     },
   })
@@ -90,6 +92,7 @@ export async function updateCustomer(
     address?: string
     contactPerson?: string
     trn?: string
+    paymentTerm?: string
     status?: string
   }
 ) {
@@ -110,6 +113,7 @@ export async function updateCustomer(
       address: data.address || null,
       contactPerson: data.contactPerson || null,
       trn: data.trn || null,
+      paymentTerm: data.paymentTerm || null,
       status: data.status,
     },
   })
