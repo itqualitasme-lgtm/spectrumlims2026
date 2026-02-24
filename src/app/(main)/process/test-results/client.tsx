@@ -37,6 +37,8 @@ type TestResult = {
   resultValue: string | null
   specMin: string | null
   specMax: string | null
+  tat: number | null
+  dueDate: string | null
   status: string
 }
 
@@ -49,15 +51,32 @@ type Sample = {
   testResults: TestResult[]
 }
 
-const testStatusBadge = (status: string) => {
-  switch (status) {
-    case "pending":
-      return <Badge variant="secondary">Pending</Badge>
-    case "completed":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>
-    default:
-      return <Badge variant="secondary">{status}</Badge>
-  }
+function getPassFail(
+  value: string,
+  specMin: string | null,
+  specMax: string | null
+): "pass" | "fail" | null {
+  if (!value.trim()) return null
+  const num = parseFloat(value)
+  if (isNaN(num)) return null
+  const min = specMin ? parseFloat(specMin) : null
+  const max = specMax ? parseFloat(specMax) : null
+  if (min === null && max === null) return null
+  if (min !== null && !isNaN(min) && num < min) return "fail"
+  if (max !== null && !isNaN(max) && num > max) return "fail"
+  return "pass"
+}
+
+function isDueSoon(dueDate: string | null): "overdue" | "due-today" | "due-soon" | null {
+  if (!dueDate) return null
+  const due = new Date(dueDate)
+  const now = new Date()
+  const diffMs = due.getTime() - now.getTime()
+  const diffDays = diffMs / (1000 * 60 * 60 * 24)
+  if (diffDays < 0) return "overdue"
+  if (diffDays < 1) return "due-today"
+  if (diffDays < 2) return "due-soon"
+  return null
 }
 
 export function TestResultsClient({ samples }: { samples: Sample[] }) {
@@ -75,7 +94,6 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
 
   const handleSampleSelect = (sampleId: string) => {
     setSelectedSampleId(sampleId)
-    // Pre-fill existing values
     const sample = samples.find((s) => s.id === sampleId)
     if (sample) {
       const values: Record<string, string> = {}
@@ -93,7 +111,6 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
   const handleSaveAll = async () => {
     if (!selectedSample) return
 
-    // Collect all results that have values
     const results = selectedSample.testResults
       .filter((tr) => resultValues[tr.id]?.trim())
       .map((tr) => ({
@@ -119,6 +136,11 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
       setLoading(false)
     }
   }
+
+  const completedCount = selectedSample?.testResults.filter(
+    (tr) => resultValues[tr.id]?.trim() || tr.status === "completed"
+  ).length || 0
+  const totalCount = selectedSample?.testResults.length || 0
 
   return (
     <div className="space-y-6">
@@ -162,6 +184,9 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                 <CardDescription>
                   {selectedSample.client.company || selectedSample.client.name} -{" "}
                   {selectedSample.sampleType.name}
+                  <span className="ml-2">
+                    ({completedCount}/{totalCount} entered)
+                  </span>
                 </CardDescription>
               </div>
               <Button onClick={handleSaveAll} disabled={loading}>
@@ -191,32 +216,76 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                       <TableHead className="w-[180px]">Result</TableHead>
                       <TableHead>Spec Min</TableHead>
                       <TableHead>Spec Max</TableHead>
+                      <TableHead>TAT</TableHead>
+                      <TableHead>Due Date</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {selectedSample.testResults.map((tr) => (
-                      <TableRow key={tr.id}>
-                        <TableCell className="font-medium">
-                          {tr.parameter}
-                        </TableCell>
-                        <TableCell>{tr.testMethod || "-"}</TableCell>
-                        <TableCell>{tr.unit || "-"}</TableCell>
-                        <TableCell>
-                          <Input
-                            value={resultValues[tr.id] || ""}
-                            onChange={(e) =>
-                              handleResultChange(tr.id, e.target.value)
-                            }
-                            placeholder="Enter result..."
-                            className="h-8"
-                          />
-                        </TableCell>
-                        <TableCell>{tr.specMin || "-"}</TableCell>
-                        <TableCell>{tr.specMax || "-"}</TableCell>
-                        <TableCell>{testStatusBadge(tr.status)}</TableCell>
-                      </TableRow>
-                    ))}
+                    {selectedSample.testResults.map((tr) => {
+                      const currentValue = resultValues[tr.id] || ""
+                      const passFail = getPassFail(currentValue, tr.specMin, tr.specMax)
+                      const dueStatus = isDueSoon(tr.dueDate)
+
+                      return (
+                        <TableRow key={tr.id}>
+                          <TableCell className="font-medium">
+                            {tr.parameter}
+                          </TableCell>
+                          <TableCell>{tr.testMethod || "-"}</TableCell>
+                          <TableCell>{tr.unit || "-"}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                value={currentValue}
+                                onChange={(e) =>
+                                  handleResultChange(tr.id, e.target.value)
+                                }
+                                placeholder="Enter result..."
+                                className={`h-8 ${
+                                  passFail === "fail"
+                                    ? "border-red-400 focus-visible:ring-red-400"
+                                    : passFail === "pass"
+                                      ? "border-green-400 focus-visible:ring-green-400"
+                                      : ""
+                                }`}
+                              />
+                              {passFail === "pass" && (
+                                <Badge className="bg-green-100 text-green-800 hover:bg-green-100 shrink-0 text-[10px] px-1.5">Pass</Badge>
+                              )}
+                              {passFail === "fail" && (
+                                <Badge className="bg-red-100 text-red-800 hover:bg-red-100 shrink-0 text-[10px] px-1.5">Fail</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>{tr.specMin || "-"}</TableCell>
+                          <TableCell>{tr.specMax || "-"}</TableCell>
+                          <TableCell>
+                            {tr.tat ? `${tr.tat}d` : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {tr.dueDate ? (
+                              <span className={
+                                dueStatus === "overdue" ? "text-red-600 font-medium" :
+                                dueStatus === "due-today" ? "text-orange-600 font-medium" :
+                                dueStatus === "due-soon" ? "text-yellow-600" : ""
+                              }>
+                                {new Date(tr.dueDate).toLocaleDateString()}
+                                {dueStatus === "overdue" && " (Overdue)"}
+                                {dueStatus === "due-today" && " (Today)"}
+                              </span>
+                            ) : "-"}
+                          </TableCell>
+                          <TableCell>
+                            {tr.status === "pending" ? (
+                              <Badge variant="secondary">Pending</Badge>
+                            ) : (
+                              <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
