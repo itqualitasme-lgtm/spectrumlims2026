@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -23,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2, Plus } from "lucide-react"
 import { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -43,6 +42,50 @@ interface SampleType {
   createdAt: string
 }
 
+type TestParam = {
+  parameter: string
+  method: string
+  unit: string
+  price: string
+  tat: string
+  specMin: string
+  specMax: string
+}
+
+function parseTests(defaultTests: string): TestParam[] {
+  try {
+    const parsed = JSON.parse(defaultTests)
+    if (!Array.isArray(parsed)) return []
+    return parsed.map((t: any) => ({
+      parameter: t.parameter || "",
+      method: t.method || t.testMethod || "",
+      unit: t.unit || "",
+      price: t.price != null ? String(t.price) : "",
+      tat: t.tat != null ? String(t.tat) : "",
+      specMin: t.specMin || "",
+      specMax: t.specMax || "",
+    }))
+  } catch {
+    return []
+  }
+}
+
+function serializeTests(tests: TestParam[]): string {
+  const cleaned = tests
+    .filter((t) => t.parameter.trim())
+    .map((t) => {
+      const obj: Record<string, any> = { parameter: t.parameter.trim() }
+      if (t.method.trim()) obj.method = t.method.trim()
+      if (t.unit.trim()) obj.unit = t.unit.trim()
+      if (t.price.trim()) obj.price = parseFloat(t.price) || 0
+      if (t.tat.trim()) obj.tat = parseInt(t.tat) || 0
+      if (t.specMin.trim()) obj.specMin = t.specMin.trim()
+      if (t.specMax.trim()) obj.specMax = t.specMax.trim()
+      return obj
+    })
+  return JSON.stringify(cleaned)
+}
+
 function getTestsCount(defaultTests: string): number {
   try {
     const parsed = JSON.parse(defaultTests)
@@ -52,13 +95,15 @@ function getTestsCount(defaultTests: string): number {
   }
 }
 
-function formatJson(value: string): string {
-  try {
-    return JSON.stringify(JSON.parse(value), null, 2)
-  } catch {
-    return value
-  }
-}
+const emptyParam = (): TestParam => ({
+  parameter: "",
+  method: "",
+  unit: "",
+  price: "",
+  tat: "",
+  specMin: "",
+  specMax: "",
+})
 
 export function SampleTypesClient({
   sampleTypes,
@@ -69,16 +114,55 @@ export function SampleTypesClient({
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<SampleType | null>(null)
   const [loading, setLoading] = useState(false)
-  const [jsonError, setJsonError] = useState<string | null>(null)
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingName, setDeletingName] = useState("")
-  const [statusValue, setStatusValue] = useState("active")
+
+  // Form state
+  const [formName, setFormName] = useState("")
+  const [formDescription, setFormDescription] = useState("")
+  const [formStatus, setFormStatus] = useState("active")
+  const [formTests, setFormTests] = useState<TestParam[]>([emptyParam()])
+
+  const openCreate = () => {
+    setEditingItem(null)
+    setFormName("")
+    setFormDescription("")
+    setFormStatus("active")
+    setFormTests([emptyParam()])
+    setDialogOpen(true)
+  }
+
+  const openEdit = (item: SampleType) => {
+    setEditingItem(item)
+    setFormName(item.name)
+    setFormDescription(item.description || "")
+    setFormStatus(item.status)
+    const parsed = parseTests(item.defaultTests)
+    setFormTests(parsed.length > 0 ? parsed : [emptyParam()])
+    setDialogOpen(true)
+  }
+
+  const updateTest = (index: number, field: keyof TestParam, value: string) => {
+    setFormTests((prev) =>
+      prev.map((t, i) => (i === index ? { ...t, [field]: value } : t))
+    )
+  }
+
+  const addTest = () => setFormTests((prev) => [...prev, emptyParam()])
+
+  const removeTest = (index: number) => {
+    if (formTests.length <= 1) return
+    setFormTests((prev) => prev.filter((_, i) => i !== index))
+  }
 
   const columns: ColumnDef<SampleType, any>[] = [
     {
       accessorKey: "name",
       header: "Name",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.name}</span>
+      ),
     },
     {
       accessorKey: "description",
@@ -87,8 +171,15 @@ export function SampleTypesClient({
     },
     {
       id: "testsCount",
-      header: "Tests Count",
-      cell: ({ row }) => getTestsCount(row.original.defaultTests),
+      header: "Parameters",
+      cell: ({ row }) => {
+        const count = getTestsCount(row.original.defaultTests)
+        return count > 0 ? (
+          <Badge variant="secondary">{count}</Badge>
+        ) : (
+          <span className="text-muted-foreground">0</span>
+        )
+      },
     },
     {
       accessorKey: "status",
@@ -111,12 +202,7 @@ export function SampleTypesClient({
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0"
-            onClick={() => {
-              setEditingItem(row.original)
-              setStatusValue(row.original.status)
-              setJsonError(null)
-              setDialogOpen(true)
-            }}
+            onClick={() => openEdit(row.original)}
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -137,48 +223,41 @@ export function SampleTypesClient({
     },
   ]
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    const formData = new FormData(e.currentTarget)
-    const name = (formData.get("name") as string)?.trim()
-    const description = formData.get("description") as string
-    const defaultTests = formData.get("defaultTests") as string
-
-    if (!name) {
+  async function handleSubmit() {
+    if (!formName.trim()) {
       toast.error("Sample type name is required")
       return
     }
 
-    try {
-      JSON.parse(defaultTests)
-      setJsonError(null)
-    } catch {
-      setJsonError("Invalid JSON format. Please check the syntax.")
+    const hasAnyParam = formTests.some((t) => t.parameter.trim())
+    if (!hasAnyParam) {
+      toast.error("Add at least one test parameter")
       return
     }
+
+    const defaultTests = serializeTests(formTests)
 
     setLoading(true)
     try {
       if (editingItem) {
         await updateSampleType(editingItem.id, {
-          name,
-          description: description || undefined,
+          name: formName.trim(),
+          description: formDescription.trim() || undefined,
           defaultTests,
-          status: statusValue,
+          status: formStatus,
         })
         toast.success("Sample type updated successfully")
       } else {
         await createSampleType({
-          name,
-          description: description || undefined,
+          name: formName.trim(),
+          description: formDescription.trim() || undefined,
           defaultTests,
-          status: statusValue,
+          status: formStatus,
         })
         toast.success("Sample type created successfully")
       }
       setDialogOpen(false)
       setEditingItem(null)
-      setJsonError(null)
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to save sample type")
@@ -208,14 +287,9 @@ export function SampleTypesClient({
     <div className="space-y-6">
       <PageHeader
         title="Sample Types"
-        description="Manage sample type definitions and default tests"
+        description="Manage sample type definitions and test parameters"
         actionLabel="Add Sample Type"
-        onAction={() => {
-          setEditingItem(null)
-          setStatusValue("active")
-          setJsonError(null)
-          setDialogOpen(true)
-        }}
+        onAction={openCreate}
       />
 
       <DataTable
@@ -227,63 +301,43 @@ export function SampleTypesClient({
 
       <Dialog open={dialogOpen} onOpenChange={(open) => {
         setDialogOpen(open)
-        if (!open) { setEditingItem(null); setJsonError(null) }
+        if (!open) setEditingItem(null)
       }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingItem ? "Edit Sample Type" : "Add Sample Type"}
             </DialogTitle>
             <DialogDescription>
               {editingItem
-                ? "Update sample type details below."
-                : "Fill in the sample type details below."}
+                ? "Update sample type details and test parameters."
+                : "Define sample type and its test parameters."}
             </DialogDescription>
           </DialogHeader>
-          <form key={editingItem?.id || "create"} onSubmit={handleSubmit}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>Name *</Label>
+
+          <div className="grid gap-4 py-2">
+            {/* Basic info row */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="grid gap-1">
+                <Label className="text-xs">Name *</Label>
                 <Input
-                  name="name"
-                  defaultValue={editingItem?.name || ""}
-                  placeholder="Sample type name"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  placeholder="e.g. Diesel"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label>Description</Label>
+              <div className="grid gap-1">
+                <Label className="text-xs">Description</Label>
                 <Input
-                  name="description"
-                  defaultValue={editingItem?.description || ""}
+                  value={formDescription}
+                  onChange={(e) => setFormDescription(e.target.value)}
                   placeholder="Brief description"
                 />
               </div>
-              <div className="grid gap-2">
-                <Label>Default Tests (JSON)</Label>
-                <p className="text-xs text-muted-foreground">
-                  Enter a JSON array of test objects. Example:{" "}
-                  {`[{"parameter": "pH", "unit": "pH", "method": "APHA 4500-H+"}]`}
-                </p>
-                <Textarea
-                  name="defaultTests"
-                  defaultValue={editingItem ? formatJson(editingItem.defaultTests) : "[]"}
-                  placeholder='[{"parameter": "pH", "unit": "pH", "method": "APHA 4500-H+"}]'
-                  className="min-h-[120px] font-mono text-sm"
-                  onChange={() => setJsonError(null)}
-                />
-                {jsonError && (
-                  <p className="text-sm text-destructive">{jsonError}</p>
-                )}
-              </div>
-              <div className="grid gap-2">
-                <Label>Status</Label>
-                <Select
-                  value={statusValue}
-                  onValueChange={setStatusValue}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Select status" />
-                  </SelectTrigger>
+              <div className="grid gap-1">
+                <Label className="text-xs">Status</Label>
+                <Select value={formStatus} onValueChange={setFormStatus}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="active">Active</SelectItem>
                     <SelectItem value="inactive">Inactive</SelectItem>
@@ -291,23 +345,117 @@ export function SampleTypesClient({
                 </Select>
               </div>
             </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading
-                  ? "Saving..."
-                  : editingItem
-                    ? "Update Sample Type"
-                    : "Create Sample Type"}
-              </Button>
+
+            {/* Test Parameters table */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <Label className="text-sm font-semibold">Test Parameters ({formTests.filter((t) => t.parameter.trim()).length})</Label>
+                <Button type="button" variant="outline" size="sm" onClick={addTest}>
+                  <Plus className="mr-1 h-3 w-3" /> Add Parameter
+                </Button>
+              </div>
+
+              <div className="rounded border overflow-hidden">
+                {/* Table header */}
+                <div className="grid grid-cols-[1fr_1fr_80px_80px_60px_80px_80px_32px] gap-x-2 px-2 py-1.5 bg-muted/50 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                  <span>Parameter *</span>
+                  <span>Method</span>
+                  <span>Unit</span>
+                  <span>Price</span>
+                  <span>TAT (d)</span>
+                  <span>Spec Min</span>
+                  <span>Spec Max</span>
+                  <span></span>
+                </div>
+
+                {/* Rows */}
+                <div className="divide-y max-h-[400px] overflow-y-auto">
+                  {formTests.map((test, idx) => (
+                    <div
+                      key={idx}
+                      className="grid grid-cols-[1fr_1fr_80px_80px_60px_80px_80px_32px] gap-x-2 items-center px-2 py-1"
+                    >
+                      <Input
+                        className="h-8 text-xs"
+                        value={test.parameter}
+                        onChange={(e) => updateTest(idx, "parameter", e.target.value)}
+                        placeholder="e.g. pH"
+                      />
+                      <Input
+                        className="h-8 text-xs"
+                        value={test.method}
+                        onChange={(e) => updateTest(idx, "method", e.target.value)}
+                        placeholder="e.g. ASTM D1298"
+                      />
+                      <Input
+                        className="h-8 text-xs"
+                        value={test.unit}
+                        onChange={(e) => updateTest(idx, "unit", e.target.value)}
+                        placeholder="mg/L"
+                      />
+                      <Input
+                        className="h-8 text-xs"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={test.price}
+                        onChange={(e) => updateTest(idx, "price", e.target.value)}
+                        placeholder="0.00"
+                      />
+                      <Input
+                        className="h-8 text-xs"
+                        type="number"
+                        min="1"
+                        max="30"
+                        value={test.tat}
+                        onChange={(e) => updateTest(idx, "tat", e.target.value)}
+                        placeholder="1-3"
+                      />
+                      <Input
+                        className="h-8 text-xs"
+                        value={test.specMin}
+                        onChange={(e) => updateTest(idx, "specMin", e.target.value)}
+                        placeholder="Min"
+                      />
+                      <Input
+                        className="h-8 text-xs"
+                        value={test.specMax}
+                        onChange={(e) => updateTest(idx, "specMax", e.target.value)}
+                        placeholder="Max"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        onClick={() => removeTest(idx)}
+                        disabled={formTests.length <= 1}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
-          </form>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={loading}>
+              {loading
+                ? "Saving..."
+                : editingItem
+                  ? "Update Sample Type"
+                  : "Create Sample Type"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
