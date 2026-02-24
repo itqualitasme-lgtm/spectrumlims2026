@@ -381,7 +381,7 @@ export function NewRegistrationClient({
       <Card>
         <CardContent className="py-2 px-3">
           {/* Column headers */}
-          <div className="grid grid-cols-[28px_1fr_100px_1fr_1fr_120px_80px_28px] gap-x-2 items-center px-1 pb-1 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+          <div className="grid grid-cols-[28px_1fr_100px_1fr_1fr_1fr_80px_28px] gap-x-2 items-center px-1 pb-1 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
             <span>#</span>
             <span>Sample Type *</span>
             <span>Bottle</span>
@@ -397,7 +397,7 @@ export function NewRegistrationClient({
               return (
                 <div key={row.id}>
                   {/* Main row */}
-                  <div className="grid grid-cols-[28px_1fr_100px_1fr_1fr_120px_80px_28px] gap-x-2 items-center py-1.5 px-1">
+                  <div className="grid grid-cols-[28px_1fr_100px_1fr_1fr_1fr_80px_28px] gap-x-2 items-center py-1.5 px-1">
                     <span className="text-xs font-mono text-muted-foreground">{idx + 1}</span>
                     <SearchableSelect
                       options={sampleTypeOptions}
@@ -436,31 +436,33 @@ export function NewRegistrationClient({
                   {/* Expanded test panel */}
                   {row.expanded && tests.length > 0 && (
                     <div className="ml-7 mr-1 mb-1.5 rounded border text-xs">
-                      <div className="flex items-center justify-between px-2 py-0.5 bg-muted/50 border-b">
-                        <span className="font-medium">{row.selectedTests.size}/{tests.length} test(s)</span>
-                        <Button variant="ghost" size="sm" className="h-5 text-[10px] px-2" onClick={() => toggleAllTests(row.id)}>
-                          {row.selectedTests.size === tests.length ? "Deselect All" : "Select All"}
-                        </Button>
-                      </div>
-                      <div className="max-h-[180px] overflow-y-auto">
+                      <div className="max-h-[200px] overflow-y-auto">
                         <table className="w-full">
                           <thead>
-                            <tr className="border-b bg-muted/30">
-                              <th className="w-7 px-2 py-0.5"></th>
-                              <th className="text-left px-2 py-0.5 font-medium">Parameter</th>
-                              <th className="text-left px-2 py-0.5 font-medium">Method</th>
-                              <th className="text-left px-2 py-0.5 font-medium">Unit</th>
+                            <tr className="border-b bg-muted/50">
+                              <th className="w-7 px-2 py-1 text-left">
+                                <Checkbox
+                                  checked={row.selectedTests.size === tests.length}
+                                  onCheckedChange={() => toggleAllTests(row.id)}
+                                  className="h-3.5 w-3.5"
+                                />
+                              </th>
+                              <th className="text-left px-2 py-1 font-medium">Parameter</th>
+                              <th className="text-left px-2 py-1 font-medium">Method</th>
+                              <th className="text-left px-2 py-1 font-medium">Unit</th>
+                              <th className="text-right px-2 py-1 font-medium text-muted-foreground">{row.selectedTests.size}/{tests.length}</th>
                             </tr>
                           </thead>
                           <tbody>
                             {tests.map((test, testIdx) => (
                               <tr key={testIdx} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => toggleTest(row.id, testIdx)}>
-                                <td className="px-2 py-0.5">
+                                <td className="px-2 py-1">
                                   <Checkbox checked={row.selectedTests.has(testIdx)} onCheckedChange={() => toggleTest(row.id, testIdx)} className="h-3.5 w-3.5" />
                                 </td>
-                                <td className="px-2 py-0.5 font-medium">{test.parameter}</td>
-                                <td className="px-2 py-0.5 text-muted-foreground">{getTestMethod(test) || "-"}</td>
-                                <td className="px-2 py-0.5 text-muted-foreground">{test.unit || "-"}</td>
+                                <td className="px-2 py-1 font-medium">{test.parameter}</td>
+                                <td className="px-2 py-1 text-muted-foreground">{getTestMethod(test) || "-"}</td>
+                                <td className="px-2 py-1 text-muted-foreground">{test.unit || "-"}</td>
+                                <td></td>
                               </tr>
                             ))}
                           </tbody>
