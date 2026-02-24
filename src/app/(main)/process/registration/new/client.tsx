@@ -148,7 +148,7 @@ export function NewRegistrationClient({
     const tests = getTestsForType(value)
     updateRow(rowId, {
       sampleTypeId: value,
-      selectedTests: new Set(tests.map((_, i) => i)),
+      selectedTests: new Set<number>(),
       expanded: tests.length > 0,
     })
   }
@@ -319,10 +319,10 @@ export function NewRegistrationClient({
         <PageHeader title="Register New Samples" />
       </div>
 
-      {/* Job Details - compact single card, no CardHeader */}
+      {/* Job Details */}
       <Card>
         <CardContent className="py-3 px-4">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-x-3 gap-y-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-2">
             <div className="col-span-2 grid gap-1">
               <Label className="text-xs text-muted-foreground">Customer *</Label>
               <AsyncSearchableSelect
@@ -363,8 +363,6 @@ export function NewRegistrationClient({
               <Label className="text-xs text-muted-foreground">Location</Label>
               <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="e.g. Ajman Port" />
             </div>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-x-3 gap-y-2 mt-2">
             <div className="grid gap-1">
               <Label className="text-xs text-muted-foreground">Sampler</Label>
               <SearchableSelect
