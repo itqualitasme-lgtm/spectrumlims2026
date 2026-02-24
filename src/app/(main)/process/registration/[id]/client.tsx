@@ -69,6 +69,7 @@ type SampleDetail = {
   jobType: string
   reference: string | null
   samplePoint: string | null
+  collectionLocation: string | null
   notes: string | null
   createdAt: string
   registeredAt: string | null
@@ -272,6 +273,12 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Sample Point</p>
                 <p className="text-sm">{sample.samplePoint}</p>
+              </div>
+            )}
+            {sample.collectionLocation && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Collection Location</p>
+                <p className="text-sm">{sample.collectionLocation}</p>
               </div>
             )}
             {sample.description && (

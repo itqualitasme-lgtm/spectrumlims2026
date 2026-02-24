@@ -10,6 +10,7 @@ import {
   Trash2,
   FileText,
   Loader2,
+  FileCheck,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -38,6 +39,8 @@ import {
   publishReport,
   deleteReport,
   getCompletedSamplesForSelect,
+  getReportTemplatesForSelect,
+  updateReportTemplate as updateReportTemplateAction,
 } from "@/actions/reports"
 
 type Report = {
@@ -87,25 +90,40 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
   const [sampleId, setSampleId] = useState("")
   const [title, setTitle] = useState("")
   const [summary, setSummary] = useState("")
+  const [templateId, setTemplateId] = useState("")
   const [completedSamples, setCompletedSamples] = useState<
+    { value: string; label: string }[]
+  >([])
+  const [templates, setTemplates] = useState<
     { value: string; label: string }[]
   >([])
 
   const handleOpenCreate = async () => {
     try {
-      const samples = await getCompletedSamplesForSelect()
+      const [samples, tpls] = await Promise.all([
+        getCompletedSamplesForSelect(),
+        getReportTemplatesForSelect(),
+      ])
       setCompletedSamples(
         samples.map((s) => ({
           value: s.id,
           label: `${s.sampleNumber} - ${s.clientName} - ${s.typeName}`,
         }))
       )
+      setTemplates(
+        tpls.map((t) => ({
+          value: t.id,
+          label: t.isDefault ? `${t.name} (Default)` : t.name,
+        }))
+      )
+      const defaultTpl = tpls.find((t) => t.isDefault)
       setSampleId("")
       setTitle("")
       setSummary("")
+      setTemplateId(defaultTpl?.id || "")
       setCreateOpen(true)
     } catch {
-      toast.error("Failed to load completed samples")
+      toast.error("Failed to load data")
     }
   }
 
@@ -121,6 +139,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
         sampleId,
         title: title.trim(),
         summary: summary.trim() || undefined,
+        templateId: templateId || undefined,
       })
       toast.success(`Report ${report.reportNumber} created successfully`)
       setCreateOpen(false)
@@ -263,7 +282,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
                 <Globe className="h-4 w-4" />
               </Button>
             )}
-            {report.status === "published" && (
+            {(report.status === "approved" || report.status === "published") && (
               <Button
                 variant="ghost"
                 size="sm"
@@ -339,6 +358,19 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
                 placeholder="Report title..."
               />
             </div>
+            {templates.length > 0 && (
+              <div className="grid gap-2">
+                <Label>Report Template</Label>
+                <SearchableSelect
+                  options={templates}
+                  value={templateId}
+                  onValueChange={setTemplateId}
+                  placeholder="Select template..."
+                  searchPlaceholder="Search templates..."
+                  emptyMessage="No templates available."
+                />
+              </div>
+            )}
             <div className="grid gap-2">
               <Label>Summary</Label>
               <Textarea

@@ -1,19 +1,6 @@
-import {
-  getMyCollections,
-  getSampleTypesForSelect,
-} from "@/actions/registrations"
-import { SampleCollectionClient } from "./client"
+import { redirect } from "next/navigation"
 
-export default async function SampleCollectionPage() {
-  const [collections, sampleTypes] = await Promise.all([
-    getMyCollections(),
-    getSampleTypesForSelect(),
-  ])
-
-  return (
-    <SampleCollectionClient
-      collections={JSON.parse(JSON.stringify(collections))}
-      sampleTypes={sampleTypes}
-    />
-  )
+// Sample Collection has been merged into Sample Registration
+export default function SampleCollectionPage() {
+  redirect("/process/registration/new")
 }

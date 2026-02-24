@@ -60,6 +60,8 @@ export async function createUser(data: {
   password: string
   phone?: string
   roleId: string
+  designation?: string
+  signatureUrl?: string
 }) {
   const session = await requirePermission("admin", "create")
   const user = session.user as any
@@ -84,6 +86,8 @@ export async function createUser(data: {
       phone: data.phone || null,
       roleId: data.roleId,
       labId: user.labId,
+      designation: data.designation || null,
+      signatureUrl: data.signatureUrl || null,
     },
   })
 
@@ -109,6 +113,8 @@ export async function updateUser(
     roleId?: string
     isActive?: boolean
     password?: string
+    designation?: string
+    signatureUrl?: string
   }
 ) {
   const session = await requirePermission("admin", "edit")
@@ -120,6 +126,8 @@ export async function updateUser(
     phone: data.phone || null,
     roleId: data.roleId,
     isActive: data.isActive,
+    designation: data.designation !== undefined ? (data.designation || null) : undefined,
+    signatureUrl: data.signatureUrl !== undefined ? (data.signatureUrl || null) : undefined,
   }
 
   if (data.password) {

@@ -53,6 +53,8 @@ interface User {
   lastLoginAt: string | null
   createdAt: string
   updatedAt: string
+  designation: string | null
+  signatureUrl: string | null
   role: { name: string }
 }
 
@@ -135,6 +137,7 @@ export function UsersClient({
       header: "Role",
       cell: ({ row }) => <Badge variant="outline">{row.original.role.name}</Badge>,
     },
+    { accessorKey: "designation", header: "Designation", cell: ({ row }) => row.original.designation || "-" },
     {
       accessorKey: "isActive",
       header: "Status",
@@ -225,6 +228,8 @@ export function UsersClient({
     const password = (fd.get("password") as string)?.trim()
     const email = fd.get("email") as string
     const phone = fd.get("phone") as string
+    const designation = (fd.get("designation") as string)?.trim()
+    const signatureUrl = (fd.get("signatureUrl") as string)?.trim()
 
     if (!name) { toast.error("Name is required"); return }
     if (!username) { toast.error("Username is required"); return }
@@ -237,12 +242,16 @@ export function UsersClient({
         await updateUser(editingUser.id, {
           name, email: email || undefined, phone: phone || undefined,
           roleId: userRoleId, password: password || undefined,
+          designation: designation || undefined,
+          signatureUrl: signatureUrl || undefined,
         })
         toast.success("User updated successfully")
       } else {
         await createUser({
           name, email: email || undefined, username, password: password!,
           phone: phone || undefined, roleId: userRoleId,
+          designation: designation || undefined,
+          signatureUrl: signatureUrl || undefined,
         })
         toast.success("User created successfully")
       }
@@ -401,6 +410,15 @@ export function UsersClient({
                     {roles.map((role) => (<SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="grid gap-2">
+                <Label>Designation</Label>
+                <Input name="designation" defaultValue={editingUser?.designation || ""} placeholder="e.g. Senior Chemist, Lab Manager" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Signature URL</Label>
+                <Input name="signatureUrl" defaultValue={editingUser?.signatureUrl || ""} placeholder="URL to digital signature image" />
+                <p className="text-xs text-muted-foreground">Upload signature image and paste the URL here. Used for digital signing of reports.</p>
               </div>
             </div>
             <div className="flex justify-end gap-2">

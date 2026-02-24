@@ -3,12 +3,13 @@
 import { useState, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { ArrowLeft, Loader2, Plus, Trash2, Printer } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { SearchableSelect } from "@/components/shared/searchable-select"
 import { AsyncSearchableSelect } from "@/components/shared/async-searchable-select"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -19,10 +20,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Textarea } from "@/components/ui/textarea"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 
 import { updateSample, searchCustomers, getCustomerById } from "@/actions/registrations"
+import { addTestsToSample, deleteTestResult } from "@/actions/test-results"
 
 type SampleTypeOption = {
   id: string
@@ -33,6 +51,20 @@ type SampleTypeOption = {
 type Sampler = {
   id: string
   name: string
+}
+
+type TestResult = {
+  id: string
+  parameter: string
+  testMethod: string | null
+  unit: string | null
+  resultValue: string | null
+  specMin: string | null
+  specMax: string | null
+  tat: number | null
+  dueDate: string | null
+  status: string
+  enteredBy: { name: string } | null
 }
 
 type SampleData = {
@@ -54,6 +86,10 @@ type SampleData = {
   registeredAt: string | null
   client: { id: string; name: string; company: string | null }
   sampleType: { id: string; name: string }
+  assignedTo: { name: string } | null
+  collectedBy: { name: string } | null
+  registeredBy: { name: string } | null
+  testResults: TestResult[]
 }
 
 const BOTTLE_SIZES = [
@@ -61,6 +97,23 @@ const BOTTLE_SIZES = [
   { value: "500 Ml", label: "500 Ml" },
   { value: "300 Ml", label: "300 Ml" },
 ]
+
+const statusBadge = (status: string) => {
+  switch (status) {
+    case "pending":
+      return <Badge variant="secondary">Pending</Badge>
+    case "registered":
+      return <Badge variant="outline">Registered</Badge>
+    case "assigned":
+      return <Badge variant="default">Assigned</Badge>
+    case "testing":
+      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Testing</Badge>
+    case "completed":
+      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>
+    default:
+      return <Badge variant="secondary">{status}</Badge>
+  }
+}
 
 export function EditSampleClient({
   sample,
@@ -86,6 +139,15 @@ export function EditSampleClient({
   const [description, setDescription] = useState(sample.description || "")
   const [quantity, setQuantity] = useState(sample.quantity || "1 Ltr")
   const [notes, setNotes] = useState(sample.notes || "")
+
+  // Add test dialog
+  const [addTestOpen, setAddTestOpen] = useState(false)
+  const [newParam, setNewParam] = useState("")
+  const [newMethod, setNewMethod] = useState("")
+  const [newUnit, setNewUnit] = useState("")
+  const [newSpecMin, setNewSpecMin] = useState("")
+  const [newSpecMax, setNewSpecMax] = useState("")
+  const [newTat, setNewTat] = useState("")
 
   // Parse existing date/time
   const existingDate = sample.registeredAt || sample.collectionDate
@@ -156,16 +218,84 @@ export function EditSampleClient({
     }
   }
 
+  const handleAddTest = async () => {
+    if (!newParam.trim()) {
+      toast.error("Parameter name is required")
+      return
+    }
+
+    setLoading(true)
+    try {
+      await addTestsToSample(sample.id, [{
+        parameter: newParam.trim(),
+        testMethod: newMethod.trim() || undefined,
+        unit: newUnit.trim() || undefined,
+        specMin: newSpecMin.trim() || undefined,
+        specMax: newSpecMax.trim() || undefined,
+        tat: newTat ? parseInt(newTat) : undefined,
+      }])
+      toast.success(`Added parameter "${newParam.trim()}"`)
+      setAddTestOpen(false)
+      setNewParam("")
+      setNewMethod("")
+      setNewUnit("")
+      setNewSpecMin("")
+      setNewSpecMax("")
+      setNewTat("")
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to add test parameter")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleDeleteTest = async (testResultId: string, paramName: string) => {
+    if (!confirm(`Delete pending parameter "${paramName}"?`)) return
+
+    setLoading(true)
+    try {
+      await deleteTestResult(testResultId)
+      toast.success(`Deleted parameter "${paramName}"`)
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete test parameter")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const completedTests = sample.testResults.filter((tr) => tr.status === "completed").length
+  const totalTests = sample.testResults.length
+
   return (
     <div className="space-y-3">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="outline" size="sm" asChild>
-          <Link href={`/process/registration/${sample.id}`}>
-            <ArrowLeft className="mr-1 h-4 w-4" /> Back
-          </Link>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="outline" size="sm" asChild>
+            <Link href={`/process/registration/${sample.id}`}>
+              <ArrowLeft className="mr-1 h-4 w-4" /> Back
+            </Link>
+          </Button>
+          <PageHeader title={`Edit ${sample.sampleNumber}`} />
+          {statusBadge(sample.status)}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => window.open(`/api/samples/${sample.id}/label`, "_blank")}
+        >
+          <Printer className="mr-1 h-3.5 w-3.5" /> Print Label
         </Button>
-        <PageHeader title={`Edit ${sample.sampleNumber}`} />
+      </div>
+
+      {/* Info Bar */}
+      <div className="flex items-center gap-4 text-xs text-muted-foreground px-1">
+        <span>Registered by: <strong className="text-foreground">{sample.registeredBy?.name || "-"}</strong></span>
+        <span>Collected by: <strong className="text-foreground">{sample.collectedBy?.name || "-"}</strong></span>
+        <span>Assigned to: <strong className="text-foreground">{sample.assignedTo?.name || "Not assigned"}</strong></span>
+        <span>Date: <strong className="text-foreground">{existingDate ? new Date(existingDate).toLocaleDateString() : "-"}</strong></span>
       </div>
 
       {/* Job Details */}
@@ -270,9 +400,104 @@ export function EditSampleClient({
             </div>
             <div className="col-span-2 md:col-span-4 grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Notes / Remarks</Label>
-              <Textarea className="min-h-[60px] text-sm" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Additional notes..." />
+              <Textarea className="min-h-[50px] text-sm" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Additional notes..." />
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Test Parameters */}
+      <Card>
+        <CardHeader className="py-3 px-4">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">
+              Test Parameters ({completedTests}/{totalTests} completed)
+            </CardTitle>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setAddTestOpen(true)}
+            >
+              <Plus className="mr-1 h-3 w-3" /> Add Parameter
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent className="px-4 py-0 pb-3">
+          {sample.testResults.length > 0 ? (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="text-xs">Parameter</TableHead>
+                    <TableHead className="text-xs">Method</TableHead>
+                    <TableHead className="text-xs">Unit</TableHead>
+                    <TableHead className="text-xs">Result</TableHead>
+                    <TableHead className="text-xs">Spec Min</TableHead>
+                    <TableHead className="text-xs">Spec Max</TableHead>
+                    <TableHead className="text-xs">TAT</TableHead>
+                    <TableHead className="text-xs">Due Date</TableHead>
+                    <TableHead className="text-xs">Status</TableHead>
+                    <TableHead className="text-xs w-[28px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sample.testResults.map((tr) => (
+                    <TableRow key={tr.id}>
+                      <TableCell className="font-medium text-xs py-1.5">{tr.parameter}</TableCell>
+                      <TableCell className="text-xs py-1.5">{tr.testMethod || "-"}</TableCell>
+                      <TableCell className="text-xs py-1.5">{tr.unit || "-"}</TableCell>
+                      <TableCell className="text-xs py-1.5">
+                        {tr.resultValue ? (
+                          <span className="font-mono">{tr.resultValue}</span>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs py-1.5">{tr.specMin || "-"}</TableCell>
+                      <TableCell className="text-xs py-1.5">{tr.specMax || "-"}</TableCell>
+                      <TableCell className="text-xs py-1.5">{tr.tat ? `${tr.tat}d` : "-"}</TableCell>
+                      <TableCell className="text-xs py-1.5">
+                        {tr.dueDate ? new Date(tr.dueDate).toLocaleDateString() : "-"}
+                      </TableCell>
+                      <TableCell className="py-1.5">
+                        {tr.status === "pending" ? (
+                          <Badge variant="secondary" className="text-[10px]">Pending</Badge>
+                        ) : (
+                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px]">Done</Badge>
+                        )}
+                      </TableCell>
+                      <TableCell className="py-1.5">
+                        {tr.status === "pending" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteTest(tr.id, tr.parameter)}
+                            disabled={loading}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          ) : (
+            <div className="text-center py-6 text-sm text-muted-foreground">
+              No test parameters defined for this sample.
+              <Button
+                variant="link"
+                size="sm"
+                className="ml-1 text-sm p-0 h-auto"
+                onClick={() => setAddTestOpen(true)}
+              >
+                Add one now
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -289,6 +514,90 @@ export function EditSampleClient({
           )}
         </Button>
       </div>
+
+      {/* Add Test Dialog */}
+      <Dialog open={addTestOpen} onOpenChange={setAddTestOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add Test Parameter</DialogTitle>
+            <DialogDescription>
+              Add a new test parameter to {sample.sampleNumber}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3 py-2">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-1">
+                <Label className="text-xs">Parameter Name *</Label>
+                <Input
+                  value={newParam}
+                  onChange={(e) => setNewParam(e.target.value)}
+                  placeholder="e.g. Viscosity"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Test Method</Label>
+                <Input
+                  value={newMethod}
+                  onChange={(e) => setNewMethod(e.target.value)}
+                  placeholder="e.g. ASTM D445"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-3">
+              <div className="grid gap-1">
+                <Label className="text-xs">Unit</Label>
+                <Input
+                  value={newUnit}
+                  onChange={(e) => setNewUnit(e.target.value)}
+                  placeholder="cSt"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Spec Min</Label>
+                <Input
+                  value={newSpecMin}
+                  onChange={(e) => setNewSpecMin(e.target.value)}
+                  placeholder="min"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">Spec Max</Label>
+                <Input
+                  value={newSpecMax}
+                  onChange={(e) => setNewSpecMax(e.target.value)}
+                  placeholder="max"
+                />
+              </div>
+              <div className="grid gap-1">
+                <Label className="text-xs">TAT (days)</Label>
+                <Input
+                  type="number"
+                  min="1"
+                  max="30"
+                  value={newTat}
+                  onChange={(e) => setNewTat(e.target.value)}
+                  placeholder="3"
+                />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddTestOpen(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddTest} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                "Add Parameter"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

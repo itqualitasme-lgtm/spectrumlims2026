@@ -4,6 +4,7 @@ import {
   Page,
   View,
   Text,
+  Image,
   StyleSheet,
   renderToBuffer,
 } from "@react-pdf/renderer"
@@ -21,6 +22,8 @@ interface LabInfo {
   website?: string | null
   trn?: string | null
   logo?: string | null
+  reportHeaderText?: string | null
+  reportFooterText?: string | null
 }
 
 interface CustomerInfo {
@@ -61,6 +64,7 @@ interface SampleInfo {
   status: string
   collectionDate?: Date | string | null
   collectionLocation?: string | null
+  samplePoint?: string | null
   notes?: string | null
   client: CustomerInfo
   sampleType: SampleTypeInfo
@@ -70,6 +74,8 @@ interface SampleInfo {
 interface UserInfo {
   id: string
   name: string
+  designation?: string | null
+  signatureUrl?: string | null
 }
 
 interface ReportInfo {
@@ -85,12 +91,25 @@ interface ReportInfo {
   reviewedBy?: UserInfo | null
 }
 
+interface TemplateInfo {
+  headerText?: string | null
+  footerText?: string | null
+  logoUrl?: string | null
+  accreditationLogoUrl?: string | null
+  accreditationText?: string | null
+  showLabLogo?: boolean
+}
+
 export interface COAPDFProps {
   report: ReportInfo
   sample: SampleInfo
   testResults: TestResultInfo[]
   lab: LabInfo
   customer: CustomerInfo
+  template?: TemplateInfo | null
+  qrCodeDataUrl?: string
+  verificationCode?: string
+  verificationUrl?: string
 }
 
 // ============= COLORS =============
@@ -111,30 +130,64 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     fontSize: 9,
     paddingTop: 40,
-    paddingBottom: 60,
+    paddingBottom: 80,
     paddingHorizontal: 40,
     color: TEXT_PRIMARY,
   },
 
   // Header
   header: {
-    textAlign: "center",
-    marginBottom: 20,
+    marginBottom: 16,
     borderBottomWidth: 2,
     borderBottomColor: BRAND_COLOR,
-    paddingBottom: 12,
+    paddingBottom: 10,
+  },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  headerCenter: {
+    flex: 1,
+    textAlign: "center",
+  },
+  headerLogo: {
+    width: 70,
+    height: 40,
+    objectFit: "contain" as any,
+  },
+  accreditationLogo: {
+    width: 55,
+    height: 35,
+    objectFit: "contain" as any,
   },
   labName: {
     fontSize: 18,
     fontFamily: "Helvetica-Bold",
     color: BRAND_COLOR,
-    marginBottom: 4,
+    marginBottom: 3,
     letterSpacing: 1,
+    textAlign: "center",
+  },
+  headerSubline: {
+    fontSize: 8,
+    color: TEXT_SECONDARY,
+    marginBottom: 1,
+    textAlign: "center",
   },
   labDetail: {
     fontSize: 8,
     color: TEXT_SECONDARY,
     marginBottom: 1,
+    textAlign: "center",
+  },
+  accreditationTextStyle: {
+    fontSize: 7,
+    color: BRAND_COLOR,
+    fontFamily: "Helvetica-Bold",
+    textAlign: "center",
+    marginTop: 2,
   },
 
   // Title
@@ -143,8 +196,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontFamily: "Helvetica-Bold",
     color: BRAND_COLOR,
-    marginTop: 12,
-    marginBottom: 16,
+    marginTop: 10,
+    marginBottom: 14,
     letterSpacing: 2,
   },
 
@@ -194,7 +247,7 @@ const styles = StyleSheet.create({
     backgroundColor: BRAND_LIGHT,
     padding: 8,
     borderRadius: 3,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   reportInfoItem: {
     textAlign: "center",
@@ -247,10 +300,11 @@ const styles = StyleSheet.create({
   },
 
   // Column widths
-  colParameter: { width: "22%" },
-  colTestMethod: { width: "18%" },
+  colSno: { width: "6%" },
+  colParameter: { width: "20%" },
+  colTestMethod: { width: "16%" },
   colUnit: { width: "10%" },
-  colResult: { width: "14%" },
+  colResult: { width: "12%" },
   colSpecMin: { width: "12%" },
   colSpecMax: { width: "12%" },
   colStatus: { width: "12%" },
@@ -280,15 +334,20 @@ const styles = StyleSheet.create({
     lineHeight: 1.5,
   },
 
-  // Signatures
-  signaturesContainer: {
+  // Signatures + QR row
+  bottomSection: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 30,
-    paddingHorizontal: 20,
+    marginTop: 20,
+    alignItems: "flex-end",
+  },
+  signaturesContainer: {
+    flexDirection: "row",
+    gap: 30,
+    flex: 1,
   },
   signatureBlock: {
-    width: "40%",
+    width: "45%",
     alignItems: "center",
   },
   signatureLine: {
@@ -296,7 +355,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: TEXT_PRIMARY,
     marginBottom: 6,
-    marginTop: 40,
+    marginTop: 10,
+  },
+  signatureImage: {
+    width: 80,
+    height: 35,
+    objectFit: "contain" as any,
+    marginTop: 8,
   },
   signatureLabel: {
     fontSize: 9,
@@ -308,10 +373,38 @@ const styles = StyleSheet.create({
     fontSize: 8,
     color: TEXT_SECONDARY,
   },
+  signatureDesignation: {
+    fontSize: 7,
+    color: TEXT_SECONDARY,
+    fontStyle: "italic",
+  },
   signatureDate: {
     fontSize: 7,
     color: TEXT_SECONDARY,
     marginTop: 2,
+  },
+
+  // QR Code
+  qrContainer: {
+    alignItems: "center",
+    width: 90,
+  },
+  qrImage: {
+    width: 70,
+    height: 70,
+  },
+  qrLabel: {
+    fontSize: 6,
+    color: TEXT_SECONDARY,
+    textAlign: "center",
+    marginTop: 3,
+  },
+  qrCode: {
+    fontSize: 5.5,
+    color: BRAND_COLOR,
+    textAlign: "center",
+    fontFamily: "Helvetica-Bold",
+    marginTop: 1,
   },
 
   // Footer
@@ -320,21 +413,22 @@ const styles = StyleSheet.create({
     bottom: 25,
     left: 40,
     right: 40,
-    textAlign: "center",
     borderTopWidth: 1,
     borderTopColor: BORDER_COLOR,
-    paddingTop: 8,
+    paddingTop: 6,
   },
   footerText: {
     fontSize: 6.5,
     color: TEXT_SECONDARY,
     fontStyle: "italic",
-    marginBottom: 2,
+    marginBottom: 1,
+    textAlign: "center",
   },
   footerWebsite: {
     fontSize: 7,
     color: BRAND_COLOR,
     fontFamily: "Helvetica-Bold",
+    textAlign: "center",
   },
 
   // Page number
@@ -359,23 +453,43 @@ function formatDate(date: Date | string | null | undefined): string {
   }
 }
 
-function formatDateTime(date: Date | string | null | undefined): string {
-  if (!date) return "N/A"
-  try {
-    const d = typeof date === "string" ? new Date(date) : date
-    return format(d, "dd MMM yyyy, HH:mm")
-  } catch {
-    return "N/A"
-  }
-}
-
 function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
 }
 
 // ============= PDF COMPONENT =============
 
-export function COAPDF({ report, sample, testResults, lab, customer }: COAPDFProps) {
+export function COAPDF({
+  report,
+  sample,
+  testResults,
+  lab,
+  customer,
+  template,
+  qrCodeDataUrl,
+  verificationCode,
+  verificationUrl,
+}: COAPDFProps) {
+  // Template overrides lab defaults
+  const footerText = template?.footerText || lab.reportFooterText
+  const footerLines = footerText
+    ? footerText.split("\n").filter((l) => l.trim())
+    : [
+        "This report shall not be reproduced except in full, without the written approval of the laboratory.",
+        "The results relate only to the items tested.",
+      ]
+
+  const headerText = template?.headerText || lab.reportHeaderText
+  const headerSubLines = headerText
+    ? headerText.split("\n").filter((l) => l.trim())
+    : []
+
+  const showLabLogo = template?.showLabLogo !== false
+  const logoUrl = template?.logoUrl || null
+  const accreditationLogoUrl = template?.accreditationLogoUrl || null
+  const accreditationText = template?.accreditationText || null
+  const hasLogos = (showLabLogo && logoUrl) || accreditationLogoUrl
+
   return (
     <Document
       title={`COA - ${report.reportNumber}`}
@@ -385,8 +499,37 @@ export function COAPDF({ report, sample, testResults, lab, customer }: COAPDFPro
     >
       <Page size="A4" style={styles.page}>
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={styles.labName}>Spectrum Testing &amp; Inspection</Text>
+        <View style={styles.header} fixed>
+          {hasLogos ? (
+            <View style={styles.headerRow}>
+              {showLabLogo && logoUrl ? (
+                <Image style={styles.headerLogo} src={logoUrl} />
+              ) : (
+                <View style={{ width: 70 }} />
+              )}
+              <View style={styles.headerCenter}>
+                <Text style={styles.labName}>{lab.name}</Text>
+                {headerSubLines.map((line, idx) => (
+                  <Text key={idx} style={styles.headerSubline}>{line}</Text>
+                ))}
+                {accreditationText && (
+                  <Text style={styles.accreditationTextStyle}>{accreditationText}</Text>
+                )}
+              </View>
+              {accreditationLogoUrl ? (
+                <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
+              ) : (
+                <View style={{ width: 55 }} />
+              )}
+            </View>
+          ) : (
+            <>
+              <Text style={styles.labName}>{lab.name}</Text>
+              {headerSubLines.map((line, idx) => (
+                <Text key={idx} style={styles.headerSubline}>{line}</Text>
+              ))}
+            </>
+          )}
           {lab.address && <Text style={styles.labDetail}>{lab.address}</Text>}
           <Text style={styles.labDetail}>
             {[lab.phone && `Tel: ${lab.phone}`, lab.email && `Email: ${lab.email}`]
@@ -406,6 +549,10 @@ export function COAPDF({ report, sample, testResults, lab, customer }: COAPDFPro
             <Text style={styles.reportInfoValue}>{report.reportNumber}</Text>
           </View>
           <View style={styles.reportInfoItem}>
+            <Text style={styles.reportInfoLabel}>Sample Number</Text>
+            <Text style={styles.reportInfoValue}>{sample.sampleNumber}</Text>
+          </View>
+          <View style={styles.reportInfoItem}>
             <Text style={styles.reportInfoLabel}>Date Issued</Text>
             <Text style={styles.reportInfoValue}>
               {formatDate(report.reviewedAt || report.createdAt)}
@@ -415,7 +562,7 @@ export function COAPDF({ report, sample, testResults, lab, customer }: COAPDFPro
             <Text style={styles.reportInfoLabel}>Page</Text>
             <Text
               style={styles.reportInfoValue}
-              render={({ pageNumber, totalPages }) => `${pageNumber} of ${totalPages}`}
+              render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`}
             />
           </View>
         </View>
@@ -441,6 +588,12 @@ export function COAPDF({ report, sample, testResults, lab, customer }: COAPDFPro
                 <Text style={styles.infoValue}>{customer.address}</Text>
               </View>
             )}
+            {customer.contactPerson && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Contact Person:</Text>
+                <Text style={styles.infoValue}>{customer.contactPerson}</Text>
+              </View>
+            )}
             {customer.trn && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>TRN:</Text>
@@ -452,10 +605,6 @@ export function COAPDF({ report, sample, testResults, lab, customer }: COAPDFPro
           {/* Sample Info */}
           <View style={styles.sectionHalf}>
             <Text style={styles.sectionTitle}>Sample Information</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Sample Number:</Text>
-              <Text style={styles.infoValue}>{sample.sampleNumber}</Text>
-            </View>
             <View style={styles.infoRow}>
               <Text style={styles.infoLabel}>Sample Type:</Text>
               <Text style={styles.infoValue}>{sample.sampleType.name}</Text>
@@ -470,6 +619,12 @@ export function COAPDF({ report, sample, testResults, lab, customer }: COAPDFPro
               <Text style={styles.infoLabel}>Collection Date:</Text>
               <Text style={styles.infoValue}>{formatDate(sample.collectionDate)}</Text>
             </View>
+            {sample.samplePoint && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Sample Point:</Text>
+                <Text style={styles.infoValue}>{sample.samplePoint}</Text>
+              </View>
+            )}
             {sample.collectionLocation && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>Location:</Text>
@@ -489,6 +644,7 @@ export function COAPDF({ report, sample, testResults, lab, customer }: COAPDFPro
           <View style={styles.table}>
             {/* Table Header */}
             <View style={styles.tableHeader}>
+              <Text style={[styles.tableHeaderCell, styles.colSno]}>S.No</Text>
               <Text style={[styles.tableHeaderCell, styles.colParameter, { textAlign: "left" }]}>
                 Parameter
               </Text>
@@ -520,7 +676,9 @@ export function COAPDF({ report, sample, testResults, lab, customer }: COAPDFPro
                 <View
                   key={result.id}
                   style={[styles.tableRow, isAlt ? styles.tableRowAlt : {}]}
+                  wrap={false}
                 >
+                  <Text style={[styles.tableCell, styles.colSno]}>{index + 1}</Text>
                   <Text style={[styles.tableCell, styles.colParameter, { textAlign: "left" }]}>
                     {result.parameter}
                   </Text>
@@ -558,35 +716,68 @@ export function COAPDF({ report, sample, testResults, lab, customer }: COAPDFPro
           </View>
         )}
 
-        {/* Signatures */}
-        <View style={styles.signaturesContainer}>
-          <View style={styles.signatureBlock}>
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureLabel}>Prepared By</Text>
-            <Text style={styles.signatureName}>{report.createdBy.name}</Text>
-            <Text style={styles.signatureDate}>
-              Date: {formatDate(report.createdAt)}
-            </Text>
+        {/* Signatures + QR Code */}
+        <View style={styles.bottomSection}>
+          <View style={styles.signaturesContainer}>
+            <View style={styles.signatureBlock}>
+              {report.createdBy.signatureUrl ? (
+                <Image style={styles.signatureImage} src={report.createdBy.signatureUrl} />
+              ) : (
+                <View style={styles.signatureLine} />
+              )}
+              <View style={styles.signatureLine} />
+              <Text style={styles.signatureLabel}>Prepared By</Text>
+              <Text style={styles.signatureName}>{report.createdBy.name}</Text>
+              {report.createdBy.designation && (
+                <Text style={styles.signatureDesignation}>{report.createdBy.designation}</Text>
+              )}
+              <Text style={styles.signatureDate}>
+                Date: {formatDate(report.createdAt)}
+              </Text>
+            </View>
+            <View style={styles.signatureBlock}>
+              {report.reviewedBy?.signatureUrl ? (
+                <Image style={styles.signatureImage} src={report.reviewedBy.signatureUrl} />
+              ) : (
+                <View style={{ marginTop: report.createdBy.signatureUrl ? 35 : 0 }} />
+              )}
+              <View style={styles.signatureLine} />
+              <Text style={styles.signatureLabel}>Approved By</Text>
+              <Text style={styles.signatureName}>
+                {report.reviewedBy?.name || "___________________"}
+              </Text>
+              {report.reviewedBy?.designation && (
+                <Text style={styles.signatureDesignation}>{report.reviewedBy.designation}</Text>
+              )}
+              <Text style={styles.signatureDate}>
+                Date: {report.reviewedAt ? formatDate(report.reviewedAt) : "___________________"}
+              </Text>
+            </View>
           </View>
-          <View style={styles.signatureBlock}>
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureLabel}>Approved By</Text>
-            <Text style={styles.signatureName}>
-              {report.reviewedBy?.name || "___________________"}
-            </Text>
-            <Text style={styles.signatureDate}>
-              Date: {report.reviewedAt ? formatDate(report.reviewedAt) : "___________________"}
-            </Text>
-          </View>
+
+          {/* QR Code for verification */}
+          {qrCodeDataUrl && (
+            <View style={styles.qrContainer}>
+              <Image style={styles.qrImage} src={qrCodeDataUrl} />
+              <Text style={styles.qrLabel}>Scan to verify</Text>
+              {verificationCode && (
+                <Text style={styles.qrCode}>{verificationCode}</Text>
+              )}
+            </View>
+          )}
         </View>
 
         {/* Footer */}
         <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>
-            This report shall not be reproduced except in full, without the written approval of the
-            laboratory.
-          </Text>
+          {footerLines.map((line, idx) => (
+            <Text key={idx} style={styles.footerText}>{line}</Text>
+          ))}
           {lab.website && <Text style={styles.footerWebsite}>{lab.website}</Text>}
+          {verificationUrl && (
+            <Text style={[styles.footerText, { marginTop: 2, fontStyle: "normal" }]}>
+              Verify this report: {verificationUrl}
+            </Text>
+          )}
         </View>
 
         {/* Page Number */}

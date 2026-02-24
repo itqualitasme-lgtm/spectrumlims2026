@@ -17,6 +17,18 @@ export async function getSampleTypes() {
   return sampleTypes
 }
 
+export async function getSampleType(id: string) {
+  const session = await requirePermission("masters", "view")
+  const user = session.user as any
+
+  const sampleType = await db.sampleType.findFirst({
+    where: { id, labId: user.labId },
+  })
+
+  if (!sampleType) throw new Error("Sample type not found")
+  return sampleType
+}
+
 export async function createSampleType(data: {
   name: string
   description?: string

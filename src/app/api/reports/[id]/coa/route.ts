@@ -3,6 +3,12 @@ import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { generateCOAPDF } from "@/components/reports/coa-pdf"
 import type { COAPDFProps } from "@/components/reports/coa-pdf"
+import QRCode from "qrcode"
+import crypto from "crypto"
+
+function generateVerificationCode(): string {
+  return crypto.randomBytes(12).toString("base64url")
+}
 
 export async function GET(
   request: Request,
@@ -18,12 +24,10 @@ export async function GET(
       )
     }
 
-    // Await params (Next.js 16 pattern)
     const { id } = await params
-
     const user = session.user as any
 
-    // Fetch report with all related data (filtered by labId for security)
+    // Fetch report with all related data including template and signatures
     const report = await db.report.findFirst({
       where: { id, labId: user.labId },
       include: {
@@ -34,11 +38,12 @@ export async function GET(
             testResults: true,
           },
         },
+        template: true,
         createdBy: {
-          select: { id: true, name: true },
+          select: { id: true, name: true, designation: true, signatureUrl: true },
         },
         reviewedBy: {
-          select: { id: true, name: true },
+          select: { id: true, name: true, designation: true, signatureUrl: true },
         },
         lab: true,
       },
@@ -58,6 +63,54 @@ export async function GET(
         { status: 400 }
       )
     }
+
+    // If no template assigned, try to use the default template
+    let template = report.template
+    if (!template) {
+      template = await db.reportTemplate.findFirst({
+        where: { labId: report.labId, isDefault: true },
+      })
+    }
+
+    // Generate or retrieve verification record
+    let verification = await db.reportVerification.findFirst({
+      where: { reportId: report.id },
+      orderBy: { createdAt: "desc" },
+    })
+
+    if (!verification) {
+      const verificationCode = generateVerificationCode()
+      verification = await db.reportVerification.create({
+        data: {
+          verificationCode,
+          reportId: report.id,
+          reportNumber: report.reportNumber,
+          sampleNumber: report.sample.sampleNumber,
+          clientName: report.sample.client.name,
+          sampleType: report.sample.sampleType.name,
+          testCount: report.sample.testResults.length,
+          issuedAt: report.reviewedAt || report.createdAt,
+          issuedBy: report.createdBy.name,
+          labId: report.labId,
+        },
+      })
+    }
+
+    // Build verification URL
+    const baseUrl = request.headers.get("x-forwarded-host")
+      ? `https://${request.headers.get("x-forwarded-host")}`
+      : request.headers.get("host")
+        ? `${request.headers.get("x-forwarded-proto") || "http"}://${request.headers.get("host")}`
+        : "http://localhost:3000"
+
+    const verificationUrl = `${baseUrl}/verify/${verification.verificationCode}`
+
+    // Generate QR code data URL
+    const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
+      width: 200,
+      margin: 1,
+      color: { dark: "#1e3a5f", light: "#ffffff" },
+    })
 
     // Build props for the PDF component
     const pdfProps: COAPDFProps = {
@@ -82,6 +135,7 @@ export async function GET(
         status: report.sample.status,
         collectionDate: report.sample.collectionDate,
         collectionLocation: report.sample.collectionLocation,
+        samplePoint: report.sample.samplePoint,
         notes: report.sample.notes,
         client: report.sample.client,
         sampleType: report.sample.sampleType,
@@ -98,8 +152,21 @@ export async function GET(
         website: report.lab.website,
         trn: report.lab.trn,
         logo: report.lab.logo,
+        reportHeaderText: report.lab.reportHeaderText,
+        reportFooterText: report.lab.reportFooterText,
       },
       customer: report.sample.client,
+      template: template ? {
+        headerText: template.headerText,
+        footerText: template.footerText,
+        logoUrl: template.logoUrl,
+        accreditationLogoUrl: template.accreditationLogoUrl,
+        accreditationText: template.accreditationText,
+        showLabLogo: template.showLabLogo,
+      } : null,
+      qrCodeDataUrl,
+      verificationCode: verification.verificationCode,
+      verificationUrl,
     }
 
     // Generate PDF buffer

@@ -10,29 +10,33 @@ datasource db {
 // ============= CORE ENTITIES =============
 
 model Lab {
-  id        String   @id @default(cuid())
-  name      String
-  code      String   @unique
-  address   String?
-  phone     String?
-  email     String?
-  website   String?
-  trn       String?
-  logo      String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id               String   @id @default(cuid())
+  name             String
+  code             String   @unique
+  address          String?
+  phone            String?
+  email            String?
+  website          String?
+  trn              String?
+  logo             String?
+  reportHeaderText String?
+  reportFooterText String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  users       User[]
-  customers   Customer[]
-  sampleTypes SampleType[]
-  samples     Sample[]
-  reports     Report[]
-  invoices    Invoice[]
-  quotations  Quotation[]
-  formatIds   FormatID[]
-  roles       Role[]
-  portalUsers PortalUser[]
-  auditLogs   AuditLog[]
+  users               User[]
+  customers            Customer[]
+  sampleTypes          SampleType[]
+  samples              Sample[]
+  reports              Report[]
+  invoices             Invoice[]
+  quotations           Quotation[]
+  formatIds            FormatID[]
+  roles                Role[]
+  portalUsers          PortalUser[]
+  auditLogs            AuditLog[]
+  reportVerifications  ReportVerification[]
+  reportTemplates      ReportTemplate[]
 }
 
 model Role {
@@ -73,18 +77,20 @@ model RolePermission {
 // ============= USERS =============
 
 model User {
-  id           String    @id @default(cuid())
-  name         String
-  email        String?
-  username     String    @unique
-  passwordHash String
-  phone        String?
-  roleId       String
-  labId        String
-  isActive     Boolean   @default(true)
-  lastLoginAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  name           String
+  email          String?
+  username       String    @unique
+  passwordHash   String
+  phone          String?
+  designation    String?
+  signatureUrl   String?
+  roleId         String
+  labId          String
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   role Role @relation(fields: [roleId], references: [id])
   lab  Lab  @relation(fields: [labId], references: [id])
@@ -238,6 +244,7 @@ model Report {
   reportType   String    @default("test_report")
   title        String?
   summary      String?
+  templateId   String?
   createdById  String
   reviewedById String?
   reviewedAt   DateTime?
@@ -246,10 +253,32 @@ model Report {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  sample     Sample @relation(fields: [sampleId], references: [id])
-  createdBy  User   @relation("CreatedBy", fields: [createdById], references: [id])
-  reviewedBy User?  @relation("ReviewedBy", fields: [reviewedById], references: [id])
-  lab        Lab    @relation(fields: [labId], references: [id])
+  sample        Sample               @relation(fields: [sampleId], references: [id])
+  template      ReportTemplate?      @relation(fields: [templateId], references: [id])
+  createdBy     User                 @relation("CreatedBy", fields: [createdById], references: [id])
+  reviewedBy    User?                @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  lab           Lab                  @relation(fields: [labId], references: [id])
+  verifications ReportVerification[]
+}
+
+model ReportTemplate {
+  id              String   @id @default(cuid())
+  name            String
+  headerText      String?
+  footerText      String?
+  logoUrl         String?
+  accreditationLogoUrl String?
+  accreditationText    String?
+  showLabLogo     Boolean  @default(true)
+  isDefault       Boolean  @default(false)
+  labId           String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  lab     Lab      @relation(fields: [labId], references: [id])
+  reports Report[]
+
+  @@unique([labId, name])
 }
 
 // ============= INVOICES =============
@@ -353,4 +382,24 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   lab Lab @relation(fields: [labId], references: [id])
+}
+
+// ============= REPORT VERIFICATION =============
+
+model ReportVerification {
+  id             String   @id @default(cuid())
+  verificationCode String @unique
+  reportId       String
+  reportNumber   String
+  sampleNumber   String
+  clientName     String
+  sampleType     String
+  testCount      Int      @default(0)
+  issuedAt       DateTime
+  issuedBy       String
+  labId          String
+  createdAt      DateTime @default(now())
+
+  report Report @relation(fields: [reportId], references: [id])
+  lab    Lab    @relation(fields: [labId], references: [id])
 }

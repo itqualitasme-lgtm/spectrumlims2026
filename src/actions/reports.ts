@@ -51,10 +51,39 @@ export async function getCompletedSamplesForSelect() {
   }))
 }
 
+export async function getReportTemplatesForSelect() {
+  const session = await getSession()
+  const user = session.user as any
+
+  const templates = await db.reportTemplate.findMany({
+    where: { labId: user.labId },
+    select: { id: true, name: true, isDefault: true },
+    orderBy: [{ isDefault: "desc" }, { name: "asc" }],
+  })
+
+  return templates
+}
+
+export async function updateReportTemplate(reportId: string, templateId: string | null) {
+  const session = await requirePermission("process", "edit")
+  const user = session.user as any
+
+  const report = await db.report.findFirst({ where: { id: reportId, labId: user.labId } })
+  if (!report) throw new Error("Report not found")
+
+  await db.report.update({
+    where: { id: reportId },
+    data: { templateId },
+  })
+
+  revalidatePath("/process/reports")
+}
+
 export async function createReport(data: {
   sampleId: string
   title: string
   summary?: string
+  templateId?: string
 }) {
   const session = await requirePermission("process", "create")
   const user = session.user as any
@@ -80,6 +109,7 @@ export async function createReport(data: {
       sampleId: data.sampleId,
       title: data.title,
       summary: data.summary || null,
+      templateId: data.templateId || null,
       status: "draft",
       createdById: user.id,
       labId,

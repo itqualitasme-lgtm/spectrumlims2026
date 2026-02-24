@@ -5,12 +5,12 @@ import {
   ClipboardList,
   TestTube,
   FileText,
-  MapPin,
   Receipt,
   FileSpreadsheet,
   Settings,
   Shield,
   ScrollText,
+  FileCheck,
   type LucideIcon,
 } from "lucide-react"
 
@@ -76,12 +76,6 @@ export const menuGroups: MenuGroup[] = [
         icon: FileText,
         permission: "process:view",
       },
-      {
-        title: "Sample Collection",
-        href: "/process/sample-collection",
-        icon: MapPin,
-        permission: "process:view",
-      },
     ],
   },
   {
@@ -114,6 +108,12 @@ export const menuGroups: MenuGroup[] = [
         title: "Roles & Permissions",
         href: "/admin/roles",
         icon: Shield,
+        permission: "admin:view",
+      },
+      {
+        title: "Report Templates",
+        href: "/admin/report-templates",
+        icon: FileCheck,
         permission: "admin:view",
       },
       {

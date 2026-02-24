@@ -1,10 +1,10 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
-import { Eye, Pencil, UserPlus, Trash2, Loader2, QrCode } from "lucide-react"
+import { Eye, Pencil, UserPlus, Trash2, Loader2, QrCode, Printer } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -14,6 +14,14 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -38,6 +46,7 @@ type Sample = {
   status: string
   jobType: string
   notes: string | null
+  collectionLocation: string | null
   createdAt: string
   client: { id: string; name: string; company: string | null }
   sampleType: { id: string; name: string }
@@ -78,19 +87,23 @@ const priorityBadge = (priority: string) => {
   }
 }
 
-const jobTypeBadge = (jobType: string) => {
-  switch (jobType) {
-    case "testing":
-      return <Badge variant="outline">Testing</Badge>
-    case "survey":
-      return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Survey</Badge>
-    default:
-      return <Badge variant="secondary">{jobType}</Badge>
-  }
-}
+const STATUS_OPTIONS = [
+  { value: "all", label: "All Statuses" },
+  { value: "registered", label: "Registered" },
+  { value: "assigned", label: "Assigned" },
+  { value: "testing", label: "Testing" },
+  { value: "completed", label: "Completed" },
+  { value: "reported", label: "Reported" },
+]
 
 export function RegistrationClient({ samples }: { samples: Sample[] }) {
   const router = useRouter()
+
+  // Filter state
+  const [statusFilter, setStatusFilter] = useState("all")
+
+  // Selection state
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   // Dialog states
   const [assignOpen, setAssignOpen] = useState(false)
@@ -103,6 +116,37 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
   // Assign form
   const [chemists, setChemists] = useState<{ value: string; label: string }[]>([])
   const [assignedToId, setAssignedToId] = useState("")
+
+  // Batch assign
+  const [batchAssignOpen, setBatchAssignOpen] = useState(false)
+  const [batchAssignToId, setBatchAssignToId] = useState("")
+
+  const filteredSamples = useMemo(() => {
+    if (statusFilter === "all") return samples
+    return samples.filter((s) => s.status === statusFilter)
+  }, [samples, statusFilter])
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredSamples.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(filteredSamples.map((s) => s.id)))
+    }
+  }
+
+  const selectedSamples = filteredSamples.filter((s) => selectedIds.has(s.id))
+  const assignableSamples = selectedSamples.filter((s) =>
+    ["pending", "registered"].includes(s.status)
+  )
 
   const handleOpenAssign = async (sample: Sample) => {
     try {
@@ -135,6 +179,52 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
     }
   }
 
+  const handleOpenBatchAssign = async () => {
+    if (assignableSamples.length === 0) {
+      toast.error("No selected samples can be assigned (must be pending or registered)")
+      return
+    }
+    try {
+      const ch = await getChemistsForSelect()
+      setChemists(ch.map((x) => ({ value: x.id, label: x.name })))
+      setBatchAssignToId("")
+      setBatchAssignOpen(true)
+    } catch {
+      toast.error("Failed to load chemists")
+    }
+  }
+
+  const handleBatchAssign = async () => {
+    if (!batchAssignToId) {
+      toast.error("Please select a chemist")
+      return
+    }
+
+    setLoading(true)
+    try {
+      for (const s of assignableSamples) {
+        await assignSample(s.id, batchAssignToId)
+      }
+      toast.success(`${assignableSamples.length} sample(s) assigned successfully`)
+      setBatchAssignOpen(false)
+      setSelectedIds(new Set())
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to assign samples")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleBatchPrintLabels = () => {
+    if (selectedIds.size === 0) {
+      toast.error("No samples selected")
+      return
+    }
+    const ids = Array.from(selectedIds).join(",")
+    window.open(`/api/samples/labels?ids=${ids}`, "_blank")
+  }
+
   const handleDelete = async () => {
     if (!selectedSample) return
 
@@ -143,6 +233,11 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
       await deleteSample(selectedSample.id)
       toast.success(`Sample ${selectedSample.sampleNumber} deleted`)
       setDeleteOpen(false)
+      setSelectedIds((prev) => {
+        const next = new Set(prev)
+        next.delete(selectedSample.id)
+        return next
+      })
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to delete sample")
@@ -152,6 +247,24 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
   }
 
   const columns: ColumnDef<Sample, any>[] = [
+    {
+      id: "select",
+      header: () => (
+        <Checkbox
+          checked={filteredSamples.length > 0 && selectedIds.size === filteredSamples.length}
+          onCheckedChange={toggleSelectAll}
+          className="h-4 w-4"
+        />
+      ),
+      cell: ({ row }) => (
+        <Checkbox
+          checked={selectedIds.has(row.original.id)}
+          onCheckedChange={() => toggleSelect(row.original.id)}
+          className="h-4 w-4"
+        />
+      ),
+      enableSorting: false,
+    },
     {
       accessorKey: "sampleNumber",
       header: "Sample #",
@@ -175,14 +288,14 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
       header: "Type",
     },
     {
-      accessorKey: "jobType",
-      header: "Job Type",
-      cell: ({ row }) => jobTypeBadge(row.original.jobType),
-    },
-    {
       accessorKey: "priority",
       header: "Priority",
       cell: ({ row }) => priorityBadge(row.original.priority),
+    },
+    {
+      accessorKey: "collectionLocation",
+      header: "Location",
+      cell: ({ row }) => row.original.collectionLocation || "-",
     },
     {
       accessorKey: "assignedTo.name",
@@ -202,63 +315,66 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "",
+      enableSorting: false,
       cell: ({ row }) => {
         const sample = row.original
         return (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0"
+              className="h-7 w-7 p-0"
               asChild
             >
               <Link href={`/process/registration/${sample.id}`}>
-                <Eye className="h-4 w-4" />
+                <Eye className="h-3.5 w-3.5" />
               </Link>
             </Button>
             {["pending", "registered", "assigned"].includes(sample.status) && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0"
+                className="h-7 w-7 p-0"
                 asChild
               >
                 <Link href={`/process/registration/${sample.id}/edit`}>
-                  <Pencil className="h-4 w-4" />
+                  <Pencil className="h-3.5 w-3.5" />
                 </Link>
               </Button>
             )}
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0"
+              className="h-7 w-7 p-0"
               onClick={() => window.open(`/api/samples/${sample.id}/label`, "_blank")}
               title="Print QR Label"
             >
-              <QrCode className="h-4 w-4" />
+              <QrCode className="h-3.5 w-3.5" />
             </Button>
             {["pending", "registered"].includes(sample.status) && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0"
+                className="h-7 w-7 p-0"
                 onClick={() => handleOpenAssign(sample)}
+                title="Assign to chemist"
               >
-                <UserPlus className="h-4 w-4" />
+                <UserPlus className="h-3.5 w-3.5" />
               </Button>
             )}
             {["pending", "registered"].includes(sample.status) && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
+                className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                 onClick={() => {
                   setSelectedSample(sample)
                   setDeleteOpen(true)
                 }}
+                title="Delete sample"
               >
-                <Trash2 className="h-4 w-4" />
+                <Trash2 className="h-3.5 w-3.5" />
               </Button>
             )}
           </div>
@@ -268,7 +384,7 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Sample Registration"
         description="Register and manage laboratory samples"
@@ -276,14 +392,73 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
         actionHref="/process/registration/new"
       />
 
+      {/* Filters & Batch Actions Bar */}
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 w-[160px] text-xs">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {statusFilter !== "all" && (
+            <Badge variant="secondary" className="text-xs">
+              {filteredSamples.length} sample{filteredSamples.length !== 1 ? "s" : ""}
+            </Badge>
+          )}
+        </div>
+
+        {selectedIds.size > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">
+              {selectedIds.size} selected
+            </span>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={handleBatchPrintLabels}
+            >
+              <Printer className="mr-1 h-3 w-3" />
+              Print Labels
+            </Button>
+            {assignableSamples.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={handleOpenBatchAssign}
+              >
+                <UserPlus className="mr-1 h-3 w-3" />
+                Assign ({assignableSamples.length})
+              </Button>
+            )}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => setSelectedIds(new Set())}
+            >
+              Clear
+            </Button>
+          </div>
+        )}
+      </div>
+
       <DataTable
         columns={columns}
-        data={samples}
+        data={filteredSamples}
         searchPlaceholder="Search samples..."
         searchKey="sampleNumber"
       />
 
-      {/* Assign Sample Dialog */}
+      {/* Single Assign Dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
@@ -316,6 +491,48 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
                 </>
               ) : (
                 "Assign"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Batch Assign Dialog */}
+      <Dialog open={batchAssignOpen} onOpenChange={setBatchAssignOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Batch Assign Samples</DialogTitle>
+            <DialogDescription>
+              Assign {assignableSamples.length} sample(s) to a chemist for testing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="text-xs text-muted-foreground">
+              Samples: {assignableSamples.map((s) => s.sampleNumber).join(", ")}
+            </div>
+            <div className="grid gap-2">
+              <Label>Assign To *</Label>
+              <SearchableSelect
+                options={chemists}
+                value={batchAssignToId}
+                onValueChange={setBatchAssignToId}
+                placeholder="Select a chemist..."
+                searchPlaceholder="Search chemists..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBatchAssignOpen(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button onClick={handleBatchAssign} disabled={loading}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Assigning...
+                </>
+              ) : (
+                `Assign ${assignableSamples.length} Sample(s)`
               )}
             </Button>
           </DialogFooter>
