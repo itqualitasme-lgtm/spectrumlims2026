@@ -20,9 +20,9 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ArrowLeft, Plus, Pencil, Trash2 } from "lucide-react"
@@ -59,62 +59,47 @@ interface Customer {
   contactPersons: ContactPerson[]
 }
 
-interface ContactFormData {
-  name: string
-  email: string
-  phone: string
-  designation: string
-}
-
-const emptyContactForm: ContactFormData = {
-  name: "",
-  email: "",
-  phone: "",
-  designation: "",
-}
-
 export function CustomerDetailClient({ customer }: { customer: Customer }) {
   const router = useRouter()
-  const [formOpen, setFormOpen] = useState(false)
-  const [formMode, setFormMode] = useState<"create" | "edit">("create")
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingContact, setEditingContact] = useState<ContactPerson | null>(null)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deletingContact, setDeletingContact] = useState<ContactPerson | null>(null)
   const [loading, setLoading] = useState(false)
-  const [contactForm, setContactForm] =
-    useState<ContactFormData>(emptyContactForm)
-  const [selectedContact, setSelectedContact] =
-    useState<ContactPerson | null>(null)
 
-  async function handleSubmit() {
-    if (!contactForm.name.trim()) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const name = (fd.get("name") as string)?.trim()
+
+    if (!name) {
       toast.error("Contact person name is required")
       return
     }
 
     setLoading(true)
     try {
-      if (formMode === "create") {
-        await createContactPerson({
+      if (editingContact) {
+        await updateContactPerson(editingContact.id, {
           customerId: customer.id,
-          name: contactForm.name,
-          email: contactForm.email || undefined,
-          phone: contactForm.phone || undefined,
-          designation: contactForm.designation || undefined,
-        })
-        toast.success("Contact person added successfully")
-      } else {
-        if (!selectedContact) return
-        await updateContactPerson(selectedContact.id, {
-          customerId: customer.id,
-          name: contactForm.name,
-          email: contactForm.email || undefined,
-          phone: contactForm.phone || undefined,
-          designation: contactForm.designation || undefined,
+          name,
+          email: (fd.get("email") as string) || undefined,
+          phone: (fd.get("phone") as string) || undefined,
+          designation: (fd.get("designation") as string) || undefined,
         })
         toast.success("Contact person updated successfully")
+      } else {
+        await createContactPerson({
+          customerId: customer.id,
+          name,
+          email: (fd.get("email") as string) || undefined,
+          phone: (fd.get("phone") as string) || undefined,
+          designation: (fd.get("designation") as string) || undefined,
+        })
+        toast.success("Contact person added successfully")
       }
-      setFormOpen(false)
-      setSelectedContact(null)
-      setContactForm(emptyContactForm)
+      setDialogOpen(false)
+      setEditingContact(null)
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to save contact person")
@@ -123,26 +108,25 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
     }
   }
 
-  async function handleDeleteContact() {
-    if (!selectedContact) return
+  async function handleDelete() {
+    if (!deletingContact) return
 
     setLoading(true)
     try {
-      await deleteContactPerson(selectedContact.id, customer.id)
+      await deleteContactPerson(deletingContact.id, customer.id)
       toast.success("Contact person deleted successfully")
-      setDeleteOpen(false)
-      setSelectedContact(null)
-      router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to delete contact person")
     } finally {
       setLoading(false)
+      setDeleteOpen(false)
+      setDeletingContact(null)
     }
+    router.refresh()
   }
 
   return (
     <div className="space-y-6">
-      {/* Back button */}
       <div>
         <Button variant="ghost" size="sm" asChild>
           <Link href="/masters/customers">
@@ -152,7 +136,6 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
         </Button>
       </div>
 
-      {/* Customer info card */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
@@ -198,7 +181,6 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
         </CardContent>
       </Card>
 
-      {/* Tabs */}
       <Tabs defaultValue="contacts">
         <TabsList>
           <TabsTrigger value="contacts">
@@ -210,10 +192,8 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
           <div className="flex justify-end">
             <Button
               onClick={() => {
-                setContactForm(emptyContactForm)
-                setSelectedContact(null)
-                setFormMode("create")
-                setFormOpen(true)
+                setEditingContact(null)
+                setDialogOpen(true)
               }}
             >
               <Plus className="mr-2 h-4 w-4" />
@@ -249,15 +229,8 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
                             size="sm"
                             className="h-8 w-8 p-0"
                             onClick={() => {
-                              setSelectedContact(contact)
-                              setContactForm({
-                                name: contact.name,
-                                email: contact.email || "",
-                                phone: contact.phone || "",
-                                designation: contact.designation || "",
-                              })
-                              setFormMode("edit")
-                              setFormOpen(true)
+                              setEditingContact(contact)
+                              setDialogOpen(true)
                             }}
                           >
                             <Pencil className="h-4 w-4" />
@@ -267,7 +240,7 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
                             size="sm"
                             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                             onClick={() => {
-                              setSelectedContact(contact)
+                              setDeletingContact(contact)
                               setDeleteOpen(true)
                             }}
                           >
@@ -290,81 +263,83 @@ export function CustomerDetailClient({ customer }: { customer: Customer }) {
         </TabsContent>
       </Tabs>
 
-      {/* Single Contact Dialog */}
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open)
+        if (!open) setEditingContact(null)
+      }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {formMode === "create"
-                ? "Add Contact Person"
-                : "Edit Contact Person"}
+              {editingContact ? "Edit Contact Person" : "Add Contact Person"}
             </DialogTitle>
+            <DialogDescription>
+              {editingContact
+                ? "Update contact person details below."
+                : "Fill in the contact person details below."}
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Name *</Label>
-              <Input
-                value={contactForm.name}
-                onChange={(e) =>
-                  setContactForm({ ...contactForm, name: e.target.value })
-                }
-                placeholder="Contact person name"
-              />
+          <form key={editingContact?.id || "create"} onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Name *</Label>
+                <Input
+                  name="name"
+                  defaultValue={editingContact?.name || ""}
+                  placeholder="Contact person name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Email</Label>
+                <Input
+                  name="email"
+                  type="email"
+                  defaultValue={editingContact?.email || ""}
+                  placeholder="email@example.com"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Phone</Label>
+                <Input
+                  name="phone"
+                  defaultValue={editingContact?.phone || ""}
+                  placeholder="Phone number"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Designation</Label>
+                <Input
+                  name="designation"
+                  defaultValue={editingContact?.designation || ""}
+                  placeholder="e.g. Lab Manager, Quality Head"
+                />
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={contactForm.email}
-                onChange={(e) =>
-                  setContactForm({ ...contactForm, email: e.target.value })
-                }
-                placeholder="email@example.com"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Phone</Label>
-              <Input
-                value={contactForm.phone}
-                onChange={(e) =>
-                  setContactForm({ ...contactForm, phone: e.target.value })
-                }
-                placeholder="Phone number"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Designation</Label>
-              <Input
-                value={contactForm.designation}
-                onChange={(e) =>
-                  setContactForm({
-                    ...contactForm,
-                    designation: e.target.value,
-                  })
-                }
-                placeholder="e.g. Lab Manager, Quality Head"
-              />
-            </div>
-            <DialogFooter>
-              <Button onClick={handleSubmit} disabled={loading}>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
                 {loading
                   ? "Saving..."
-                  : formMode === "create"
-                    ? "Add Contact"
-                    : "Update Contact"}
+                  : editingContact
+                    ? "Update Contact"
+                    : "Add Contact"}
               </Button>
-            </DialogFooter>
-          </div>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Contact Confirm */}
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title="Delete Contact Person"
-        description={`Are you sure you want to delete "${selectedContact?.name}"? This action cannot be undone.`}
-        onConfirm={handleDeleteContact}
+        description={`Are you sure you want to delete "${deletingContact?.name}"? This action cannot be undone.`}
+        onConfirm={handleDelete}
         confirmLabel="Delete"
         destructive
         loading={loading}

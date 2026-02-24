@@ -7,9 +7,9 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -81,46 +81,6 @@ interface Customer {
   company: string | null
 }
 
-interface UserFormData {
-  name: string
-  email: string
-  username: string
-  password: string
-  phone: string
-  roleId: string
-}
-
-interface PortalUserFormData {
-  username: string
-  password: string
-  customerId: string
-}
-
-interface EditPortalUserFormData {
-  isActive: boolean
-  password: string
-}
-
-const emptyUserForm: UserFormData = {
-  name: "",
-  email: "",
-  username: "",
-  password: "",
-  phone: "",
-  roleId: "",
-}
-
-const emptyPortalUserForm: PortalUserFormData = {
-  username: "",
-  password: "",
-  customerId: "",
-}
-
-const emptyEditPortalUserForm: EditPortalUserFormData = {
-  isActive: true,
-  password: "",
-}
-
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "Never"
   const date = new Date(dateStr)
@@ -146,54 +106,34 @@ export function UsersClient({
 }) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
-
-  // Employee user state - single dialog
-  const [userFormOpen, setUserFormOpen] = useState(false)
-  const [userFormMode, setUserFormMode] = useState<"create" | "edit">("create")
-  const [deleteUserOpen, setDeleteUserOpen] = useState(false)
-  const [userForm, setUserForm] = useState<UserFormData>(emptyUserForm)
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
-
-  // Portal user state - single dialog
-  const [portalFormOpen, setPortalFormOpen] = useState(false)
-  const [portalFormMode, setPortalFormMode] = useState<"create" | "edit">("create")
-  const [deletePortalOpen, setDeletePortalOpen] = useState(false)
-  const [portalForm, setPortalForm] =
-    useState<PortalUserFormData>(emptyPortalUserForm)
-  const [editPortalForm, setEditPortalForm] =
-    useState<EditPortalUserFormData>(emptyEditPortalUserForm)
-  const [selectedPortalUser, setSelectedPortalUser] =
-    useState<PortalUserType | null>(null)
-
-  // Active tab
   const [activeTab, setActiveTab] = useState("employees")
 
-  // ========== Employee User Columns ==========
+  // Employee user dialog
+  const [userDialogOpen, setUserDialogOpen] = useState(false)
+  const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [userRoleId, setUserRoleId] = useState("")
+  const [deleteUserOpen, setDeleteUserOpen] = useState(false)
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
+  const [deletingUserName, setDeletingUserName] = useState("")
+
+  // Portal user dialog
+  const [portalDialogOpen, setPortalDialogOpen] = useState(false)
+  const [editingPortalUser, setEditingPortalUser] = useState<PortalUserType | null>(null)
+  const [portalCustomerId, setPortalCustomerId] = useState("")
+  const [portalStatusValue, setPortalStatusValue] = useState("active")
+  const [deletePortalOpen, setDeletePortalOpen] = useState(false)
+  const [deletingPortalId, setDeletingPortalId] = useState<string | null>(null)
+  const [deletingPortalName, setDeletingPortalName] = useState("")
+
   const userColumns: ColumnDef<User, any>[] = [
-    {
-      accessorKey: "name",
-      header: "Name",
-    },
-    {
-      accessorKey: "username",
-      header: "Username",
-    },
-    {
-      accessorKey: "email",
-      header: "Email",
-      cell: ({ row }) => row.original.email || "-",
-    },
-    {
-      accessorKey: "phone",
-      header: "Phone",
-      cell: ({ row }) => row.original.phone || "-",
-    },
+    { accessorKey: "name", header: "Name" },
+    { accessorKey: "username", header: "Username" },
+    { accessorKey: "email", header: "Email", cell: ({ row }) => row.original.email || "-" },
+    { accessorKey: "phone", header: "Phone", cell: ({ row }) => row.original.phone || "-" },
     {
       accessorKey: "role.name",
       header: "Role",
-      cell: ({ row }) => (
-        <Badge variant="outline">{row.original.role.name}</Badge>
-      ),
+      cell: ({ row }) => <Badge variant="outline">{row.original.role.name}</Badge>,
     },
     {
       accessorKey: "isActive",
@@ -201,68 +141,34 @@ export function UsersClient({
       cell: ({ row }) => (
         <Badge
           variant={row.original.isActive ? "default" : "secondary"}
-          className={
-            row.original.isActive
-              ? "bg-green-100 text-green-800 hover:bg-green-100"
-              : "bg-red-100 text-red-800 hover:bg-red-100"
-          }
+          className={row.original.isActive ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-red-100 text-red-800 hover:bg-red-100"}
         >
           {row.original.isActive ? "Active" : "Inactive"}
         </Badge>
       ),
     },
-    {
-      accessorKey: "lastLoginAt",
-      header: "Last Login",
-      cell: ({ row }) => formatDate(row.original.lastLoginAt),
-    },
+    { accessorKey: "lastLoginAt", header: "Last Login", cell: ({ row }) => formatDate(row.original.lastLoginAt) },
     {
       id: "actions",
       header: "",
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => {
-              setSelectedUser(row.original)
-              setUserForm({
-                name: row.original.name,
-                email: row.original.email || "",
-                username: row.original.username,
-                password: "",
-                phone: row.original.phone || "",
-                roleId: row.original.roleId,
-              })
-              setUserFormMode("edit")
-              setUserFormOpen(true)
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
+            setEditingUser(row.original)
+            setUserRoleId(row.original.roleId)
+            setUserDialogOpen(true)
+          }}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => handleToggleUserActive(row.original)}
-          >
-            {row.original.isActive ? (
-              <UserX className="h-4 w-4" />
-            ) : (
-              <UserCheck className="h-4 w-4" />
-            )}
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleToggleUserActive(row.original)}>
+            {row.original.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-            onClick={() => {
-              setSelectedUser(row.original)
-              setDeleteUserOpen(true)
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => {
+            setDeletingUserId(row.original.id)
+            setDeletingUserName(row.original.name)
+            setDeleteUserOpen(true)
+          }}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -270,70 +176,40 @@ export function UsersClient({
     },
   ]
 
-  // ========== Portal User Columns ==========
   const portalUserColumns: ColumnDef<PortalUserType, any>[] = [
-    {
-      accessorKey: "username",
-      header: "Username",
-    },
-    {
-      accessorKey: "customer",
-      header: "Customer",
-      cell: ({ row }) =>
-        row.original.customer.company || row.original.customer.name,
-    },
+    { accessorKey: "username", header: "Username" },
+    { accessorKey: "customer", header: "Customer", cell: ({ row }) => row.original.customer.company || row.original.customer.name },
     {
       accessorKey: "isActive",
       header: "Status",
       cell: ({ row }) => (
         <Badge
           variant={row.original.isActive ? "default" : "secondary"}
-          className={
-            row.original.isActive
-              ? "bg-green-100 text-green-800 hover:bg-green-100"
-              : "bg-red-100 text-red-800 hover:bg-red-100"
-          }
+          className={row.original.isActive ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-red-100 text-red-800 hover:bg-red-100"}
         >
           {row.original.isActive ? "Active" : "Inactive"}
         </Badge>
       ),
     },
-    {
-      accessorKey: "lastLogin",
-      header: "Last Login",
-      cell: ({ row }) => formatDate(row.original.lastLogin),
-    },
+    { accessorKey: "lastLogin", header: "Last Login", cell: ({ row }) => formatDate(row.original.lastLogin) },
     {
       id: "actions",
       header: "",
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => {
-              setSelectedPortalUser(row.original)
-              setEditPortalForm({
-                isActive: row.original.isActive,
-                password: "",
-              })
-              setPortalFormMode("edit")
-              setPortalFormOpen(true)
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
+            setEditingPortalUser(row.original)
+            setPortalStatusValue(row.original.isActive ? "active" : "inactive")
+            setPortalDialogOpen(true)
+          }}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-            onClick={() => {
-              setSelectedPortalUser(row.original)
-              setDeletePortalOpen(true)
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => {
+            setDeletingPortalId(row.original.id)
+            setDeletingPortalName(row.original.username)
+            setDeletePortalOpen(true)
+          }}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -341,52 +217,37 @@ export function UsersClient({
     },
   ]
 
-  // ========== Employee User Handlers ==========
-  async function handleSubmitUser() {
-    if (!userForm.name.trim()) {
-      toast.error("Name is required")
-      return
-    }
-    if (!userForm.username.trim()) {
-      toast.error("Username is required")
-      return
-    }
-    if (!userForm.roleId) {
-      toast.error("Role is required")
-      return
-    }
+  async function handleSubmitUser(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const name = (fd.get("name") as string)?.trim()
+    const username = (fd.get("username") as string)?.trim()
+    const password = (fd.get("password") as string)?.trim()
+    const email = fd.get("email") as string
+    const phone = fd.get("phone") as string
 
-    if (userFormMode === "create" && !userForm.password.trim()) {
-      toast.error("Password is required")
-      return
-    }
+    if (!name) { toast.error("Name is required"); return }
+    if (!username) { toast.error("Username is required"); return }
+    if (!userRoleId) { toast.error("Role is required"); return }
+    if (!editingUser && !password) { toast.error("Password is required"); return }
 
     setLoading(true)
     try {
-      if (userFormMode === "create") {
-        await createUser({
-          name: userForm.name,
-          email: userForm.email || undefined,
-          username: userForm.username,
-          password: userForm.password,
-          phone: userForm.phone || undefined,
-          roleId: userForm.roleId,
-        })
-        toast.success("User created successfully")
-      } else {
-        if (!selectedUser) return
-        await updateUser(selectedUser.id, {
-          name: userForm.name,
-          email: userForm.email || undefined,
-          phone: userForm.phone || undefined,
-          roleId: userForm.roleId,
-          password: userForm.password || undefined,
+      if (editingUser) {
+        await updateUser(editingUser.id, {
+          name, email: email || undefined, phone: phone || undefined,
+          roleId: userRoleId, password: password || undefined,
         })
         toast.success("User updated successfully")
+      } else {
+        await createUser({
+          name, email: email || undefined, username, password: password!,
+          phone: phone || undefined, roleId: userRoleId,
+        })
+        toast.success("User created successfully")
       }
-      setUserFormOpen(false)
-      setSelectedUser(null)
-      setUserForm(emptyUserForm)
+      setUserDialogOpen(false)
+      setEditingUser(null)
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to save user")
@@ -399,11 +260,7 @@ export function UsersClient({
     setLoading(true)
     try {
       await updateUser(user.id, { isActive: !user.isActive })
-      toast.success(
-        user.isActive
-          ? "User deactivated successfully"
-          : "User activated successfully"
-      )
+      toast.success(user.isActive ? "User deactivated" : "User activated")
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to update user status")
@@ -413,91 +270,66 @@ export function UsersClient({
   }
 
   async function handleDeleteUser() {
-    if (!selectedUser) return
-
+    if (!deletingUserId) return
     setLoading(true)
     try {
-      await deleteUser(selectedUser.id)
+      await deleteUser(deletingUserId)
       toast.success("User deleted successfully")
-      setDeleteUserOpen(false)
-      setSelectedUser(null)
-      router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to delete user")
     } finally {
       setLoading(false)
+      setDeleteUserOpen(false)
+      setDeletingUserId(null)
     }
+    router.refresh()
   }
 
-  // ========== Portal User Handlers ==========
-  async function handleSubmitPortalUser() {
-    if (portalFormMode === "create") {
-      if (!portalForm.username.trim()) {
-        toast.error("Username is required")
-        return
-      }
-      if (!portalForm.password.trim()) {
-        toast.error("Password is required")
-        return
-      }
-      if (!portalForm.customerId) {
-        toast.error("Customer is required")
-        return
-      }
+  async function handleSubmitPortalUser(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const fd = new FormData(e.currentTarget)
+    const username = (fd.get("username") as string)?.trim()
+    const password = (fd.get("password") as string)?.trim()
 
-      setLoading(true)
-      try {
-        await createPortalUser({
-          username: portalForm.username,
-          password: portalForm.password,
-          customerId: portalForm.customerId,
-        })
-        toast.success("Portal user created successfully")
-        setPortalFormOpen(false)
-        setPortalForm(emptyPortalUserForm)
-        router.refresh()
-      } catch (error: any) {
-        toast.error(error.message || "Failed to create portal user")
-      } finally {
-        setLoading(false)
-      }
-    } else {
-      if (!selectedPortalUser) return
-
-      setLoading(true)
-      try {
-        await updatePortalUser(selectedPortalUser.id, {
-          isActive: editPortalForm.isActive,
-          password: editPortalForm.password || undefined,
+    setLoading(true)
+    try {
+      if (editingPortalUser) {
+        await updatePortalUser(editingPortalUser.id, {
+          isActive: portalStatusValue === "active",
+          password: password || undefined,
         })
         toast.success("Portal user updated successfully")
-        setPortalFormOpen(false)
-        setSelectedPortalUser(null)
-        setEditPortalForm(emptyEditPortalUserForm)
-        router.refresh()
-      } catch (error: any) {
-        toast.error(error.message || "Failed to update portal user")
-      } finally {
-        setLoading(false)
+      } else {
+        if (!username) { toast.error("Username is required"); setLoading(false); return }
+        if (!password) { toast.error("Password is required"); setLoading(false); return }
+        if (!portalCustomerId) { toast.error("Customer is required"); setLoading(false); return }
+        await createPortalUser({ username, password, customerId: portalCustomerId })
+        toast.success("Portal user created successfully")
       }
+      setPortalDialogOpen(false)
+      setEditingPortalUser(null)
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to save portal user")
+    } finally {
+      setLoading(false)
     }
   }
 
   async function handleDeletePortalUser() {
-    if (!selectedPortalUser) return
-
+    if (!deletingPortalId) return
     setLoading(true)
     try {
-      await deletePortalUser(selectedPortalUser.id)
+      await deletePortalUser(deletingPortalId)
       toast.success("Portal user deleted successfully")
-      setDeletePortalOpen(false)
-      setSelectedPortalUser(null)
-      router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to delete portal user")
     } finally {
       setLoading(false)
+      setDeletePortalOpen(false)
+      setDeletingPortalId(null)
     }
+    router.refresh()
   }
 
   return (
@@ -508,15 +340,13 @@ export function UsersClient({
         actionLabel={activeTab === "employees" ? "Add User" : "Add Portal User"}
         onAction={() => {
           if (activeTab === "employees") {
-            setUserForm(emptyUserForm)
-            setSelectedUser(null)
-            setUserFormMode("create")
-            setUserFormOpen(true)
+            setEditingUser(null)
+            setUserRoleId("")
+            setUserDialogOpen(true)
           } else {
-            setPortalForm(emptyPortalUserForm)
-            setSelectedPortalUser(null)
-            setPortalFormMode("create")
-            setPortalFormOpen(true)
+            setEditingPortalUser(null)
+            setPortalCustomerId("")
+            setPortalDialogOpen(true)
           }
         }}
       />
@@ -526,272 +356,128 @@ export function UsersClient({
           <TabsTrigger value="employees">Employees</TabsTrigger>
           <TabsTrigger value="portal">Portal Users</TabsTrigger>
         </TabsList>
-
         <TabsContent value="employees">
-          <DataTable
-            columns={userColumns}
-            data={users}
-            searchPlaceholder="Search employees..."
-            searchKey="name"
-          />
+          <DataTable columns={userColumns} data={users} searchPlaceholder="Search employees..." searchKey="name" />
         </TabsContent>
-
         <TabsContent value="portal">
-          <DataTable
-            columns={portalUserColumns}
-            data={portalUsers}
-            searchPlaceholder="Search portal users..."
-            searchKey="username"
-          />
+          <DataTable columns={portalUserColumns} data={portalUsers} searchPlaceholder="Search portal users..." searchKey="username" />
         </TabsContent>
       </Tabs>
 
-      {/* Single Employee User Dialog */}
-      <Dialog open={userFormOpen} onOpenChange={setUserFormOpen}>
+      {/* Employee User Dialog */}
+      <Dialog open={userDialogOpen} onOpenChange={(open) => { setUserDialogOpen(open); if (!open) setEditingUser(null) }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {userFormMode === "create" ? "Add User" : "Edit User"}
-            </DialogTitle>
+            <DialogTitle>{editingUser ? "Edit User" : "Add User"}</DialogTitle>
+            <DialogDescription>{editingUser ? "Update user details below." : "Fill in the user details below."}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Name *</Label>
-              <Input
-                value={userForm.name}
-                onChange={(e) =>
-                  setUserForm({ ...userForm, name: e.target.value })
-                }
-                placeholder="Full name"
-              />
+          <form key={editingUser?.id || "create-user"} onSubmit={handleSubmitUser}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Name *</Label>
+                <Input name="name" defaultValue={editingUser?.name || ""} placeholder="Full name" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Email</Label>
+                <Input name="email" type="email" defaultValue={editingUser?.email || ""} placeholder="email@example.com" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Username *</Label>
+                <Input name="username" defaultValue={editingUser?.username || ""} placeholder="Username" disabled={!!editingUser} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Password {editingUser ? "(leave blank to keep current)" : "*"}</Label>
+                <Input name="password" type="password" defaultValue="" placeholder={editingUser ? "Leave blank to keep current" : "Password"} />
+              </div>
+              <div className="grid gap-2">
+                <Label>Phone</Label>
+                <Input name="phone" defaultValue={editingUser?.phone || ""} placeholder="Phone number" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Role *</Label>
+                <Select value={userRoleId} onValueChange={setUserRoleId}>
+                  <SelectTrigger className="w-full"><SelectValue placeholder="Select a role" /></SelectTrigger>
+                  <SelectContent>
+                    {roles.map((role) => (<SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Email</Label>
-              <Input
-                type="email"
-                value={userForm.email}
-                onChange={(e) =>
-                  setUserForm({ ...userForm, email: e.target.value })
-                }
-                placeholder="email@example.com"
-              />
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setUserDialogOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={loading}>{loading ? "Saving..." : editingUser ? "Update User" : "Create User"}</Button>
             </div>
-            <div className="grid gap-2">
-              <Label>Username *</Label>
-              <Input
-                value={userForm.username}
-                onChange={(e) =>
-                  setUserForm({ ...userForm, username: e.target.value })
-                }
-                placeholder="Username"
-                disabled={userFormMode === "edit"}
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>
-                Password{" "}
-                {userFormMode === "edit"
-                  ? "(leave blank to keep current)"
-                  : "*"}
-              </Label>
-              <Input
-                type="password"
-                value={userForm.password}
-                onChange={(e) =>
-                  setUserForm({ ...userForm, password: e.target.value })
-                }
-                placeholder={
-                  userFormMode === "edit"
-                    ? "Leave blank to keep current"
-                    : "Password"
-                }
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Phone</Label>
-              <Input
-                value={userForm.phone}
-                onChange={(e) =>
-                  setUserForm({ ...userForm, phone: e.target.value })
-                }
-                placeholder="Phone number"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Role *</Label>
-              <Select
-                value={userForm.roleId}
-                onValueChange={(value) =>
-                  setUserForm({ ...userForm, roleId: value })
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select a role" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roles.map((role) => (
-                    <SelectItem key={role.id} value={role.id}>
-                      {role.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleSubmitUser} disabled={loading}>
-                {loading
-                  ? "Saving..."
-                  : userFormMode === "create"
-                    ? "Create User"
-                    : "Update User"}
-              </Button>
-            </DialogFooter>
-          </div>
+          </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete User Confirm */}
-      <ConfirmDialog
-        open={deleteUserOpen}
-        onOpenChange={setDeleteUserOpen}
-        title="Delete User"
-        description={`Are you sure you want to delete "${selectedUser?.name}"? This action cannot be undone.`}
-        onConfirm={handleDeleteUser}
-        confirmLabel="Delete"
-        destructive
-        loading={loading}
-      />
+      <ConfirmDialog open={deleteUserOpen} onOpenChange={setDeleteUserOpen} title="Delete User"
+        description={`Are you sure you want to delete "${deletingUserName}"? This action cannot be undone.`}
+        onConfirm={handleDeleteUser} confirmLabel="Delete" destructive loading={loading} />
 
-      {/* Single Portal User Dialog */}
-      <Dialog open={portalFormOpen} onOpenChange={setPortalFormOpen}>
+      {/* Portal User Dialog */}
+      <Dialog open={portalDialogOpen} onOpenChange={(open) => { setPortalDialogOpen(open); if (!open) setEditingPortalUser(null) }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {portalFormMode === "create"
-                ? "Add Portal User"
-                : "Edit Portal User"}
-            </DialogTitle>
+            <DialogTitle>{editingPortalUser ? "Edit Portal User" : "Add Portal User"}</DialogTitle>
+            <DialogDescription>{editingPortalUser ? "Update portal user details below." : "Fill in the portal user details below."}</DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            {portalFormMode === "create" ? (
-              <>
-                <div className="grid gap-2">
-                  <Label>Username *</Label>
-                  <Input
-                    value={portalForm.username}
-                    onChange={(e) =>
-                      setPortalForm({
-                        ...portalForm,
-                        username: e.target.value,
-                      })
-                    }
-                    placeholder="Username"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Password *</Label>
-                  <Input
-                    type="password"
-                    value={portalForm.password}
-                    onChange={(e) =>
-                      setPortalForm({
-                        ...portalForm,
-                        password: e.target.value,
-                      })
-                    }
-                    placeholder="Password"
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Customer *</Label>
-                  <Select
-                    value={portalForm.customerId}
-                    onValueChange={(value) =>
-                      setPortalForm({ ...portalForm, customerId: value })
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue placeholder="Select a customer" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((customer) => (
-                        <SelectItem key={customer.id} value={customer.id}>
-                          {customer.company || customer.name} ({customer.code})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="grid gap-2">
-                  <Label>Username</Label>
-                  <Input
-                    value={selectedPortalUser?.username || ""}
-                    disabled
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Status</Label>
-                  <Select
-                    value={editPortalForm.isActive ? "active" : "inactive"}
-                    onValueChange={(value) =>
-                      setEditPortalForm({
-                        ...editPortalForm,
-                        isActive: value === "active",
-                      })
-                    }
-                  >
-                    <SelectTrigger className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Inactive</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label>Password (leave blank to keep current)</Label>
-                  <Input
-                    type="password"
-                    value={editPortalForm.password}
-                    onChange={(e) =>
-                      setEditPortalForm({
-                        ...editPortalForm,
-                        password: e.target.value,
-                      })
-                    }
-                    placeholder="Leave blank to keep current"
-                  />
-                </div>
-              </>
-            )}
-            <DialogFooter>
-              <Button onClick={handleSubmitPortalUser} disabled={loading}>
-                {loading
-                  ? "Saving..."
-                  : portalFormMode === "create"
-                    ? "Create Portal User"
-                    : "Update Portal User"}
-              </Button>
-            </DialogFooter>
-          </div>
+          <form key={editingPortalUser?.id || "create-portal"} onSubmit={handleSubmitPortalUser}>
+            <div className="grid gap-4 py-4">
+              {editingPortalUser ? (
+                <>
+                  <div className="grid gap-2">
+                    <Label>Username</Label>
+                    <Input defaultValue={editingPortalUser.username} disabled />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Status</Label>
+                    <Select value={portalStatusValue} onValueChange={setPortalStatusValue}>
+                      <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="inactive">Inactive</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Password (leave blank to keep current)</Label>
+                    <Input name="password" type="password" defaultValue="" placeholder="Leave blank to keep current" />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="grid gap-2">
+                    <Label>Username *</Label>
+                    <Input name="username" defaultValue="" placeholder="Username" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Password *</Label>
+                    <Input name="password" type="password" defaultValue="" placeholder="Password" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label>Customer *</Label>
+                    <Select value={portalCustomerId} onValueChange={setPortalCustomerId}>
+                      <SelectTrigger className="w-full"><SelectValue placeholder="Select a customer" /></SelectTrigger>
+                      <SelectContent>
+                        {customers.map((c) => (<SelectItem key={c.id} value={c.id}>{c.company || c.name} ({c.code})</SelectItem>))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setPortalDialogOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={loading}>{loading ? "Saving..." : editingPortalUser ? "Update Portal User" : "Create Portal User"}</Button>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Portal User Confirm */}
-      <ConfirmDialog
-        open={deletePortalOpen}
-        onOpenChange={setDeletePortalOpen}
-        title="Delete Portal User"
-        description={`Are you sure you want to delete portal user "${selectedPortalUser?.username}"? This action cannot be undone.`}
-        onConfirm={handleDeletePortalUser}
-        confirmLabel="Delete"
-        destructive
-        loading={loading}
-      />
+      <ConfirmDialog open={deletePortalOpen} onOpenChange={setDeletePortalOpen} title="Delete Portal User"
+        description={`Are you sure you want to delete portal user "${deletingPortalName}"? This action cannot be undone.`}
+        onConfirm={handleDeletePortalUser} confirmLabel="Delete" destructive loading={loading} />
     </div>
   )
 }

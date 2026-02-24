@@ -7,9 +7,9 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -44,34 +44,14 @@ interface Customer {
   }
 }
 
-interface FormData {
-  name: string
-  email: string
-  company: string
-  phone: string
-  address: string
-  contactPerson: string
-  trn: string
-}
-
-const emptyForm: FormData = {
-  name: "",
-  email: "",
-  company: "",
-  phone: "",
-  address: "",
-  contactPerson: "",
-  trn: "",
-}
-
 export function CustomersClient({ customers }: { customers: Customer[] }) {
   const router = useRouter()
-  const [formOpen, setFormOpen] = useState(false)
-  const [formMode, setFormMode] = useState<"create" | "edit">("create")
-  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<Customer | null>(null)
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<FormData>(emptyForm)
-  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingName, setDeletingName] = useState("")
 
   const columns: ColumnDef<Customer, any>[] = [
     {
@@ -127,18 +107,8 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
             size="sm"
             className="h-8 w-8 p-0"
             onClick={() => {
-              setSelectedCustomer(row.original)
-              setFormData({
-                name: row.original.name,
-                email: row.original.email || "",
-                company: row.original.company || "",
-                phone: row.original.phone || "",
-                address: row.original.address || "",
-                contactPerson: row.original.contactPerson || "",
-                trn: row.original.trn || "",
-              })
-              setFormMode("edit")
-              setFormOpen(true)
+              setEditingItem(row.original)
+              setDialogOpen(true)
             }}
           >
             <Pencil className="h-4 w-4" />
@@ -148,8 +118,9 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
             size="sm"
             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
             onClick={() => {
-              setSelectedCustomer(row.original)
-              setDeleteOpen(true)
+              setDeletingId(row.original.id)
+              setDeletingName(row.original.name)
+              setDeleteDialogOpen(true)
             }}
           >
             <Trash2 className="h-4 w-4" />
@@ -159,41 +130,43 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
     },
   ]
 
-  async function handleSubmit() {
-    if (!formData.name.trim()) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const name = (formData.get("name") as string)?.trim()
+
+    if (!name) {
       toast.error("Customer name is required")
       return
     }
 
     setLoading(true)
     try {
-      if (formMode === "create") {
-        await createCustomer({
-          name: formData.name,
-          email: formData.email || undefined,
-          company: formData.company || undefined,
-          phone: formData.phone || undefined,
-          address: formData.address || undefined,
-          contactPerson: formData.contactPerson || undefined,
-          trn: formData.trn || undefined,
-        })
-        toast.success("Customer created successfully")
-      } else {
-        if (!selectedCustomer) return
-        await updateCustomer(selectedCustomer.id, {
-          name: formData.name,
-          email: formData.email || undefined,
-          company: formData.company || undefined,
-          phone: formData.phone || undefined,
-          address: formData.address || undefined,
-          contactPerson: formData.contactPerson || undefined,
-          trn: formData.trn || undefined,
+      if (editingItem) {
+        await updateCustomer(editingItem.id, {
+          name,
+          email: (formData.get("email") as string) || undefined,
+          company: (formData.get("company") as string) || undefined,
+          phone: (formData.get("phone") as string) || undefined,
+          address: (formData.get("address") as string) || undefined,
+          contactPerson: (formData.get("contactPerson") as string) || undefined,
+          trn: (formData.get("trn") as string) || undefined,
         })
         toast.success("Customer updated successfully")
+      } else {
+        await createCustomer({
+          name,
+          email: (formData.get("email") as string) || undefined,
+          company: (formData.get("company") as string) || undefined,
+          phone: (formData.get("phone") as string) || undefined,
+          address: (formData.get("address") as string) || undefined,
+          contactPerson: (formData.get("contactPerson") as string) || undefined,
+          trn: (formData.get("trn") as string) || undefined,
+        })
+        toast.success("Customer created successfully")
       }
-      setFormOpen(false)
-      setSelectedCustomer(null)
-      setFormData(emptyForm)
+      setDialogOpen(false)
+      setEditingItem(null)
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to save customer")
@@ -203,20 +176,20 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
   }
 
   async function handleDelete() {
-    if (!selectedCustomer) return
+    if (!deletingId) return
 
     setLoading(true)
     try {
-      await deleteCustomer(selectedCustomer.id)
+      await deleteCustomer(deletingId)
       toast.success("Customer deleted successfully")
-      setDeleteOpen(false)
-      setSelectedCustomer(null)
-      router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to delete customer")
     } finally {
       setLoading(false)
+      setDeleteDialogOpen(false)
+      setDeletingId(null)
     }
+    router.refresh()
   }
 
   return (
@@ -226,10 +199,8 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
         description="Manage your customer records"
         actionLabel="Add Customer"
         onAction={() => {
-          setFormData(emptyForm)
-          setSelectedCustomer(null)
-          setFormMode("create")
-          setFormOpen(true)
+          setEditingItem(null)
+          setDialogOpen(true)
         }}
       />
 
@@ -240,112 +211,111 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
         searchKey="name"
       />
 
-      {formOpen && (
-        <Dialog open={formOpen} onOpenChange={setFormOpen}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>
-                {formMode === "create" ? "Add Customer" : "Edit Customer"}
-              </DialogTitle>
-            </DialogHeader>
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open)
+        if (!open) setEditingItem(null)
+      }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {editingItem ? "Edit Customer" : "Add Customer"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingItem
+                ? "Update customer details below."
+                : "Fill in the customer details below."}
+            </DialogDescription>
+          </DialogHeader>
+          <form key={editingItem?.id || "create"} onSubmit={handleSubmit}>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label>Name *</Label>
                 <Input
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
+                  name="name"
+                  defaultValue={editingItem?.name || ""}
                   placeholder="Customer name"
                 />
               </div>
               <div className="grid gap-2">
                 <Label>Email</Label>
                 <Input
+                  name="email"
                   type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
+                  defaultValue={editingItem?.email || ""}
                   placeholder="email@example.com"
                 />
               </div>
               <div className="grid gap-2">
                 <Label>Company</Label>
                 <Input
-                  value={formData.company}
-                  onChange={(e) =>
-                    setFormData({ ...formData, company: e.target.value })
-                  }
+                  name="company"
+                  defaultValue={editingItem?.company || ""}
                   placeholder="Company name"
                 />
               </div>
               <div className="grid gap-2">
                 <Label>Phone</Label>
                 <Input
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
+                  name="phone"
+                  defaultValue={editingItem?.phone || ""}
                   placeholder="Phone number"
                 />
               </div>
               <div className="grid gap-2">
                 <Label>Address</Label>
                 <Input
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
+                  name="address"
+                  defaultValue={editingItem?.address || ""}
                   placeholder="Address"
                 />
               </div>
               <div className="grid gap-2">
                 <Label>Contact Person</Label>
                 <Input
-                  value={formData.contactPerson}
-                  onChange={(e) =>
-                    setFormData({ ...formData, contactPerson: e.target.value })
-                  }
+                  name="contactPerson"
+                  defaultValue={editingItem?.contactPerson || ""}
                   placeholder="Primary contact person"
                 />
               </div>
               <div className="grid gap-2">
                 <Label>TRN</Label>
                 <Input
-                  value={formData.trn}
-                  onChange={(e) =>
-                    setFormData({ ...formData, trn: e.target.value })
-                  }
+                  name="trn"
+                  defaultValue={editingItem?.trn || ""}
                   placeholder="Tax Registration Number"
                 />
               </div>
-              <DialogFooter>
-                <Button onClick={handleSubmit} disabled={loading}>
-                  {loading
-                    ? "Saving..."
-                    : formMode === "create"
-                      ? "Create Customer"
-                      : "Update Customer"}
-                </Button>
-              </DialogFooter>
             </div>
-          </DialogContent>
-        </Dialog>
-      )}
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
+                {loading
+                  ? "Saving..."
+                  : editingItem
+                    ? "Update Customer"
+                    : "Create Customer"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
-      {deleteOpen && (
-        <ConfirmDialog
-          open={deleteOpen}
-          onOpenChange={setDeleteOpen}
-          title="Delete Customer"
-          description={`Are you sure you want to delete "${selectedCustomer?.name}"? This action cannot be undone.`}
-          onConfirm={handleDelete}
-          confirmLabel="Delete"
-          destructive
-          loading={loading}
-        />
-      )}
+      <ConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        title="Delete Customer"
+        description={`Are you sure you want to delete "${deletingName}"? This action cannot be undone.`}
+        onConfirm={handleDelete}
+        confirmLabel="Delete"
+        destructive
+        loading={loading}
+      />
     </div>
   )
 }

@@ -7,9 +7,9 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,20 +43,6 @@ interface SampleType {
   createdAt: string
 }
 
-interface FormData {
-  name: string
-  description: string
-  defaultTests: string
-  status: string
-}
-
-const emptyForm: FormData = {
-  name: "",
-  description: "",
-  defaultTests: "[]",
-  status: "active",
-}
-
 function getTestsCount(defaultTests: string): number {
   try {
     const parsed = JSON.parse(defaultTests)
@@ -80,13 +66,14 @@ export function SampleTypesClient({
   sampleTypes: SampleType[]
 }) {
   const router = useRouter()
-  const [formOpen, setFormOpen] = useState(false)
-  const [formMode, setFormMode] = useState<"create" | "edit">("create")
-  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<SampleType | null>(null)
   const [loading, setLoading] = useState(false)
-  const [formData, setFormData] = useState<FormData>(emptyForm)
   const [jsonError, setJsonError] = useState<string | null>(null)
-  const [selectedType, setSelectedType] = useState<SampleType | null>(null)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [deletingName, setDeletingName] = useState("")
+  const [statusValue, setStatusValue] = useState("active")
 
   const columns: ColumnDef<SampleType, any>[] = [
     {
@@ -125,16 +112,10 @@ export function SampleTypesClient({
             size="sm"
             className="h-8 w-8 p-0"
             onClick={() => {
-              setSelectedType(row.original)
-              setFormData({
-                name: row.original.name,
-                description: row.original.description || "",
-                defaultTests: formatJson(row.original.defaultTests),
-                status: row.original.status,
-              })
+              setEditingItem(row.original)
+              setStatusValue(row.original.status)
               setJsonError(null)
-              setFormMode("edit")
-              setFormOpen(true)
+              setDialogOpen(true)
             }}
           >
             <Pencil className="h-4 w-4" />
@@ -144,8 +125,9 @@ export function SampleTypesClient({
             size="sm"
             className="h-8 w-8 p-0 text-destructive hover:text-destructive"
             onClick={() => {
-              setSelectedType(row.original)
-              setDeleteOpen(true)
+              setDeletingId(row.original.id)
+              setDeletingName(row.original.name)
+              setDeleteDialogOpen(true)
             }}
           >
             <Trash2 className="h-4 w-4" />
@@ -155,44 +137,47 @@ export function SampleTypesClient({
     },
   ]
 
-  async function handleSubmit() {
-    // Validate JSON
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const name = (formData.get("name") as string)?.trim()
+    const description = formData.get("description") as string
+    const defaultTests = formData.get("defaultTests") as string
+
+    if (!name) {
+      toast.error("Sample type name is required")
+      return
+    }
+
     try {
-      JSON.parse(formData.defaultTests)
+      JSON.parse(defaultTests)
       setJsonError(null)
     } catch {
       setJsonError("Invalid JSON format. Please check the syntax.")
       return
     }
 
-    if (!formData.name.trim()) {
-      toast.error("Sample type name is required")
-      return
-    }
-
     setLoading(true)
     try {
-      if (formMode === "create") {
-        await createSampleType({
-          name: formData.name,
-          description: formData.description || undefined,
-          defaultTests: formData.defaultTests,
-          status: formData.status,
-        })
-        toast.success("Sample type created successfully")
-      } else {
-        if (!selectedType) return
-        await updateSampleType(selectedType.id, {
-          name: formData.name,
-          description: formData.description || undefined,
-          defaultTests: formData.defaultTests,
-          status: formData.status,
+      if (editingItem) {
+        await updateSampleType(editingItem.id, {
+          name,
+          description: description || undefined,
+          defaultTests,
+          status: statusValue,
         })
         toast.success("Sample type updated successfully")
+      } else {
+        await createSampleType({
+          name,
+          description: description || undefined,
+          defaultTests,
+          status: statusValue,
+        })
+        toast.success("Sample type created successfully")
       }
-      setFormOpen(false)
-      setSelectedType(null)
-      setFormData(emptyForm)
+      setDialogOpen(false)
+      setEditingItem(null)
       setJsonError(null)
       router.refresh()
     } catch (error: any) {
@@ -203,20 +188,20 @@ export function SampleTypesClient({
   }
 
   async function handleDelete() {
-    if (!selectedType) return
+    if (!deletingId) return
 
     setLoading(true)
     try {
-      await deleteSampleType(selectedType.id)
+      await deleteSampleType(deletingId)
       toast.success("Sample type deleted successfully")
-      setDeleteOpen(false)
-      setSelectedType(null)
-      router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to delete sample type")
     } finally {
       setLoading(false)
+      setDeleteDialogOpen(false)
+      setDeletingId(null)
     }
+    router.refresh()
   }
 
   return (
@@ -226,11 +211,10 @@ export function SampleTypesClient({
         description="Manage sample type definitions and default tests"
         actionLabel="Add Sample Type"
         onAction={() => {
-          setFormData(emptyForm)
+          setEditingItem(null)
+          setStatusValue("active")
           setJsonError(null)
-          setSelectedType(null)
-          setFormMode("create")
-          setFormOpen(true)
+          setDialogOpen(true)
         }}
       />
 
@@ -241,88 +225,97 @@ export function SampleTypesClient({
         searchKey="name"
       />
 
-      <Dialog open={formOpen} onOpenChange={setFormOpen}>
+      <Dialog open={dialogOpen} onOpenChange={(open) => {
+        setDialogOpen(open)
+        if (!open) { setEditingItem(null); setJsonError(null) }
+      }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>
-              {formMode === "create" ? "Add Sample Type" : "Edit Sample Type"}
+              {editingItem ? "Edit Sample Type" : "Add Sample Type"}
             </DialogTitle>
+            <DialogDescription>
+              {editingItem
+                ? "Update sample type details below."
+                : "Fill in the sample type details below."}
+            </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Name *</Label>
-              <Input
-                value={formData.name}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                placeholder="Sample type name"
-              />
+          <form key={editingItem?.id || "create"} onSubmit={handleSubmit}>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label>Name *</Label>
+                <Input
+                  name="name"
+                  defaultValue={editingItem?.name || ""}
+                  placeholder="Sample type name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Description</Label>
+                <Input
+                  name="description"
+                  defaultValue={editingItem?.description || ""}
+                  placeholder="Brief description"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Default Tests (JSON)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Enter a JSON array of test objects. Example:{" "}
+                  {`[{"parameter": "pH", "unit": "pH", "method": "APHA 4500-H+"}]`}
+                </p>
+                <Textarea
+                  name="defaultTests"
+                  defaultValue={editingItem ? formatJson(editingItem.defaultTests) : "[]"}
+                  placeholder='[{"parameter": "pH", "unit": "pH", "method": "APHA 4500-H+"}]'
+                  className="min-h-[120px] font-mono text-sm"
+                  onChange={() => setJsonError(null)}
+                />
+                {jsonError && (
+                  <p className="text-sm text-destructive">{jsonError}</p>
+                )}
+              </div>
+              <div className="grid gap-2">
+                <Label>Status</Label>
+                <Select
+                  value={statusValue}
+                  onValueChange={setStatusValue}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="active">Active</SelectItem>
+                    <SelectItem value="inactive">Inactive</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Description</Label>
-              <Input
-                value={formData.description}
-                onChange={(e) =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                placeholder="Brief description"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Default Tests (JSON)</Label>
-              <p className="text-xs text-muted-foreground">
-                Enter a JSON array of test objects. Example:{" "}
-                {`[{"parameter": "pH", "unit": "pH", "method": "APHA 4500-H+"}]`}
-              </p>
-              <Textarea
-                value={formData.defaultTests}
-                onChange={(e) => {
-                  setFormData({ ...formData, defaultTests: e.target.value })
-                  setJsonError(null)
-                }}
-                placeholder='[{"parameter": "pH", "unit": "pH", "method": "APHA 4500-H+"}]'
-                className="min-h-[120px] font-mono text-sm"
-              />
-              {jsonError && (
-                <p className="text-sm text-destructive">{jsonError}</p>
-              )}
-            </div>
-            <div className="grid gap-2">
-              <Label>Status</Label>
-              <Select
-                value={formData.status}
-                onValueChange={(value) =>
-                  setFormData({ ...formData, status: value })
-                }
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDialogOpen(false)}
               >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleSubmit} disabled={loading}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={loading}>
                 {loading
                   ? "Saving..."
-                  : formMode === "create"
-                    ? "Create Sample Type"
-                    : "Update Sample Type"}
+                  : editingItem
+                    ? "Update Sample Type"
+                    : "Create Sample Type"}
               </Button>
-            </DialogFooter>
-          </div>
+            </div>
+          </form>
         </DialogContent>
       </Dialog>
 
       <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
         title="Delete Sample Type"
-        description={`Are you sure you want to delete "${selectedType?.name}"? This action cannot be undone.`}
+        description={`Are you sure you want to delete "${deletingName}"? This action cannot be undone.`}
         onConfirm={handleDelete}
         confirmLabel="Delete"
         destructive

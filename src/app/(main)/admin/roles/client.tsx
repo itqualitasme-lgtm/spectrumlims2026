@@ -7,9 +7,9 @@ import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -309,6 +309,11 @@ export function RolesClient({
             <DialogTitle>
               {formMode === "create" ? "Create Role" : "Edit Role"}
             </DialogTitle>
+            <DialogDescription>
+              {formMode === "create"
+                ? "Create a new role and assign permissions."
+                : "Update role name and permissions."}
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -378,7 +383,14 @@ export function RolesClient({
                 </div>
               </div>
             </div>
-            <DialogFooter>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setFormOpen(false)}
+              >
+                Cancel
+              </Button>
               <Button
                 onClick={handleSubmit}
                 disabled={loading || isSystemRole}
@@ -389,7 +401,7 @@ export function RolesClient({
                     ? "Create Role"
                     : "Update Role"}
               </Button>
-            </DialogFooter>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
