@@ -234,6 +234,7 @@ export async function createSample(data: {
     try {
       const tests = JSON.parse(sampleType.defaultTests) as Array<{
         parameter: string
+        method?: string
         testMethod?: string
         unit?: string
         specMin?: string
@@ -252,7 +253,7 @@ export async function createSample(data: {
             data: testsToCreate.map((test) => ({
               sampleId: sample.id,
               parameter: test.parameter,
-              testMethod: test.testMethod || null,
+              testMethod: test.method || test.testMethod || null,
               unit: test.unit || null,
               specMin: test.specMin || null,
               specMax: test.specMax || null,

@@ -85,12 +85,9 @@ export function AsyncSearchableSelect({
     [searchFn]
   )
 
-  const handleSelect = (selectedValue: string) => {
-    const option = options.find((o) => o.value === selectedValue)
-    if (option) {
-      onValueChange(selectedValue === value ? "" : selectedValue)
-      setSelectedLabel(selectedValue === value ? "" : option.label)
-    }
+  const handleSelect = (optionValue: string, optionLabel: string) => {
+    onValueChange(optionValue === value ? "" : optionValue)
+    setSelectedLabel(optionValue === value ? "" : optionLabel)
     setOpen(false)
     setQuery("")
     setOptions([])
@@ -142,8 +139,8 @@ export function AsyncSearchableSelect({
                 {options.map((option) => (
                   <CommandItem
                     key={option.value}
-                    value={option.value}
-                    onSelect={handleSelect}
+                    value={option.label}
+                    onSelect={() => handleSelect(option.value, option.label)}
                   >
                     <Check
                       className={cn(
