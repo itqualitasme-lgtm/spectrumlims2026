@@ -303,7 +303,7 @@ export function SampleTypesClient({
         setDialogOpen(open)
         if (!open) setEditingItem(null)
       }}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingItem ? "Edit Sample Type" : "Add Sample Type"}
@@ -355,14 +355,14 @@ export function SampleTypesClient({
                 </Button>
               </div>
 
-              <div className="rounded border overflow-hidden">
+              <div className="rounded border overflow-x-auto">
                 {/* Table header */}
-                <div className="grid grid-cols-[1fr_1fr_80px_80px_60px_80px_80px_32px] gap-x-2 px-2 py-1.5 bg-muted/50 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                <div className="grid grid-cols-[minmax(120px,1fr)_minmax(100px,1fr)_70px_70px_50px_70px_70px_28px] gap-x-1.5 px-2 py-1.5 bg-muted/50 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide min-w-[650px]">
                   <span>Parameter *</span>
                   <span>Method</span>
                   <span>Unit</span>
                   <span>Price</span>
-                  <span>TAT (d)</span>
+                  <span>TAT</span>
                   <span>Spec Min</span>
                   <span>Spec Max</span>
                   <span></span>
@@ -373,61 +373,61 @@ export function SampleTypesClient({
                   {formTests.map((test, idx) => (
                     <div
                       key={idx}
-                      className="grid grid-cols-[1fr_1fr_80px_80px_60px_80px_80px_32px] gap-x-2 items-center px-2 py-1"
+                      className="grid grid-cols-[minmax(120px,1fr)_minmax(100px,1fr)_70px_70px_50px_70px_70px_28px] gap-x-1.5 items-center px-2 py-1 min-w-[650px]"
                     >
                       <Input
-                        className="h-8 text-xs"
+                        className="h-7 text-xs px-2"
                         value={test.parameter}
                         onChange={(e) => updateTest(idx, "parameter", e.target.value)}
                         placeholder="e.g. pH"
                       />
                       <Input
-                        className="h-8 text-xs"
+                        className="h-7 text-xs px-2"
                         value={test.method}
                         onChange={(e) => updateTest(idx, "method", e.target.value)}
-                        placeholder="e.g. ASTM D1298"
+                        placeholder="ASTM D..."
                       />
                       <Input
-                        className="h-8 text-xs"
+                        className="h-7 text-xs px-1.5"
                         value={test.unit}
                         onChange={(e) => updateTest(idx, "unit", e.target.value)}
-                        placeholder="mg/L"
+                        placeholder="unit"
                       />
                       <Input
-                        className="h-8 text-xs"
+                        className="h-7 text-xs px-1.5"
                         type="number"
                         min="0"
                         step="0.01"
                         value={test.price}
                         onChange={(e) => updateTest(idx, "price", e.target.value)}
-                        placeholder="0.00"
+                        placeholder="0"
                       />
                       <Input
-                        className="h-8 text-xs"
+                        className="h-7 text-xs px-1.5"
                         type="number"
                         min="1"
                         max="30"
                         value={test.tat}
                         onChange={(e) => updateTest(idx, "tat", e.target.value)}
-                        placeholder="1-3"
+                        placeholder="days"
                       />
                       <Input
-                        className="h-8 text-xs"
+                        className="h-7 text-xs px-1.5"
                         value={test.specMin}
                         onChange={(e) => updateTest(idx, "specMin", e.target.value)}
-                        placeholder="Min"
+                        placeholder="min"
                       />
                       <Input
-                        className="h-8 text-xs"
+                        className="h-7 text-xs px-1.5"
                         value={test.specMax}
                         onChange={(e) => updateTest(idx, "specMax", e.target.value)}
-                        placeholder="Max"
+                        placeholder="max"
                       />
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                        className="h-6 w-6 p-0 text-destructive hover:text-destructive"
                         onClick={() => removeTest(idx)}
                         disabled={formTests.length <= 1}
                       >
