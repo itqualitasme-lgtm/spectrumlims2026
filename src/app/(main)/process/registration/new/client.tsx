@@ -103,6 +103,8 @@ export function NewRegistrationClient({
   const [reference, setReference] = useState("")
   const [collectedById, setCollectedById] = useState("")
   const [collectionLocation, setCollectionLocation] = useState("")
+  const [collectionDate, setCollectionDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [collectionTime, setCollectionTime] = useState(() => new Date().toTimeString().slice(0, 5))
 
   // Sample rows
   const [samples, setSamples] = useState<SampleRow[]>([createEmptyRow()])
@@ -196,6 +198,8 @@ export function NewRegistrationClient({
     setReference("")
     setCollectedById("")
     setCollectionLocation("")
+    setCollectionDate(new Date().toISOString().slice(0, 10))
+    setCollectionTime(new Date().toTimeString().slice(0, 5))
     setRegisteredIds([])
     setRegisteredNumbers([])
     rowIdCounter = 1
@@ -243,6 +247,7 @@ export function NewRegistrationClient({
           quantity: s.bottleQty || undefined,
           notes: s.remarks || undefined,
           selectedTests: tests.length > 0 ? Array.from(s.selectedTests) : undefined,
+          collectionDate: `${collectionDate}T${collectionTime}`,
         })
         resultIds.push(sample.id)
         resultNumbers.push(sample.sampleNumber)
@@ -387,6 +392,14 @@ export function NewRegistrationClient({
                 placeholder="Select..."
                 searchPlaceholder="Search..."
               />
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-xs text-muted-foreground">Rec. Date</Label>
+              <Input className="h-9" type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-xs text-muted-foreground">Rec. Time</Label>
+              <Input className="h-9" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
             </div>
           </div>
         </CardContent>

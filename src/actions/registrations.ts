@@ -191,6 +191,7 @@ export async function createSample(data: {
   collectionLocation?: string
   samplePoint?: string
   selectedTests?: number[]
+  collectionDate?: string
 }) {
   const session = await requirePermission("process", "create")
   const user = session.user as any
@@ -206,6 +207,9 @@ export async function createSample(data: {
   // Determine collected by: explicit sampler ID, current user flag, or null
   const collectedById = data.collectedById || (data.collectedByCurrentUser ? user.id : null)
 
+  // Use provided date/time or default to now
+  const recordDate = data.collectionDate ? new Date(data.collectionDate) : new Date()
+
   const sample = await db.sample.create({
     data: {
       sampleNumber,
@@ -219,9 +223,9 @@ export async function createSample(data: {
       reference: data.reference || null,
       status: "registered",
       registeredById: user.id,
-      registeredAt: new Date(),
+      registeredAt: recordDate,
       collectedById,
-      collectionDate: collectedById ? new Date() : null,
+      collectionDate: recordDate,
       collectionLocation: data.collectionLocation || null,
       samplePoint: data.samplePoint || null,
       notes: data.notes || null,
