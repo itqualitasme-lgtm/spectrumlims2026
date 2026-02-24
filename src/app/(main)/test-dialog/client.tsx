@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import { DataTable } from "@/components/shared/data-table"
-import { PageHeader } from "@/components/shared/page-header"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import {
   Dialog,
@@ -13,109 +12,41 @@ import {
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Badge } from "@/components/ui/badge"
 import { Pencil, Trash2 } from "lucide-react"
 import { ColumnDef } from "@tanstack/react-table"
-import { toast } from "sonner"
 
-interface Customer {
+interface Item {
   id: string
-  code: string
   name: string
-  email: string | null
-  company: string | null
-  phone: string | null
-  address: string | null
-  contactPerson: string | null
-  trn: string | null
-  status: string
-  labId: string
-  createdAt: string
-  updatedAt: string
-  _count: {
-    contactPersons: number
-  }
+  email: string
 }
 
-export function TestDialogClient({ customers }: { customers: Customer[] }) {
-  const [dialogOpen, setDialogOpen] = useState(false)
-  const [editingItem, setEditingItem] = useState<Customer | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [deletingName, setDeletingName] = useState("")
+const MOCK = [
+  { id: "1", name: "Alpha Corp", email: "alpha@test.com" },
+  { id: "2", name: "Beta Inc", email: "beta@test.com" },
+  { id: "3", name: "Gamma LLC", email: "gamma@test.com" },
+]
 
-  const columns: ColumnDef<Customer, any>[] = [
-    {
-      accessorKey: "code",
-      header: "Code",
-    },
-    {
-      accessorKey: "name",
-      header: "Name",
-      cell: ({ row }) => (
-        <a
-          href={`/masters/customers/${row.original.id}`}
-          className="text-primary hover:underline font-medium"
-        >
-          {row.original.name}
-        </a>
-      ),
-    },
-    {
-      accessorKey: "company",
-      header: "Company",
-      cell: ({ row }) => row.original.company || "-",
-    },
-    {
-      accessorKey: "email",
-      header: "Email",
-      cell: ({ row }) => row.original.email || "-",
-    },
-    {
-      accessorKey: "phone",
-      header: "Phone",
-      cell: ({ row }) => row.original.phone || "-",
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => (
-        <Badge
-          variant={row.original.status === "active" ? "default" : "secondary"}
-        >
-          {row.original.status}
-        </Badge>
-      ),
-    },
+export function TestDialogClient() {
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [editingItem, setEditingItem] = useState<Item | null>(null)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+
+  const columns: ColumnDef<Item, any>[] = [
+    { accessorKey: "name", header: "Name" },
+    { accessorKey: "email", header: "Email" },
     {
       id: "actions",
       header: "",
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-            onClick={() => {
-              setEditingItem(row.original)
-              setDialogOpen(true)
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
+            onClick={() => { setEditingItem(row.original); setDialogOpen(true) }}>
             <Pencil className="h-4 w-4" />
           </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-            onClick={() => {
-              setDeletingId(row.original.id)
-              setDeletingName(row.original.name)
-              setDeleteDialogOpen(true)
-            }}
-          >
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive"
+            onClick={() => setDeleteOpen(true)}>
             <Trash2 className="h-4 w-4" />
           </Button>
         </div>
@@ -124,132 +55,30 @@ export function TestDialogClient({ customers }: { customers: Customer[] }) {
   ]
 
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Test Dialog (exact customers clone)"
-        description="This is an exact copy of CustomersClient with mock data"
-        actionLabel="Add Customer"
-        onAction={() => {
-          setEditingItem(null)
-          setDialogOpen(true)
-        }}
-      />
-
-      <DataTable
-        columns={columns}
-        data={customers}
-        searchPlaceholder="Search customers..."
-        searchKey="name"
-      />
-
-      <Dialog open={dialogOpen} onOpenChange={(open) => {
-        setDialogOpen(open)
-        if (!open) setEditingItem(null)
-      }}>
+    <div className="space-y-6 p-4">
+      <h1 className="text-2xl font-bold">Minimal Test (separate file)</h1>
+      <Button onClick={() => { setEditingItem(null); setDialogOpen(true) }}>
+        Add Item
+      </Button>
+      <DataTable columns={columns} data={MOCK} searchPlaceholder="Search..." searchKey="name" />
+      <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) setEditingItem(null) }}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>
-              {editingItem ? "Edit Customer" : "Add Customer"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingItem
-                ? "Update customer details below."
-                : "Fill in the customer details below."}
-            </DialogDescription>
+            <DialogTitle>{editingItem ? "Edit" : "Add"}</DialogTitle>
+            <DialogDescription>Test dialog</DialogDescription>
           </DialogHeader>
-          <form key={editingItem?.id || "create"} onSubmit={(e) => { e.preventDefault(); setDialogOpen(false); toast.success("Saved!") }}>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label>Name *</Label>
-                <Input
-                  name="name"
-                  defaultValue={editingItem?.name || ""}
-                  placeholder="Customer name"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Email</Label>
-                <Input
-                  name="email"
-                  type="email"
-                  defaultValue={editingItem?.email || ""}
-                  placeholder="email@example.com"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Company</Label>
-                <Input
-                  name="company"
-                  defaultValue={editingItem?.company || ""}
-                  placeholder="Company name"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Phone</Label>
-                <Input
-                  name="phone"
-                  defaultValue={editingItem?.phone || ""}
-                  placeholder="Phone number"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Address</Label>
-                <Input
-                  name="address"
-                  defaultValue={editingItem?.address || ""}
-                  placeholder="Address"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Contact Person</Label>
-                <Input
-                  name="contactPerson"
-                  defaultValue={editingItem?.contactPerson || ""}
-                  placeholder="Primary contact person"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>TRN</Label>
-                <Input
-                  name="trn"
-                  defaultValue={editingItem?.trn || ""}
-                  placeholder="Tax Registration Number"
-                />
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setDialogOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={loading}>
-                {loading
-                  ? "Saving..."
-                  : editingItem
-                    ? "Update Customer"
-                    : "Create Customer"}
-              </Button>
-            </div>
-          </form>
+          <Input defaultValue={editingItem?.name || ""} placeholder="Name" />
+          <Button onClick={() => setDialogOpen(false)}>Close</Button>
         </DialogContent>
       </Dialog>
-
       <ConfirmDialog
-        open={deleteDialogOpen}
-        onOpenChange={setDeleteDialogOpen}
-        title="Delete Customer"
-        description={`Are you sure you want to delete "${deletingName}"? This action cannot be undone.`}
-        onConfirm={() => {
-          setDeleteDialogOpen(false)
-          setDeletingId(null)
-          toast.success("Deleted!")
-        }}
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title="Delete"
+        description="Are you sure?"
+        onConfirm={() => setDeleteOpen(false)}
         confirmLabel="Delete"
         destructive
-        loading={loading}
       />
     </div>
   )
