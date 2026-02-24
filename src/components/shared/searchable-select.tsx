@@ -26,6 +26,7 @@ interface SearchableSelectProps {
   searchPlaceholder?: string
   emptyMessage?: string
   disabled?: boolean
+  className?: string
 }
 
 export function SearchableSelect({
@@ -36,6 +37,7 @@ export function SearchableSelect({
   searchPlaceholder = "Search...",
   emptyMessage = "No results found.",
   disabled = false,
+  className,
 }: SearchableSelectProps) {
   const [open, setOpen] = useState(false)
 
@@ -48,7 +50,7 @@ export function SearchableSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between font-normal"
+          className={cn("w-full justify-between font-normal", className)}
           disabled={disabled}
         >
           {selectedOption ? selectedOption.label : placeholder}

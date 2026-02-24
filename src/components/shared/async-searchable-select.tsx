@@ -28,6 +28,7 @@ interface AsyncSearchableSelectProps {
   emptyMessage?: string
   disabled?: boolean
   selectedLabel?: string
+  className?: string
 }
 
 export function AsyncSearchableSelect({
@@ -40,6 +41,7 @@ export function AsyncSearchableSelect({
   emptyMessage = "No results found.",
   disabled = false,
   selectedLabel: initialSelectedLabel,
+  className,
 }: AsyncSearchableSelectProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
@@ -106,7 +108,7 @@ export function AsyncSearchableSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className="w-full justify-between font-normal h-9"
+          className={cn("w-full justify-between font-normal h-9", className)}
           disabled={disabled}
         >
           <span className="truncate">{selectedLabel || placeholder}</span>
