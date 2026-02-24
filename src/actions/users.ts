@@ -120,6 +120,10 @@ export async function updateUser(
   const session = await requirePermission("admin", "edit")
   const user = session.user as any
 
+  // Verify user belongs to this lab
+  const existing = await db.user.findFirst({ where: { id, labId: user.labId } })
+  if (!existing) throw new Error("User not found")
+
   const updateData: any = {
     name: data.name,
     email: data.email || null,
@@ -161,9 +165,14 @@ export async function deleteUser(id: string) {
     throw new Error("You cannot delete your own account")
   }
 
+  // Verify user belongs to this lab
+  const target = await db.user.findFirst({ where: { id, labId: user.labId } })
+  if (!target) throw new Error("User not found")
+
   // Check if user has associated samples
   const sampleCount = await db.sample.count({
     where: {
+      labId: user.labId,
       OR: [
         { assignedToId: id },
         { collectedById: id },
@@ -181,6 +190,7 @@ export async function deleteUser(id: string) {
   // Check if user has associated reports
   const reportCount = await db.report.count({
     where: {
+      labId: user.labId,
       OR: [{ createdById: id }, { reviewedById: id }],
     },
   })
@@ -259,6 +269,10 @@ export async function updatePortalUser(
   const session = await requirePermission("admin", "edit")
   const user = session.user as any
 
+  // Verify portal user belongs to this lab
+  const existing = await db.portalUser.findFirst({ where: { id, labId: user.labId } })
+  if (!existing) throw new Error("Portal user not found")
+
   const updateData: any = {}
 
   if (data.isActive !== undefined) {
@@ -290,6 +304,10 @@ export async function updatePortalUser(
 export async function deletePortalUser(id: string) {
   const session = await requirePermission("admin", "delete")
   const user = session.user as any
+
+  // Verify portal user belongs to this lab
+  const existing = await db.portalUser.findFirst({ where: { id, labId: user.labId } })
+  if (!existing) throw new Error("Portal user not found")
 
   const portalUser = await db.portalUser.delete({
     where: { id },

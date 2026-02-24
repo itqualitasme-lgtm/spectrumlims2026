@@ -7,6 +7,11 @@ import { revalidatePath } from "next/cache"
 
 export async function getContactPersons(customerId: string) {
   const session = await getSession()
+  const user = session.user as any
+
+  // Verify customer belongs to this lab
+  const customer = await db.customer.findFirst({ where: { id: customerId, labId: user.labId } })
+  if (!customer) throw new Error("Customer not found")
 
   const contactPersons = await db.contactPerson.findMany({
     where: { customerId },
@@ -25,6 +30,10 @@ export async function createContactPerson(data: {
 }) {
   const session = await requirePermission("masters", "create")
   const user = session.user as any
+
+  // Verify customer belongs to this lab
+  const customer = await db.customer.findFirst({ where: { id: data.customerId, labId: user.labId } })
+  if (!customer) throw new Error("Customer not found")
 
   const contactPerson = await db.contactPerson.create({
     data: {
@@ -62,6 +71,10 @@ export async function updateContactPerson(
   const session = await requirePermission("masters", "edit")
   const user = session.user as any
 
+  // Verify customer belongs to this lab
+  const customer = await db.customer.findFirst({ where: { id: data.customerId, labId: user.labId } })
+  if (!customer) throw new Error("Customer not found")
+
   const contactPerson = await db.contactPerson.update({
     where: { id },
     data: {
@@ -88,6 +101,10 @@ export async function updateContactPerson(
 export async function deleteContactPerson(id: string, customerId: string) {
   const session = await requirePermission("masters", "delete")
   const user = session.user as any
+
+  // Verify customer belongs to this lab
+  const customer = await db.customer.findFirst({ where: { id: customerId, labId: user.labId } })
+  if (!customer) throw new Error("Customer not found")
 
   const contactPerson = await db.contactPerson.delete({
     where: { id },

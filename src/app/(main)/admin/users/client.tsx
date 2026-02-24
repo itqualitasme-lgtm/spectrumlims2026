@@ -4,6 +4,7 @@ import { useState } from "react"
 import { DataTable } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
+import { ImageUpload } from "@/components/shared/image-upload"
 import {
   Dialog,
   DialogContent,
@@ -114,6 +115,7 @@ export function UsersClient({
   const [userDialogOpen, setUserDialogOpen] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [userRoleId, setUserRoleId] = useState("")
+  const [userSignatureUrl, setUserSignatureUrl] = useState("")
   const [deleteUserOpen, setDeleteUserOpen] = useState(false)
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   const [deletingUserName, setDeletingUserName] = useState("")
@@ -160,6 +162,7 @@ export function UsersClient({
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
             setEditingUser(row.original)
             setUserRoleId(row.original.roleId)
+            setUserSignatureUrl(row.original.signatureUrl || "")
             setUserDialogOpen(true)
           }}>
             <Pencil className="h-4 w-4" />
@@ -229,7 +232,6 @@ export function UsersClient({
     const email = fd.get("email") as string
     const phone = fd.get("phone") as string
     const designation = (fd.get("designation") as string)?.trim()
-    const signatureUrl = (fd.get("signatureUrl") as string)?.trim()
 
     if (!name) { toast.error("Name is required"); return }
     if (!username) { toast.error("Username is required"); return }
@@ -243,7 +245,7 @@ export function UsersClient({
           name, email: email || undefined, phone: phone || undefined,
           roleId: userRoleId, password: password || undefined,
           designation: designation || undefined,
-          signatureUrl: signatureUrl || undefined,
+          signatureUrl: userSignatureUrl || undefined,
         })
         toast.success("User updated successfully")
       } else {
@@ -251,7 +253,7 @@ export function UsersClient({
           name, email: email || undefined, username, password: password!,
           phone: phone || undefined, roleId: userRoleId,
           designation: designation || undefined,
-          signatureUrl: signatureUrl || undefined,
+          signatureUrl: userSignatureUrl || undefined,
         })
         toast.success("User created successfully")
       }
@@ -351,6 +353,7 @@ export function UsersClient({
           if (activeTab === "employees") {
             setEditingUser(null)
             setUserRoleId("")
+            setUserSignatureUrl("")
             setUserDialogOpen(true)
           } else {
             setEditingPortalUser(null)
@@ -416,9 +419,14 @@ export function UsersClient({
                 <Input name="designation" defaultValue={editingUser?.designation || ""} placeholder="e.g. Senior Chemist, Lab Manager" />
               </div>
               <div className="grid gap-2">
-                <Label>Signature URL</Label>
-                <Input name="signatureUrl" defaultValue={editingUser?.signatureUrl || ""} placeholder="URL to digital signature image" />
-                <p className="text-xs text-muted-foreground">Upload signature image and paste the URL here. Used for digital signing of reports.</p>
+                <Label>Digital Signature</Label>
+                <ImageUpload
+                  value={userSignatureUrl}
+                  onChange={setUserSignatureUrl}
+                  folder="signatures"
+                  placeholder="Upload signature image..."
+                />
+                <p className="text-xs text-muted-foreground">Used for digital signing of reports (PNG with transparent background recommended).</p>
               </div>
             </div>
             <div className="flex justify-end gap-2">

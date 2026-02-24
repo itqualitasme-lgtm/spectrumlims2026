@@ -135,6 +135,9 @@ export async function submitReport(reportId: string) {
   const user = session.user as any
   const labId = user.labId
 
+  const existing = await db.report.findFirst({ where: { id: reportId, labId } })
+  if (!existing) throw new Error("Report not found")
+
   const report = await db.report.update({
     where: { id: reportId },
     data: { status: "review" },
@@ -158,6 +161,9 @@ export async function approveReport(reportId: string) {
   const session = await requirePermission("process", "edit")
   const user = session.user as any
   const labId = user.labId
+
+  const existing = await db.report.findFirst({ where: { id: reportId, labId } })
+  if (!existing) throw new Error("Report not found")
 
   const report = await db.report.update({
     where: { id: reportId },
@@ -186,6 +192,9 @@ export async function publishReport(reportId: string) {
   const session = await requirePermission("process", "edit")
   const user = session.user as any
   const labId = user.labId
+
+  const existing = await db.report.findFirst({ where: { id: reportId, labId } })
+  if (!existing) throw new Error("Report not found")
 
   const report = await db.report.update({
     where: { id: reportId },
@@ -218,7 +227,7 @@ export async function deleteReport(reportId: string) {
   const user = session.user as any
   const labId = user.labId
 
-  const report = await db.report.findUnique({ where: { id: reportId } })
+  const report = await db.report.findFirst({ where: { id: reportId, labId } })
   if (!report) throw new Error("Report not found")
 
   if (report.status !== "draft") {

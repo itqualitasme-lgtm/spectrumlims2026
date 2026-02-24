@@ -22,6 +22,7 @@ import { Switch } from "@/components/ui/switch"
 import { Pencil, Trash2, Loader2, Star } from "lucide-react"
 import { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
+import { ImageUpload } from "@/components/shared/image-upload"
 import {
   createReportTemplate,
   updateReportTemplate,
@@ -247,7 +248,7 @@ export function ReportTemplatesClient({
               {editingItem ? "Edit Template" : "New Report Template"}
             </DialogTitle>
             <DialogDescription>
-              Configure header text, footer disclaimers, and logo URLs for this template.
+              Configure header text, footer disclaimers, and logos for this template.
             </DialogDescription>
           </DialogHeader>
 
@@ -313,26 +314,22 @@ export function ReportTemplatesClient({
 
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>Lab/Company Logo URL</Label>
-                <Input
+                <Label>Lab/Company Logo</Label>
+                <ImageUpload
                   value={formLogoUrl}
-                  onChange={(e) => setFormLogoUrl(e.target.value)}
-                  placeholder="/images/logo-spectrum.png"
+                  onChange={setFormLogoUrl}
+                  folder="logos"
+                  placeholder="Upload or paste logo URL..."
                 />
-                <p className="text-xs text-muted-foreground">
-                  Path to lab logo image (e.g. /images/logo-spectrum.png)
-                </p>
               </div>
               <div className="grid gap-2">
-                <Label>Accreditation Logo URL</Label>
-                <Input
+                <Label>Accreditation Logo</Label>
+                <ImageUpload
                   value={formAccreditationLogoUrl}
-                  onChange={(e) => setFormAccreditationLogoUrl(e.target.value)}
-                  placeholder="/images/iso-logo.png"
+                  onChange={setFormAccreditationLogoUrl}
+                  folder="logos"
+                  placeholder="Upload or paste accreditation logo..."
                 />
-                <p className="text-xs text-muted-foreground">
-                  Path to ISO/accreditation body logo image
-                </p>
               </div>
             </div>
           </div>

@@ -11,11 +11,11 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Allow static files
+  // Allow static files and assets
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/images") ||
-    pathname.includes(".")
+    /\.(ico|png|jpg|jpeg|gif|svg|webp|css|js|woff|woff2|ttf|eot|map)$/i.test(pathname)
   ) {
     return NextResponse.next()
   }
