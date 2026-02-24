@@ -1,16 +1,14 @@
-import { getCustomersForSelect, getSampleTypesForSelect, getSamplersForSelect } from "@/actions/registrations"
+import { getSampleTypesForSelect, getSamplersForSelect } from "@/actions/registrations"
 import { NewRegistrationClient } from "./client"
 
 export default async function NewRegistrationPage() {
-  const [customers, sampleTypes, samplers] = await Promise.all([
-    getCustomersForSelect(),
+  const [sampleTypes, samplers] = await Promise.all([
     getSampleTypesForSelect(),
     getSamplersForSelect(),
   ])
 
   return (
     <NewRegistrationClient
-      customers={customers}
       sampleTypes={sampleTypes}
       samplers={samplers}
     />

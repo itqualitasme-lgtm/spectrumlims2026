@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, ClipboardList } from "lucide-react"
@@ -8,6 +8,7 @@ import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { SearchableSelect } from "@/components/shared/searchable-select"
+import { AsyncSearchableSelect } from "@/components/shared/async-searchable-select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -37,13 +38,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import { createSample } from "@/actions/registrations"
-
-type Customer = {
-  id: string
-  name: string
-  company: string | null
-}
+import { createSample, searchCustomers, getCustomerById } from "@/actions/registrations"
 
 type SampleTypeOption = {
   id: string
@@ -65,11 +60,9 @@ type TestParam = {
 }
 
 export function NewRegistrationClient({
-  customers,
   sampleTypes,
   samplers,
 }: {
-  customers: Customer[]
   sampleTypes: SampleTypeOption[]
   samplers: Sampler[]
 }) {
@@ -92,16 +85,17 @@ export function NewRegistrationClient({
   // Test selection
   const [selectedTests, setSelectedTests] = useState<Set<number>>(new Set())
 
-  // Build select options
-  const customerOptions = useMemo(
-    () =>
-      customers.map((c) => ({
-        value: c.id,
-        label: c.company ? `${c.name} - ${c.company}` : c.name,
-      })),
-    [customers]
+  // Async customer search
+  const handleSearchCustomers = useCallback(
+    (query: string) => searchCustomers(query),
+    []
+  )
+  const handleGetCustomerById = useCallback(
+    (id: string) => getCustomerById(id),
+    []
   )
 
+  // Build select options
   const sampleTypeOptions = useMemo(
     () => sampleTypes.map((st) => ({ value: st.id, label: st.name })),
     [sampleTypes]
@@ -224,23 +218,24 @@ export function NewRegistrationClient({
         <PageHeader title="Register New Sample" />
       </div>
 
-      {/* Card 1: Sample Information */}
+      {/* Sample & Collection Details - Compact Layout */}
       <Card>
-        <CardHeader>
-          <CardTitle>Sample Information</CardTitle>
-          <CardDescription>Basic details about the sample being registered</CardDescription>
+        <CardHeader className="pb-4">
+          <CardTitle>Sample Details</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
+            {/* Row 1: Customer + Sample Type + Job Type */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="grid gap-2 md:col-span-2">
                 <Label>Customer *</Label>
-                <SearchableSelect
-                  options={customerOptions}
+                <AsyncSearchableSelect
                   value={clientId}
                   onValueChange={setClientId}
-                  placeholder="Select a customer..."
-                  searchPlaceholder="Search customers..."
+                  searchFn={handleSearchCustomers}
+                  getByIdFn={handleGetCustomerById}
+                  placeholder="Search customer..."
+                  searchPlaceholder="Type customer name..."
                 />
               </div>
               <div className="grid gap-2">
@@ -249,14 +244,12 @@ export function NewRegistrationClient({
                   options={sampleTypeOptions}
                   value={sampleTypeId}
                   onValueChange={handleSampleTypeChange}
-                  placeholder="Select a sample type..."
-                  searchPlaceholder="Search sample types..."
+                  placeholder="Select type..."
+                  searchPlaceholder="Search types..."
                 />
               </div>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="grid gap-2">
-                <Label>Job Type *</Label>
+                <Label>Job Type</Label>
                 <Select value={jobType} onValueChange={setJobType}>
                   <SelectTrigger>
                     <SelectValue />
@@ -267,8 +260,12 @@ export function NewRegistrationClient({
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+
+            {/* Row 2: Priority + Reference + Quantity + Sampler */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="grid gap-2">
-                <Label>Priority *</Label>
+                <Label>Priority</Label>
                 <Select value={priority} onValueChange={setPriority}>
                   <SelectTrigger>
                     <SelectValue />
@@ -285,39 +282,7 @@ export function NewRegistrationClient({
                 <Input
                   value={reference}
                   onChange={(e) => setReference(e.target.value)}
-                  placeholder="Client reference or PO number"
-                />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label>Description</Label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Sample description..."
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Card 2: Collection Details */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Collection Details</CardTitle>
-          <CardDescription>Sample collection and sampler information</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Collected By (Sampler)</Label>
-                <SearchableSelect
-                  options={samplerOptions}
-                  value={collectedById}
-                  onValueChange={setCollectedById}
-                  placeholder="Select a sampler..."
-                  searchPlaceholder="Search samplers..."
+                  placeholder="PO number"
                 />
               </div>
               <div className="grid gap-2">
@@ -325,17 +290,29 @@ export function NewRegistrationClient({
                 <Input
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="e.g. 500ml, 1L"
+                  placeholder="e.g. 500ml"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Collected By</Label>
+                <SearchableSelect
+                  options={samplerOptions}
+                  value={collectedById}
+                  onValueChange={setCollectedById}
+                  placeholder="Sampler..."
+                  searchPlaceholder="Search..."
                 />
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            {/* Row 3: Sample Point + Location + Description */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="grid gap-2">
                 <Label>Sample Point</Label>
                 <Input
                   value={samplePoint}
                   onChange={(e) => setSamplePoint(e.target.value)}
-                  placeholder="e.g. Tank No-4, Engine Room, Storage Vessel"
+                  placeholder="e.g. Tank No-4"
                 />
               </div>
               <div className="grid gap-2">
@@ -343,7 +320,15 @@ export function NewRegistrationClient({
                 <Input
                   value={collectionLocation}
                   onChange={(e) => setCollectionLocation(e.target.value)}
-                  placeholder="e.g. Site A, Block 3, Ajman Port"
+                  placeholder="e.g. Ajman Port"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Description</Label>
+                <Input
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Sample description"
                 />
               </div>
             </div>
@@ -422,36 +407,31 @@ export function NewRegistrationClient({
         </CardContent>
       </Card>
 
-      {/* Notes */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Notes</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Notes + Action Bar */}
+      <div className="flex items-center gap-4 pb-6">
+        <div className="flex-1">
           <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            placeholder="Additional notes or special instructions..."
-            rows={3}
+            placeholder="Notes (optional)..."
+            rows={2}
           />
-        </CardContent>
-      </Card>
-
-      {/* Action Bar */}
-      <div className="flex items-center justify-end gap-3 pb-6">
-        <Button variant="outline" asChild>
-          <Link href="/process/registration">Cancel</Link>
-        </Button>
-        <Button onClick={handleSubmit} disabled={loading} size="lg">
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Registering...
-            </>
-          ) : (
-            "Register Sample"
-          )}
-        </Button>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          <Button variant="outline" asChild>
+            <Link href="/process/registration">Cancel</Link>
+          </Button>
+          <Button onClick={handleSubmit} disabled={loading} size="lg">
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Registering...
+              </>
+            ) : (
+              "Register Sample"
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   )

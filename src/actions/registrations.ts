@@ -68,6 +68,51 @@ export async function getCustomersForSelect() {
   }))
 }
 
+export async function searchCustomers(query: string) {
+  const session = await getSession()
+  const user = session.user as any
+  const labId = user.labId
+
+  if (!query || query.length < 1) return []
+
+  const customers = await db.customer.findMany({
+    where: {
+      labId,
+      status: "active",
+      OR: [
+        { name: { contains: query, mode: "insensitive" } },
+        { company: { contains: query, mode: "insensitive" } },
+        { code: { contains: query, mode: "insensitive" } },
+      ],
+    },
+    select: { id: true, name: true, company: true },
+    orderBy: { name: "asc" },
+    take: 20,
+  })
+
+  return customers.map((c) => ({
+    value: c.id,
+    label: c.company ? `${c.name} - ${c.company}` : c.name,
+  }))
+}
+
+export async function getCustomerById(id: string) {
+  const session = await getSession()
+  const user = session.user as any
+
+  const customer = await db.customer.findFirst({
+    where: { id, labId: user.labId },
+    select: { id: true, name: true, company: true },
+  })
+
+  if (!customer) return null
+
+  return {
+    value: customer.id,
+    label: customer.company ? `${customer.name} - ${customer.company}` : customer.name,
+  }
+}
+
 export async function getSampleTypesForSelect() {
   const session = await getSession()
   const user = session.user as any

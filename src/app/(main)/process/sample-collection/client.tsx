@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Loader2, MapPin } from "lucide-react"
@@ -9,6 +9,7 @@ import { toast } from "sonner"
 import { PageHeader } from "@/components/shared/page-header"
 import { DataTable } from "@/components/shared/data-table"
 import { SearchableSelect } from "@/components/shared/searchable-select"
+import { AsyncSearchableSelect } from "@/components/shared/async-searchable-select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -29,13 +30,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 
-import { createSample } from "@/actions/registrations"
-
-type Customer = {
-  id: string
-  name: string
-  company: string | null
-}
+import { createSample, searchCustomers, getCustomerById } from "@/actions/registrations"
 
 type SampleTypeOption = {
   id: string
@@ -91,11 +86,9 @@ const priorityBadge = (priority: string) => {
 
 export function SampleCollectionClient({
   collections,
-  customers,
   sampleTypes,
 }: {
   collections: Collection[]
-  customers: Customer[]
   sampleTypes: SampleTypeOption[]
 }) {
   const router = useRouter()
@@ -111,10 +104,14 @@ export function SampleCollectionClient({
   const [notes, setNotes] = useState("")
   const [priority, setPriority] = useState("normal")
 
-  const customerOptions = customers.map((c) => ({
-    value: c.id,
-    label: c.company ? `${c.name} - ${c.company}` : c.name,
-  }))
+  const handleSearchCustomers = useCallback(
+    (query: string) => searchCustomers(query),
+    []
+  )
+  const handleGetCustomerById = useCallback(
+    (id: string) => getCustomerById(id),
+    []
+  )
 
   const sampleTypeOptions = sampleTypes.map((st) => ({
     value: st.id,
@@ -225,12 +222,13 @@ export function SampleCollectionClient({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label>Customer *</Label>
-                <SearchableSelect
-                  options={customerOptions}
+                <AsyncSearchableSelect
                   value={clientId}
                   onValueChange={setClientId}
-                  placeholder="Select a customer..."
-                  searchPlaceholder="Search customers..."
+                  searchFn={handleSearchCustomers}
+                  getByIdFn={handleGetCustomerById}
+                  placeholder="Search customer..."
+                  searchPlaceholder="Type customer name..."
                 />
               </div>
               <div className="grid gap-2">
