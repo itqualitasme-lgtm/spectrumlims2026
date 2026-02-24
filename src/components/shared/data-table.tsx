@@ -10,6 +10,7 @@ import {
   flexRender,
   type ColumnDef,
   type SortingState,
+  type ColumnFiltersState,
 } from "@tanstack/react-table"
 import { ChevronLeft, ChevronRight, ArrowUpDown } from "lucide-react"
 import { Input } from "@/components/ui/input"
@@ -37,8 +38,8 @@ export function DataTable<TData, TValue>({
   searchKey,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
   const [globalFilter, setGlobalFilter] = useState("")
-  const [columnFilter, setColumnFilter] = useState("")
 
   const table = useReactTable({
     data,
@@ -46,11 +47,11 @@ export function DataTable<TData, TValue>({
     state: {
       sorting,
       globalFilter: searchKey ? undefined : globalFilter,
-      columnFilters: searchKey
-        ? [{ id: searchKey, value: columnFilter }]
-        : [],
+      columnFilters,
     },
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
@@ -71,10 +72,14 @@ export function DataTable<TData, TValue>({
       <div className="flex items-center">
         <Input
           placeholder={searchPlaceholder}
-          value={searchKey ? columnFilter : globalFilter}
+          value={
+            searchKey
+              ? (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
+              : globalFilter
+          }
           onChange={(e) => {
             if (searchKey) {
-              setColumnFilter(e.target.value)
+              table.getColumn(searchKey)?.setFilterValue(e.target.value)
             } else {
               setGlobalFilter(e.target.value)
             }
