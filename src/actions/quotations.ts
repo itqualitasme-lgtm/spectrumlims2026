@@ -104,7 +104,7 @@ export async function createQuotation(data: {
 
   const taxRate = data.taxRate ?? 5
 
-  const quotationNumber = await generateNextNumber(labId, "quotation", "QUO")
+  const { formatted: quotationNumber } = await generateNextNumber(labId, "quotation", "QUO")
 
   // Calculate totals
   const subtotal = data.items.reduce(

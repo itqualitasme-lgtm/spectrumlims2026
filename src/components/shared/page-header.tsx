@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 
@@ -6,10 +7,11 @@ interface PageHeaderProps {
   description?: string
   actionLabel?: string
   onAction?: () => void
+  actionHref?: string
   children?: React.ReactNode
 }
 
-export function PageHeader({ title, description, actionLabel, onAction, children }: PageHeaderProps) {
+export function PageHeader({ title, description, actionLabel, onAction, actionHref, children }: PageHeaderProps) {
   return (
     <div className="flex items-center justify-between">
       <div>
@@ -18,7 +20,15 @@ export function PageHeader({ title, description, actionLabel, onAction, children
       </div>
       <div className="flex items-center gap-2">
         {children}
-        {actionLabel && onAction && (
+        {actionLabel && actionHref && (
+          <Button asChild>
+            <Link href={actionHref}>
+              <Plus className="mr-2 h-4 w-4" />
+              {actionLabel}
+            </Link>
+          </Button>
+        )}
+        {actionLabel && onAction && !actionHref && (
           <Button onClick={onAction}>
             <Plus className="mr-2 h-4 w-4" />
             {actionLabel}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
@@ -13,16 +13,7 @@ import { SearchableSelect } from "@/components/shared/searchable-select"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import {
   Dialog,
   DialogContent,
@@ -33,11 +24,8 @@ import {
 } from "@/components/ui/dialog"
 
 import {
-  createSample,
   assignSample,
   deleteSample,
-  getCustomersForSelect,
-  getSampleTypesForSelect,
   getChemistsForSelect,
 } from "@/actions/registrations"
 
@@ -48,6 +36,7 @@ type Sample = {
   quantity: string | null
   priority: string
   status: string
+  jobType: string
   notes: string | null
   createdAt: string
   client: { id: string; name: string; company: string | null }
@@ -89,11 +78,21 @@ const priorityBadge = (priority: string) => {
   }
 }
 
+const jobTypeBadge = (jobType: string) => {
+  switch (jobType) {
+    case "testing":
+      return <Badge variant="outline">Testing</Badge>
+    case "survey":
+      return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Survey</Badge>
+    default:
+      return <Badge variant="secondary">{jobType}</Badge>
+  }
+}
+
 export function RegistrationClient({ samples }: { samples: Sample[] }) {
   const router = useRouter()
 
   // Dialog states
-  const [registerOpen, setRegisterOpen] = useState(false)
   const [assignOpen, setAssignOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -101,87 +100,20 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
   // Selected sample for assign/delete
   const [selectedSample, setSelectedSample] = useState<Sample | null>(null)
 
-  // Select options
-  const [customers, setCustomers] = useState<{ value: string; label: string }[]>([])
-  const [sampleTypes, setSampleTypes] = useState<{ value: string; label: string }[]>([])
-  const [chemists, setChemists] = useState<{ value: string; label: string }[]>([])
-
-  // Register form
-  const [clientId, setClientId] = useState("")
-  const [sampleTypeId, setSampleTypeId] = useState("")
-  const [description, setDescription] = useState("")
-  const [quantity, setQuantity] = useState("")
-  const [priority, setPriority] = useState("normal")
-  const [samplePoint, setSamplePoint] = useState("")
-  const [notes, setNotes] = useState("")
-
   // Assign form
+  const [chemists, setChemists] = useState<{ value: string; label: string }[]>([])
   const [assignedToId, setAssignedToId] = useState("")
 
-  const loadSelectOptions = async () => {
-    try {
-      const [c, st, ch] = await Promise.all([
-        getCustomersForSelect(),
-        getSampleTypesForSelect(),
-        getChemistsForSelect(),
-      ])
-      setCustomers(
-        c.map((x) => ({
-          value: x.id,
-          label: x.company ? `${x.name} - ${x.company}` : x.name,
-        }))
-      )
-      setSampleTypes(st.map((x) => ({ value: x.id, label: x.name })))
-      setChemists(ch.map((x) => ({ value: x.id, label: x.name })))
-    } catch {
-      toast.error("Failed to load form options")
-    }
-  }
-
-  const handleOpenRegister = async () => {
-    await loadSelectOptions()
-    setClientId("")
-    setSampleTypeId("")
-    setDescription("")
-    setQuantity("")
-    setPriority("normal")
-    setSamplePoint("")
-    setNotes("")
-    setRegisterOpen(true)
-  }
-
-  const handleRegister = async () => {
-    if (!clientId || !sampleTypeId) {
-      toast.error("Please select a customer and sample type")
-      return
-    }
-
-    setLoading(true)
-    try {
-      const sample = await createSample({
-        clientId,
-        sampleTypeId,
-        description: description || undefined,
-        quantity: quantity || undefined,
-        priority,
-        samplePoint: samplePoint || undefined,
-        notes: notes || undefined,
-      })
-      toast.success(`Sample ${sample.sampleNumber} registered successfully`)
-      setRegisterOpen(false)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to register sample")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleOpenAssign = async (sample: Sample) => {
-    await loadSelectOptions()
-    setSelectedSample(sample)
-    setAssignedToId("")
-    setAssignOpen(true)
+    try {
+      const ch = await getChemistsForSelect()
+      setChemists(ch.map((x) => ({ value: x.id, label: x.name })))
+      setSelectedSample(sample)
+      setAssignedToId("")
+      setAssignOpen(true)
+    } catch {
+      toast.error("Failed to load chemists")
+    }
   }
 
   const handleAssign = async () => {
@@ -241,6 +173,11 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
     {
       accessorKey: "sampleType.name",
       header: "Type",
+    },
+    {
+      accessorKey: "jobType",
+      header: "Job Type",
+      cell: ({ row }) => jobTypeBadge(row.original.jobType),
     },
     {
       accessorKey: "priority",
@@ -315,7 +252,7 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
         title="Sample Registration"
         description="Register and manage laboratory samples"
         actionLabel="Register Sample"
-        onAction={handleOpenRegister}
+        actionHref="/process/registration/new"
       />
 
       <DataTable
@@ -324,102 +261,6 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
         searchPlaceholder="Search samples..."
         searchKey="sampleNumber"
       />
-
-      {/* Register Sample Dialog */}
-      <Dialog open={registerOpen} onOpenChange={setRegisterOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Register New Sample</DialogTitle>
-            <DialogDescription>
-              Enter the sample details to register a new sample.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Customer *</Label>
-              <SearchableSelect
-                options={customers}
-                value={clientId}
-                onValueChange={setClientId}
-                placeholder="Select a customer..."
-                searchPlaceholder="Search customers..."
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Sample Type *</Label>
-              <SearchableSelect
-                options={sampleTypes}
-                value={sampleTypeId}
-                onValueChange={setSampleTypeId}
-                placeholder="Select a sample type..."
-                searchPlaceholder="Search sample types..."
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Description</Label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Sample description..."
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>Quantity</Label>
-                <Input
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  placeholder="e.g. 500ml, 1L"
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Priority</Label>
-                <Select value={priority} onValueChange={setPriority}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
-                    <SelectItem value="rush">Rush</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label>Sample Point</Label>
-              <Input
-                value={samplePoint}
-                onChange={(e) => setSamplePoint(e.target.value)}
-                placeholder="e.g. Tank No-4, Engine Room, Storage Vessel"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Notes</Label>
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Additional notes..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRegisterOpen(false)} disabled={loading}>
-              Cancel
-            </Button>
-            <Button onClick={handleRegister} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Registering...
-                </>
-              ) : (
-                "Register Sample"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Assign Sample Dialog */}
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>

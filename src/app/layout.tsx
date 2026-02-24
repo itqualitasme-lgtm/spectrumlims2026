@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
+import NextTopLoader from "nextjs-toploader"
 import "./globals.css"
 import { Providers } from "@/components/providers"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -17,7 +18,7 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "Spectrum LIMS",
+  title: "SPECTRUM LIMS",
   description: "Spectrum Testing & Inspection - Laboratory Information Management System",
 }
 
@@ -31,6 +32,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <NextTopLoader color="#dc2626" height={3} showSpinner={false} />
         <Providers>
           <TooltipProvider>
             {children}

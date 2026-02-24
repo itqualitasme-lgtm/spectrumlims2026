@@ -3,7 +3,7 @@
 import { db } from "@/lib/db"
 import { requirePermission, getSession } from "@/lib/permissions"
 import { logAudit } from "@/lib/audit"
-import { generateNextNumber } from "@/lib/auto-number"
+import { generateNextNumber, generateLinkedNumber } from "@/lib/auto-number"
 import { revalidatePath } from "next/cache"
 
 export async function getReports() {
@@ -60,7 +60,19 @@ export async function createReport(data: {
   const user = session.user as any
   const labId = user.labId
 
-  const reportNumber = await generateNextNumber(labId, "report", "RPT")
+  // Use the sample's sequence number so report number matches sample number
+  const sample = await db.sample.findFirst({
+    where: { id: data.sampleId, labId },
+    select: { sequenceNumber: true },
+  })
+
+  let reportNumber: string
+  if (sample?.sequenceNumber) {
+    reportNumber = await generateLinkedNumber(labId, "report", sample.sequenceNumber)
+  } else {
+    const result = await generateNextNumber(labId, "report", "RPT")
+    reportNumber = result.formatted
+  }
 
   const report = await db.report.create({
     data: {

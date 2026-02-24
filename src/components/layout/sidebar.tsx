@@ -62,13 +62,13 @@ export default function Sidebar({ permissions, roleName }: SidebarProps) {
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/images/logo-red.png"
-            alt="Spectrum LIMS"
+            alt="SPECTRUM LIMS"
             width={28}
             height={28}
             className="rounded"
           />
           {!collapsed && (
-            <span className="text-lg font-bold">Spectrum LIMS</span>
+            <span className="text-lg font-bold">SPECTRUM LIMS</span>
           )}
         </Link>
       </div>

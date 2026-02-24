@@ -4,7 +4,7 @@ import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Image from "next/image"
-import { Eye, EyeOff, Loader2, FlaskConical } from "lucide-react"
+import { Eye, EyeOff, Loader2 } from "lucide-react"
 import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -60,19 +60,15 @@ export function LoginForm() {
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800 p-4">
       <div className="w-full max-w-md space-y-6">
         <Card>
-          <CardHeader className="items-center text-center">
+          <CardHeader className="flex flex-col items-center text-center space-y-3 pb-4">
             <Image
-              src="/images/logo-full.png"
-              alt="Spectrum LIMS"
-              width={200}
-              height={60}
-              className="mb-2"
+              src="/images/with name black bg transp 3@4x.png"
+              alt="Spectrum Inspection and Testing Services"
+              width={280}
+              height={80}
+              className="mb-1"
               priority
             />
-            <div className="flex items-center gap-2">
-              <FlaskConical className="h-5 w-5 text-primary" />
-              <h1 className="text-xl font-bold">Spectrum LIMS</h1>
-            </div>
             <p className="text-sm text-muted-foreground">
               Laboratory Information Management System
             </p>

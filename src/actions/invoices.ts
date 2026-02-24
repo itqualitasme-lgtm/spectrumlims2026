@@ -104,7 +104,7 @@ export async function createInvoice(data: {
 
   const taxRate = data.taxRate ?? 5
 
-  const invoiceNumber = await generateNextNumber(labId, "invoice", "INV")
+  const { formatted: invoiceNumber } = await generateNextNumber(labId, "invoice", "INV")
 
   // Calculate totals
   const subtotal = data.items.reduce(

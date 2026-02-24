@@ -109,6 +109,29 @@ export async function getChemistsForSelect() {
   }))
 }
 
+export async function getSamplersForSelect() {
+  const session = await getSession()
+  const user = session.user as any
+  const labId = user.labId
+
+  const samplers = await db.user.findMany({
+    where: {
+      labId,
+      isActive: true,
+      role: {
+        name: { in: ["Sampler", "Lab Manager", "Admin"] },
+      },
+    },
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  })
+
+  return samplers.map((s) => ({
+    id: s.id,
+    name: s.name,
+  }))
+}
+
 export async function createSample(data: {
   clientId: string
   sampleTypeId: string
@@ -116,31 +139,39 @@ export async function createSample(data: {
   quantity?: string
   priority: string
   notes?: string
+  jobType?: string
+  reference?: string
   collectedByCurrentUser?: boolean
+  collectedById?: string
   collectionLocation?: string
   samplePoint?: string
+  selectedTests?: number[]
 }) {
   const session = await requirePermission("process", "create")
   const user = session.user as any
   const labId = user.labId
 
-  const sampleNumber = await generateNextNumber(labId, "sample", "SPL")
+  const { formatted: sampleNumber, sequenceNumber } = await generateNextNumber(labId, "sample", "SPL")
 
   // Get sample type to parse default tests
   const sampleType = await db.sampleType.findUnique({
     where: { id: data.sampleTypeId },
   })
 
-  const collectedById = data.collectedByCurrentUser ? user.id : null
+  // Determine collected by: explicit sampler ID, current user flag, or null
+  const collectedById = data.collectedById || (data.collectedByCurrentUser ? user.id : null)
 
   const sample = await db.sample.create({
     data: {
       sampleNumber,
+      sequenceNumber,
       clientId: data.clientId,
       sampleTypeId: data.sampleTypeId,
       description: data.description || null,
       quantity: data.quantity || null,
       priority: data.priority,
+      jobType: data.jobType || "testing",
+      reference: data.reference || null,
       status: "registered",
       registeredById: user.id,
       registeredAt: new Date(),
@@ -165,17 +196,25 @@ export async function createSample(data: {
       }>
 
       if (Array.isArray(tests) && tests.length > 0) {
-        await db.testResult.createMany({
-          data: tests.map((test) => ({
-            sampleId: sample.id,
-            parameter: test.parameter,
-            testMethod: test.testMethod || null,
-            unit: test.unit || null,
-            specMin: test.specMin || null,
-            specMax: test.specMax || null,
-            status: "pending",
-          })),
-        })
+        // If selectedTests provided, only create those indices
+        const selectedIndices = data.selectedTests
+        const testsToCreate = selectedIndices
+          ? tests.filter((_, i) => selectedIndices.includes(i))
+          : tests
+
+        if (testsToCreate.length > 0) {
+          await db.testResult.createMany({
+            data: testsToCreate.map((test) => ({
+              sampleId: sample.id,
+              parameter: test.parameter,
+              testMethod: test.testMethod || null,
+              unit: test.unit || null,
+              specMin: test.specMin || null,
+              specMax: test.specMax || null,
+              status: "pending",
+            })),
+          })
+        }
       }
     } catch {
       // If JSON parsing fails, skip test creation

@@ -64,6 +64,8 @@ type SampleDetail = {
   quantity: string | null
   priority: string
   status: string
+  jobType: string
+  reference: string | null
   samplePoint: string | null
   notes: string | null
   createdAt: string
@@ -206,6 +208,14 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
               <div className="mt-1">{priorityBadge(sample.priority)}</div>
             </div>
             <div>
+              <p className="text-sm font-medium text-muted-foreground">Job Type</p>
+              <div className="mt-1">
+                <Badge variant={sample.jobType === "survey" ? "default" : "outline"}>
+                  {sample.jobType === "survey" ? "Survey" : "Testing"}
+                </Badge>
+              </div>
+            </div>
+            <div>
               <p className="text-sm font-medium text-muted-foreground">Status</p>
               <div className="mt-1">{statusBadge(sample.status)}</div>
             </div>
@@ -227,6 +237,12 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
                 {new Date(sample.createdAt).toLocaleDateString()}
               </p>
             </div>
+            {sample.reference && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Reference / PO</p>
+                <p className="text-sm">{sample.reference}</p>
+              </div>
+            )}
             {sample.quantity && (
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Quantity</p>

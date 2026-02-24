@@ -185,6 +185,9 @@ model Sample {
   collectionDate     DateTime?
   collectionLocation String?
   samplePoint        String?
+  jobType            String    @default("testing")
+  reference          String?
+  sequenceNumber     Int?
   registeredById     String?
   registeredAt       DateTime?
   notes              String?
