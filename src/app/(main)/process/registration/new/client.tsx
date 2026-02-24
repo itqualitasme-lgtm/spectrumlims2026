@@ -435,38 +435,29 @@ export function NewRegistrationClient({
 
                   {/* Expanded test panel */}
                   {row.expanded && tests.length > 0 && (
-                    <div className="ml-7 mr-1 mb-1.5 rounded border text-xs">
-                      <div className="max-h-[200px] overflow-y-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b bg-muted/50">
-                              <th className="w-7 px-2 py-1 text-left">
-                                <Checkbox
-                                  checked={row.selectedTests.size === tests.length}
-                                  onCheckedChange={() => toggleAllTests(row.id)}
-                                  className="h-3.5 w-3.5"
-                                />
-                              </th>
-                              <th className="text-left px-2 py-1 font-medium">Parameter</th>
-                              <th className="text-left px-2 py-1 font-medium">Method</th>
-                              <th className="text-left px-2 py-1 font-medium">Unit</th>
-                              <th className="text-right px-2 py-1 font-medium text-muted-foreground">{row.selectedTests.size}/{tests.length}</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {tests.map((test, testIdx) => (
-                              <tr key={testIdx} className="border-b last:border-0 hover:bg-muted/30 cursor-pointer" onClick={() => toggleTest(row.id, testIdx)}>
-                                <td className="px-2 py-1">
-                                  <Checkbox checked={row.selectedTests.has(testIdx)} onCheckedChange={() => toggleTest(row.id, testIdx)} className="h-3.5 w-3.5" />
-                                </td>
-                                <td className="px-2 py-1 font-medium">{test.parameter}</td>
-                                <td className="px-2 py-1 text-muted-foreground">{getTestMethod(test) || "-"}</td>
-                                <td className="px-2 py-1 text-muted-foreground">{test.unit || "-"}</td>
-                                <td></td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                    <div className="ml-7 mr-1 mb-1.5 rounded border text-xs overflow-hidden">
+                      {/* Header */}
+                      <div className="flex items-center gap-3 px-2 py-1 bg-muted/50 border-b">
+                        <label className="flex items-center gap-1.5 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleAllTests(row.id) }}>
+                          <Checkbox checked={row.selectedTests.size === tests.length} className="h-3.5 w-3.5" tabIndex={-1} />
+                          <span className="font-medium">Select All</span>
+                        </label>
+                        <span className="ml-auto text-muted-foreground">{row.selectedTests.size}/{tests.length}</span>
+                      </div>
+                      {/* Test list */}
+                      <div className="max-h-[200px] overflow-y-auto divide-y">
+                        {tests.map((test, testIdx) => (
+                          <label
+                            key={testIdx}
+                            className="flex items-center gap-3 px-2 py-1.5 hover:bg-muted/30 cursor-pointer"
+                            onClick={(e) => { e.preventDefault(); toggleTest(row.id, testIdx) }}
+                          >
+                            <Checkbox checked={row.selectedTests.has(testIdx)} className="h-3.5 w-3.5 shrink-0" tabIndex={-1} />
+                            <span className="font-medium min-w-0 flex-1">{test.parameter}</span>
+                            <span className="text-muted-foreground shrink-0 w-24">{getTestMethod(test) || "-"}</span>
+                            <span className="text-muted-foreground shrink-0 w-16 text-right">{test.unit || "-"}</span>
+                          </label>
+                        ))}
                       </div>
                     </div>
                   )}
