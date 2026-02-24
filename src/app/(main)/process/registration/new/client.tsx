@@ -367,9 +367,9 @@ export function NewRegistrationClient({
       {/* Job Details */}
       <Card>
         <CardContent className="py-2 px-3">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-x-3 gap-y-1.5">
+          <div className="grid grid-cols-2 md:grid-cols-[1fr_110px_110px_auto] gap-x-3 gap-y-1.5">
             {/* Row 1 */}
-            <div className="col-span-2 grid gap-0.5">
+            <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Customer *</Label>
               <AsyncSearchableSelect
                 value={clientId}
@@ -404,7 +404,7 @@ export function NewRegistrationClient({
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Rec. Date & Time</Label>
               <div className="flex gap-1.5">
-                <Input className="h-9 flex-1" type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
+                <Input className="h-9" type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
                 <Input className="h-9 w-[120px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
               </div>
             </div>
@@ -415,7 +415,7 @@ export function NewRegistrationClient({
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Location</Label>
-              <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="e.g. Ajman Port" />
+              <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="Ajman Port" />
             </div>
             <div className="col-span-2 grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampler</Label>
