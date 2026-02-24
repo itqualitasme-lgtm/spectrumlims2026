@@ -264,7 +264,7 @@ export function NewRegistrationClient({
   // Success screen
   if (registeredIds.length > 0) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         <div className="flex items-center gap-3">
           <Button variant="outline" size="sm" asChild>
             <Link href="/process/registration">
@@ -274,32 +274,47 @@ export function NewRegistrationClient({
           <PageHeader title="Registration Complete" />
         </div>
         <Card>
-          <CardContent className="py-8">
-            <div className="flex flex-col items-center text-center space-y-4">
-              <CheckCircle2 className="h-10 w-10 text-green-600" />
-              <div>
-                <h3 className="text-lg font-semibold">
-                  {registeredNumbers.length === 1
-                    ? "Sample Registered Successfully"
-                    : `${registeredNumbers.length} Samples Registered`}
-                </h3>
-                <div className="mt-2 flex flex-wrap justify-center gap-2">
-                  {registeredNumbers.map((num) => (
-                    <Badge key={num} variant="outline" className="text-sm font-mono">{num}</Badge>
-                  ))}
+          <CardContent className="py-4">
+            <div className="flex items-center gap-3 mb-4">
+              <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
+              <h3 className="text-base font-semibold">
+                {registeredNumbers.length === 1
+                  ? "1 Sample Registered"
+                  : `${registeredNumbers.length} Samples Registered — Each bottle has its own label`}
+              </h3>
+            </div>
+
+            {/* Individual sample bottles */}
+            <div className="rounded border divide-y text-sm mb-4">
+              {registeredNumbers.map((num, idx) => (
+                <div key={num} className="flex items-center justify-between px-3 py-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground font-mono w-5">{idx + 1}</span>
+                    <Badge variant="outline" className="font-mono">{num}</Badge>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => window.open(`/api/samples/${registeredIds[idx]}/label`, "_blank")}
+                  >
+                    <Printer className="mr-1 h-3 w-3" /> Print Label
+                  </Button>
                 </div>
-              </div>
-              <div className="flex items-center gap-3 pt-2">
-                <Button onClick={handlePrintLabels}>
-                  <Printer className="mr-2 h-4 w-4" /> Print QR Labels
-                </Button>
-                <Button variant="outline" onClick={resetForm}>
-                  <Plus className="mr-2 h-4 w-4" /> Register More
-                </Button>
-                <Button variant="ghost" size="sm" asChild>
-                  <Link href="/process/registration">View All</Link>
-                </Button>
-              </div>
+              ))}
+            </div>
+
+            {/* Action buttons */}
+            <div className="flex items-center gap-3">
+              <Button onClick={handlePrintLabels}>
+                <Printer className="mr-2 h-4 w-4" /> Print All Labels ({registeredNumbers.length})
+              </Button>
+              <Button variant="outline" onClick={resetForm}>
+                <Plus className="mr-2 h-4 w-4" /> Register More
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/process/registration">View All</Link>
+              </Button>
             </div>
           </CardContent>
         </Card>
