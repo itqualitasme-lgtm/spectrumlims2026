@@ -41,7 +41,7 @@ export async function getCompletedSamplesForSelect() {
   const labId = user.labId
 
   const samples = await db.sample.findMany({
-    where: { labId, status: "completed" },
+    where: { labId, status: "completed", deletedAt: null },
     include: {
       client: true,
       sampleType: true,

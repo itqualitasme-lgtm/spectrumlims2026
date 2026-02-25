@@ -4,18 +4,15 @@ import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
-  Send,
+  Play,
   CheckCircle,
   XCircle,
-  AlertTriangle,
   Trash2,
   Eye,
   FileText,
-  ArrowRightLeft,
   Loader2,
   Plus,
   X,
-  Layers,
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -33,7 +30,6 @@ import { Separator } from "@/components/ui/separator"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -55,37 +51,28 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
-import { Checkbox } from "@/components/ui/checkbox"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  createInvoice,
-  updateInvoiceStatus,
-  deleteInvoice,
-  getCustomersForInvoice,
-  getSamplesForInvoice,
-  getInvoice,
-  convertProformaToTax,
-  consolidateProformas,
-} from "@/actions/invoices"
+  createContract,
+  updateContractStatus,
+  deleteContract,
+  getCustomersForContract,
+  getSamplesForContract,
+  getContract,
+} from "@/actions/contracts"
 
-type Invoice = {
+type Contract = {
   id: string
-  invoiceNumber: string
-  invoiceType: string
+  contractNumber: string
   clientId: string
+  quotationId: string | null
   subtotal: number
   taxRate: number
   taxAmount: number
   total: number
   status: string
-  dueDate: string | null
-  paidDate: string | null
+  startDate: string | null
+  endDate: string | null
+  terms: string | null
   notes: string | null
   createdAt: string
   client: {
@@ -97,10 +84,11 @@ type Invoice = {
     trn: string | null
   }
   createdBy: { name: string }
+  quotation: { quotationNumber: string } | null
   _count: { items: number }
 }
 
-type InvoiceDetail = Invoice & {
+type ContractDetail = Contract & {
   lab: {
     id: string
     name: string
@@ -139,40 +127,22 @@ const statusBadge = (status: string) => {
   switch (status) {
     case "draft":
       return <Badge variant="secondary">Draft</Badge>
-    case "sent":
+    case "active":
       return (
         <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-          Sent
+          Active
         </Badge>
       )
-    case "paid":
+    case "completed":
       return (
         <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-          Paid
-        </Badge>
-      )
-    case "overdue":
-      return (
-        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-          Overdue
+          Completed
         </Badge>
       )
     case "cancelled":
       return (
-        <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
+        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
           Cancelled
-        </Badge>
-      )
-    case "converted":
-      return (
-        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">
-          Converted
-        </Badge>
-      )
-    case "consolidated":
-      return (
-        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">
-          Consolidated
         </Badge>
       )
     default:
@@ -180,39 +150,29 @@ const statusBadge = (status: string) => {
   }
 }
 
-export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
+export function ContractsClient({ contracts }: { contracts: Contract[] }) {
   const router = useRouter()
 
-  // Dialog states
   const [createOpen, setCreateOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
-  // Selected invoice for actions
-  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
-  const [invoiceDetail, setInvoiceDetail] = useState<InvoiceDetail | null>(null)
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null)
+  const [contractDetail, setContractDetail] = useState<ContractDetail | null>(null)
 
-  // Selection for consolidation
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-
-  // Create form state
-  const [invoiceType, setInvoiceType] = useState("tax")
   const [clientId, setClientId] = useState("")
-  const [customers, setCustomers] = useState<
-    { value: string; label: string }[]
-  >([])
-  const [samples, setSamples] = useState<
-    { value: string; label: string }[]
-  >([])
+  const [customers, setCustomers] = useState<{ value: string; label: string }[]>([])
+  const [samples, setSamples] = useState<{ value: string; label: string }[]>([])
   const [lineItems, setLineItems] = useState<LineItem[]>([
     { description: "", quantity: 1, unitPrice: 0, sampleId: "" },
   ])
   const [taxRate, setTaxRate] = useState(5)
-  const [dueDate, setDueDate] = useState("")
+  const [startDate, setStartDate] = useState("")
+  const [endDate, setEndDate] = useState("")
+  const [terms, setTerms] = useState("")
   const [notes, setNotes] = useState("")
 
-  // Calculated totals
   const subtotal = useMemo(
     () => lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
     [lineItems]
@@ -222,19 +182,20 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
 
   const handleOpenCreate = async () => {
     try {
-      const custs = await getCustomersForInvoice()
+      const custs = await getCustomersForContract()
       setCustomers(
         custs.map((c) => ({
           value: c.id,
           label: c.company ? `${c.company} (${c.name})` : c.name,
         }))
       )
-      setInvoiceType("tax")
       setClientId("")
       setSamples([])
       setLineItems([{ description: "", quantity: 1, unitPrice: 0, sampleId: "" }])
       setTaxRate(5)
-      setDueDate("")
+      setStartDate("")
+      setEndDate("")
+      setTerms("")
       setNotes("")
       setCreateOpen(true)
     } catch {
@@ -246,7 +207,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
     setClientId(value)
     if (value) {
       try {
-        const smpls = await getSamplesForInvoice(value)
+        const smpls = await getSamplesForContract(value)
         setSamples(
           smpls.map((s) => ({
             value: s.id,
@@ -300,140 +261,78 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
 
     setLoading(true)
     try {
-      const invoice = await createInvoice({
+      const contract = await createContract({
         clientId,
-        invoiceType,
         items: validItems.map((item) => ({
           description: item.description.trim(),
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           sampleId: item.sampleId || undefined,
         })),
-        dueDate: dueDate || undefined,
+        startDate: startDate || undefined,
+        endDate: endDate || undefined,
+        terms: terms.trim() || undefined,
         notes: notes.trim() || undefined,
         taxRate,
       })
-      toast.success(`Invoice ${invoice.invoiceNumber} created successfully`)
+      toast.success(`Contract ${contract.contractNumber} created successfully`)
       setCreateOpen(false)
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Failed to create invoice")
+      toast.error(error.message || "Failed to create contract")
     } finally {
       setLoading(false)
     }
   }
 
-  const handleViewDetail = async (invoice: Invoice) => {
+  const handleViewDetail = async (contract: Contract) => {
     try {
-      const detail = await getInvoice(invoice.id)
+      const detail = await getContract(contract.id)
       if (!detail) {
-        toast.error("Invoice not found")
+        toast.error("Contract not found")
         return
       }
-      setInvoiceDetail(JSON.parse(JSON.stringify(detail)))
+      setContractDetail(JSON.parse(JSON.stringify(detail)))
       setDetailOpen(true)
     } catch {
-      toast.error("Failed to load invoice details")
+      toast.error("Failed to load contract details")
     }
   }
 
-  const handleStatusChange = async (invoice: Invoice, status: string) => {
+  const handleStatusChange = async (contract: Contract, status: string) => {
     try {
-      await updateInvoiceStatus(invoice.id, status)
+      await updateContractStatus(contract.id, status)
       toast.success(
-        `Invoice ${invoice.invoiceNumber} marked as ${status}`
+        `Contract ${contract.contractNumber} marked as ${status}`
       )
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Failed to update invoice status")
+      toast.error(error.message || "Failed to update contract status")
     }
-  }
-
-  const handleConvertToTax = async (invoice: Invoice) => {
-    try {
-      const taxInvoice = await convertProformaToTax(invoice.id)
-      toast.success(`Converted to tax invoice ${taxInvoice.invoiceNumber}`)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to convert proforma")
-    }
-  }
-
-  const handleConsolidate = async () => {
-    const ids = Array.from(selectedIds)
-    if (ids.length < 2) {
-      toast.error("Select at least 2 proforma invoices to consolidate")
-      return
-    }
-    try {
-      const taxInvoice = await consolidateProformas(ids)
-      toast.success(`Consolidated into tax invoice ${taxInvoice.invoiceNumber}`)
-      setSelectedIds(new Set())
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to consolidate proformas")
-    }
-  }
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
   }
 
   const handleDelete = async () => {
-    if (!selectedInvoice) return
+    if (!selectedContract) return
 
     setLoading(true)
     try {
-      await deleteInvoice(selectedInvoice.id)
-      toast.success(`Invoice ${selectedInvoice.invoiceNumber} deleted`)
+      await deleteContract(selectedContract.id)
+      toast.success(`Contract ${selectedContract.contractNumber} deleted`)
       setDeleteOpen(false)
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete invoice")
+      toast.error(error.message || "Failed to delete contract")
     } finally {
       setLoading(false)
     }
   }
 
-  // Proformas that can be consolidated (not already converted/consolidated)
-  const consolidatable = invoices.filter(
-    (inv) =>
-      inv.invoiceType === "proforma" &&
-      inv.status !== "converted" &&
-      inv.status !== "consolidated"
-  )
-
-  const columns: ColumnDef<Invoice, any>[] = [
+  const columns: ColumnDef<Contract, any>[] = [
     {
-      id: "select",
-      header: "",
-      enableSorting: false,
-      cell: ({ row }) => {
-        const invoice = row.original
-        if (invoice.invoiceType !== "proforma" || invoice.status === "converted" || invoice.status === "consolidated") return null
-        return (
-          <Checkbox
-            checked={selectedIds.has(invoice.id)}
-            onCheckedChange={() => toggleSelect(invoice.id)}
-          />
-        )
-      },
-    },
-    {
-      accessorKey: "invoiceNumber",
-      header: "Invoice #",
+      accessorKey: "contractNumber",
+      header: "Contract #",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <span className="font-medium">{row.original.invoiceNumber}</span>
-          {row.original.invoiceType === "proforma" && (
-            <Badge variant="outline" className="text-xs">Proforma</Badge>
-          )}
-        </div>
+        <span className="font-medium">{row.original.contractNumber}</span>
       ),
     },
     {
@@ -443,19 +342,15 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
         row.original.client.company || row.original.client.name,
     },
     {
+      id: "quotation",
+      header: "Quotation",
+      cell: ({ row }) =>
+        row.original.quotation?.quotationNumber || "-",
+    },
+    {
       id: "itemsCount",
       header: "Items",
       cell: ({ row }) => row.original._count.items,
-    },
-    {
-      accessorKey: "subtotal",
-      header: "Subtotal",
-      cell: ({ row }) => formatCurrency(row.original.subtotal),
-    },
-    {
-      accessorKey: "taxAmount",
-      header: "Tax",
-      cell: ({ row }) => formatCurrency(row.original.taxAmount),
     },
     {
       accessorKey: "total",
@@ -472,11 +367,19 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       cell: ({ row }) => statusBadge(row.original.status),
     },
     {
-      accessorKey: "dueDate",
-      header: "Due Date",
+      accessorKey: "startDate",
+      header: "Start Date",
       cell: ({ row }) =>
-        row.original.dueDate
-          ? format(new Date(row.original.dueDate), "dd MMM yyyy")
+        row.original.startDate
+          ? format(new Date(row.original.startDate), "dd MMM yyyy")
+          : "-",
+    },
+    {
+      accessorKey: "endDate",
+      header: "End Date",
+      cell: ({ row }) =>
+        row.original.endDate
+          ? format(new Date(row.original.endDate), "dd MMM yyyy")
           : "-",
     },
     {
@@ -494,7 +397,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       header: "",
       enableSorting: false,
       cell: ({ row }) => {
-        const invoice = row.original
+        const contract = row.original
         return (
           <TooltipProvider delayDuration={300}>
             <div className="flex items-center gap-1">
@@ -504,7 +407,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                     variant="ghost"
                     size="sm"
                     className="h-8 w-8 p-0"
-                    onClick={() => handleViewDetail(invoice)}
+                    onClick={() => handleViewDetail(contract)}
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
@@ -518,7 +421,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                     size="sm"
                     className="h-8 w-8 p-0"
                     onClick={() =>
-                      window.open(`/api/invoices/${invoice.id}/print`, "_blank")
+                      window.open(`/api/contracts/${contract.id}/print`, "_blank")
                     }
                   >
                     <FileText className="h-4 w-4" />
@@ -526,22 +429,22 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                 </TooltipTrigger>
                 <TooltipContent>Print PDF</TooltipContent>
               </Tooltip>
-              {invoice.status === "draft" && (
+              {contract.status === "draft" && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
                       className="h-8 w-8 p-0"
-                      onClick={() => handleStatusChange(invoice, "sent")}
+                      onClick={() => handleStatusChange(contract, "active")}
                     >
-                      <Send className="h-4 w-4" />
+                      <Play className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Mark as Sent</TooltipContent>
+                  <TooltipContent>Activate</TooltipContent>
                 </Tooltip>
               )}
-              {invoice.status === "sent" && (
+              {contract.status === "active" && (
                 <>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -549,12 +452,12 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0"
-                        onClick={() => handleStatusChange(invoice, "paid")}
+                        onClick={() => handleStatusChange(contract, "completed")}
                       >
                         <CheckCircle className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Mark as Paid</TooltipContent>
+                    <TooltipContent>Mark as Completed</TooltipContent>
                   </Tooltip>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -562,46 +465,16 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0"
-                        onClick={() => handleStatusChange(invoice, "overdue")}
+                        onClick={() => handleStatusChange(contract, "cancelled")}
                       >
-                        <AlertTriangle className="h-4 w-4" />
+                        <XCircle className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>Mark as Overdue</TooltipContent>
+                    <TooltipContent>Cancel</TooltipContent>
                   </Tooltip>
                 </>
               )}
-              {invoice.invoiceType === "proforma" && invoice.status !== "converted" && invoice.status !== "consolidated" && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => handleConvertToTax(invoice)}
-                    >
-                      <ArrowRightLeft className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Convert to Tax Invoice</TooltipContent>
-                </Tooltip>
-              )}
-              {(invoice.status === "draft" || invoice.status === "sent") && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 w-8 p-0"
-                      onClick={() => handleStatusChange(invoice, "cancelled")}
-                    >
-                      <XCircle className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Cancel</TooltipContent>
-                </Tooltip>
-              )}
-              {invoice.status !== "converted" && invoice.status !== "consolidated" && (
+              {contract.status === "draft" && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -609,7 +482,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                       size="sm"
                       className="h-8 w-8 p-0 text-destructive hover:text-destructive"
                       onClick={() => {
-                        setSelectedInvoice(invoice)
+                        setSelectedContract(contract)
                         setDeleteOpen(true)
                       }}
                     >
@@ -629,56 +502,29 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Invoices"
-        description="Create and manage invoices for lab services"
-        actionLabel="Create Invoice"
+        title="Contracts"
+        description="Create and manage service contracts with customers"
+        actionLabel="Create Contract"
         onAction={handleOpenCreate}
       />
 
-      {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-          <span className="text-sm font-medium">{selectedIds.size} proforma(s) selected</span>
-          <Button size="sm" onClick={handleConsolidate} disabled={selectedIds.size < 2}>
-            <Layers className="mr-2 h-4 w-4" />
-            Consolidate to Tax Invoice
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setSelectedIds(new Set())}>
-            Clear
-          </Button>
-        </div>
-      )}
-
       <DataTable
         columns={columns}
-        data={invoices}
-        searchPlaceholder="Search invoices..."
-        searchKey="invoiceNumber"
+        data={contracts}
+        searchPlaceholder="Search contracts..."
+        searchKey="contractNumber"
       />
 
-      {/* Create Invoice Dialog */}
+      {/* Create Contract Dialog */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Invoice</DialogTitle>
+            <DialogTitle>Create Contract</DialogTitle>
             <DialogDescription>
-              Create a new invoice for a customer.
+              Create a new service contract for a customer.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">
-            {/* Invoice Type */}
-            <div className="grid gap-2">
-              <Label>Invoice Type *</Label>
-              <Select value={invoiceType} onValueChange={setInvoiceType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tax">Tax Invoice</SelectItem>
-                  <SelectItem value="proforma">Proforma Invoice</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
             {/* Customer Selection */}
             <div className="grid gap-2">
               <Label>Customer *</Label>
@@ -690,6 +536,26 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                 searchPlaceholder="Search customers..."
                 emptyMessage="No active customers found."
               />
+            </div>
+
+            {/* Date Range */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Start Date</Label>
+                <Input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>End Date</Label>
+                <Input
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                />
+              </div>
             </div>
 
             {/* Line Items */}
@@ -807,11 +673,12 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
             <div className="grid grid-cols-2 gap-6">
               <div className="grid gap-4">
                 <div className="grid gap-2">
-                  <Label>Due Date</Label>
-                  <Input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
+                  <Label>Terms & Conditions</Label>
+                  <Textarea
+                    value={terms}
+                    onChange={(e) => setTerms(e.target.value)}
+                    placeholder="Terms and conditions..."
+                    rows={3}
                   />
                 </div>
                 <div className="grid gap-2">
@@ -874,7 +741,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                   Creating...
                 </>
               ) : (
-                "Create Invoice"
+                "Create Contract"
               )}
             </Button>
           </DialogFooter>
@@ -886,59 +753,64 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
         <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Invoice {invoiceDetail?.invoiceNumber}
+              Contract {contractDetail?.contractNumber}
             </DialogTitle>
             <DialogDescription>
-              Invoice details and line items
+              Contract details and line items
             </DialogDescription>
           </DialogHeader>
-          {invoiceDetail && (
+          {contractDetail && (
             <div className="space-y-6 py-4">
-              {/* Invoice Info */}
               <div className="grid grid-cols-2 gap-6">
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Invoice Details
+                      Contract Details
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Number</span>
                       <span className="font-medium">
-                        {invoiceDetail.invoiceNumber}
+                        {contractDetail.contractNumber}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Status</span>
-                      {statusBadge(invoiceDetail.status)}
+                      {statusBadge(contractDetail.status)}
                     </div>
+                    {contractDetail.quotation && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">From Quotation</span>
+                        <span>{contractDetail.quotation.quotationNumber}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Date</span>
                       <span>
                         {format(
-                          new Date(invoiceDetail.createdAt),
+                          new Date(contractDetail.createdAt),
                           "dd MMM yyyy"
                         )}
                       </span>
                     </div>
-                    {invoiceDetail.dueDate && (
+                    {contractDetail.startDate && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Due Date</span>
+                        <span className="text-muted-foreground">Start Date</span>
                         <span>
                           {format(
-                            new Date(invoiceDetail.dueDate),
+                            new Date(contractDetail.startDate),
                             "dd MMM yyyy"
                           )}
                         </span>
                       </div>
                     )}
-                    {invoiceDetail.paidDate && (
+                    {contractDetail.endDate && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Paid Date</span>
+                        <span className="text-muted-foreground">End Date</span>
                         <span>
                           {format(
-                            new Date(invoiceDetail.paidDate),
+                            new Date(contractDetail.endDate),
                             "dd MMM yyyy"
                           )}
                         </span>
@@ -946,37 +818,37 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                     )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Created By</span>
-                      <span>{invoiceDetail.createdBy.name}</span>
+                      <span>{contractDetail.createdBy.name}</span>
                     </div>
                   </CardContent>
                 </Card>
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
-                      Bill To
+                      Client
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     <p className="font-medium">
-                      {invoiceDetail.client.company ||
-                        invoiceDetail.client.name}
+                      {contractDetail.client.company ||
+                        contractDetail.client.name}
                     </p>
-                    {invoiceDetail.client.company && (
-                      <p>{invoiceDetail.client.name}</p>
+                    {contractDetail.client.company && (
+                      <p>{contractDetail.client.name}</p>
                     )}
-                    {invoiceDetail.client.email && (
+                    {contractDetail.client.email && (
                       <p className="text-muted-foreground">
-                        {invoiceDetail.client.email}
+                        {contractDetail.client.email}
                       </p>
                     )}
-                    {invoiceDetail.client.address && (
+                    {contractDetail.client.address && (
                       <p className="text-muted-foreground">
-                        {invoiceDetail.client.address}
+                        {contractDetail.client.address}
                       </p>
                     )}
-                    {invoiceDetail.client.trn && (
+                    {contractDetail.client.trn && (
                       <p className="text-muted-foreground">
-                        TRN: {invoiceDetail.client.trn}
+                        TRN: {contractDetail.client.trn}
                       </p>
                     )}
                   </CardContent>
@@ -1007,7 +879,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {invoiceDetail.items.map((item, index) => (
+                        {contractDetail.items.map((item, index) => (
                           <TableRow key={item.id}>
                             <TableCell>{index + 1}</TableCell>
                             <TableCell>
@@ -1033,33 +905,48 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                     </Table>
                   </div>
 
-                  {/* Totals */}
                   <div className="mt-4 flex justify-end">
                     <div className="w-64 space-y-2">
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
-                        <span>{formatCurrency(invoiceDetail.subtotal)}</span>
+                        <span>{formatCurrency(contractDetail.subtotal)}</span>
                       </div>
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
-                          Tax ({invoiceDetail.taxRate}%)
+                          Tax ({contractDetail.taxRate}%)
                         </span>
                         <span>
-                          {formatCurrency(invoiceDetail.taxAmount)}
+                          {formatCurrency(contractDetail.taxAmount)}
                         </span>
                       </div>
                       <Separator />
                       <div className="flex justify-between font-semibold text-lg">
                         <span>Total</span>
-                        <span>{formatCurrency(invoiceDetail.total)}</span>
+                        <span>{formatCurrency(contractDetail.total)}</span>
                       </div>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
+              {/* Terms */}
+              {contractDetail.terms && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      Terms & Conditions
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm whitespace-pre-wrap">
+                      {contractDetail.terms}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Notes */}
-              {invoiceDetail.notes && (
+              {contractDetail.notes && (
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -1068,7 +955,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm whitespace-pre-wrap">
-                      {invoiceDetail.notes}
+                      {contractDetail.notes}
                     </p>
                   </CardContent>
                 </Card>
@@ -1079,11 +966,11 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
             <Button variant="outline" onClick={() => setDetailOpen(false)}>
               Close
             </Button>
-            {invoiceDetail && (
+            {contractDetail && (
               <Button
                 onClick={() =>
                   window.open(
-                    `/api/invoices/${invoiceDetail.id}/print`,
+                    `/api/contracts/${contractDetail.id}/print`,
                     "_blank"
                   )
                 }
@@ -1100,8 +987,8 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Delete Invoice"
-        description={`Are you sure you want to delete invoice ${selectedInvoice?.invoiceNumber}? This action cannot be undone.`}
+        title="Delete Contract"
+        description={`Are you sure you want to delete contract ${selectedContract?.contractNumber}? This action cannot be undone.`}
         onConfirm={handleDelete}
         confirmLabel="Delete"
         destructive

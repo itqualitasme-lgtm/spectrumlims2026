@@ -15,6 +15,7 @@ export async function getSamplesForTestEntry() {
   // Show samples that are registered, assigned, testing, or recently completed
   const whereClause: any = {
     labId,
+    deletedAt: null,
     status: { in: ["registered", "assigned", "testing", "completed"] },
   }
 

@@ -7,10 +7,12 @@ import {
   FileText,
   Receipt,
   FileSpreadsheet,
+  FileSignature,
   Settings,
   Shield,
   ScrollText,
   FileCheck,
+  Trash2,
   type LucideIcon,
 } from "lucide-react"
 
@@ -76,6 +78,12 @@ export const menuGroups: MenuGroup[] = [
         icon: FileText,
         permission: "process:view",
       },
+      {
+        title: "Deleted Registrations",
+        href: "/process/trash/registrations",
+        icon: Trash2,
+        permission: "process:delete",
+      },
     ],
   },
   {
@@ -88,10 +96,22 @@ export const menuGroups: MenuGroup[] = [
         permission: "accounts:view",
       },
       {
+        title: "Contracts",
+        href: "/accounts/contracts",
+        icon: FileSignature,
+        permission: "accounts:view",
+      },
+      {
         title: "Invoices",
         href: "/accounts/invoices",
         icon: Receipt,
         permission: "accounts:view",
+      },
+      {
+        title: "Deleted Invoices",
+        href: "/accounts/trash/invoices",
+        icon: Trash2,
+        permission: "accounts:delete",
       },
     ],
   },

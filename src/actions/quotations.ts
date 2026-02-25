@@ -72,7 +72,7 @@ export async function getSamplesForQuotation(clientId: string) {
   const labId = user.labId
 
   const samples = await db.sample.findMany({
-    where: { labId, clientId },
+    where: { labId, clientId, deletedAt: null },
     include: {
       sampleType: true,
     },

@@ -12,7 +12,7 @@ export async function getSamples() {
   const labId = user.labId
 
   const samples = await db.sample.findMany({
-    where: { labId },
+    where: { labId, deletedAt: null },
     include: {
       client: true,
       sampleType: true,
@@ -437,11 +437,11 @@ export async function deleteSample(sampleId: string) {
   const sample = await db.sample.findFirst({ where: { id: sampleId, labId } })
   if (!sample) throw new Error("Sample not found")
 
-  if (!["pending", "registered"].includes(sample.status)) {
-    throw new Error("Can only delete samples with pending or registered status")
-  }
-
-  await db.sample.delete({ where: { id: sampleId } })
+  // Soft delete - any status can be deleted
+  await db.sample.update({
+    where: { id: sampleId },
+    data: { deletedAt: new Date(), deletedById: user.id },
+  })
 
   await logAudit(
     labId,
@@ -464,7 +464,7 @@ export async function getMyCollections() {
   const labId = user.labId
 
   const samples = await db.sample.findMany({
-    where: { labId, collectedById: user.id },
+    where: { labId, collectedById: user.id, deletedAt: null },
     include: {
       client: true,
       sampleType: true,

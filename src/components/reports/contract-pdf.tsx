@@ -4,7 +4,6 @@ import {
   Text,
   View,
   StyleSheet,
-  Font,
   renderToBuffer,
 } from "@react-pdf/renderer"
 import { format } from "date-fns"
@@ -40,25 +39,25 @@ const styles = StyleSheet.create({
     color: TEXT_MUTED,
     marginBottom: 2,
   },
-  invoiceTitle: {
-    fontSize: 28,
+  contractTitle: {
+    fontSize: 24,
     fontFamily: "Helvetica-Bold",
     color: NAVY,
     textAlign: "right",
   },
-  invoiceInfoRow: {
+  infoRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
     marginTop: 2,
   },
-  invoiceInfoLabel: {
+  infoLabel: {
     fontSize: 9,
     color: TEXT_MUTED,
     width: 80,
     textAlign: "right",
     marginRight: 8,
   },
-  invoiceInfoValue: {
+  infoValue: {
     fontSize: 9,
     fontFamily: "Helvetica-Bold",
     width: 100,
@@ -69,13 +68,13 @@ const styles = StyleSheet.create({
     borderBottomColor: NAVY,
     marginBottom: 20,
   },
-  billTo: {
+  clientSection: {
     marginBottom: 20,
     padding: 12,
     backgroundColor: LIGHT_BLUE,
     borderRadius: 4,
   },
-  billToTitle: {
+  sectionTitle: {
     fontSize: 9,
     fontFamily: "Helvetica-Bold",
     color: NAVY,
@@ -83,12 +82,12 @@ const styles = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 1,
   },
-  billToName: {
+  clientName: {
     fontSize: 11,
     fontFamily: "Helvetica-Bold",
     marginBottom: 2,
   },
-  billToDetail: {
+  clientDetail: {
     fontSize: 9,
     color: TEXT_MUTED,
     marginBottom: 1,
@@ -122,24 +121,11 @@ const styles = StyleSheet.create({
   tableCell: {
     fontSize: 9,
   },
-  colNum: {
-    width: "6%",
-  },
-  colDesc: {
-    width: "44%",
-  },
-  colQty: {
-    width: "12%",
-    textAlign: "center",
-  },
-  colPrice: {
-    width: "19%",
-    textAlign: "right",
-  },
-  colTotal: {
-    width: "19%",
-    textAlign: "right",
-  },
+  colNum: { width: "6%" },
+  colDesc: { width: "44%" },
+  colQty: { width: "12%", textAlign: "center" as const },
+  colPrice: { width: "19%", textAlign: "right" as const },
+  colTotal: { width: "19%", textAlign: "right" as const },
   summaryContainer: {
     flexDirection: "row",
     justifyContent: "flex-end",
@@ -184,19 +170,22 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
     color: "#ffffff",
   },
+  termsSection: {
+    marginBottom: 20,
+    padding: 12,
+    backgroundColor: LIGHT_BLUE,
+    borderRadius: 4,
+  },
+  termsText: {
+    fontSize: 9,
+    color: TEXT_MUTED,
+    lineHeight: 1.5,
+  },
   notesSection: {
     marginBottom: 30,
     padding: 12,
     backgroundColor: LIGHT_BLUE,
     borderRadius: 4,
-  },
-  notesTitle: {
-    fontSize: 9,
-    fontFamily: "Helvetica-Bold",
-    color: NAVY,
-    marginBottom: 4,
-    textTransform: "uppercase",
-    letterSpacing: 1,
   },
   notesText: {
     fontSize: 9,
@@ -238,32 +227,31 @@ const formatCurrency = (amount: number) => {
 
 const getStatusStyle = (status: string) => {
   switch (status) {
-    case "paid":
-      return { backgroundColor: "#dcfce7", color: "#166534" }
-    case "sent":
+    case "active":
       return { backgroundColor: "#dbeafe", color: "#1e40af" }
-    case "overdue":
-      return { backgroundColor: "#fee2e2", color: "#991b1b" }
+    case "completed":
+      return { backgroundColor: "#dcfce7", color: "#166534" }
     case "cancelled":
-      return { backgroundColor: "#f3f4f6", color: "#374151" }
+      return { backgroundColor: "#fee2e2", color: "#991b1b" }
     default:
       return { backgroundColor: "#f3f4f6", color: "#374151" }
   }
 }
 
-interface InvoicePDFProps {
-  invoice: {
-    invoiceNumber: string
-    invoiceType?: string
+interface ContractPDFProps {
+  contract: {
+    contractNumber: string
     status: string
     subtotal: number
     taxRate: number
     taxAmount: number
     total: number
-    dueDate: string | Date | null
-    paidDate: string | Date | null
+    startDate: string | Date | null
+    endDate: string | Date | null
+    terms: string | null
     notes: string | null
     createdAt: string | Date
+    quotation: { quotationNumber: string } | null
     client: {
       name: string
       company: string | null
@@ -290,9 +278,8 @@ interface InvoicePDFProps {
   }
 }
 
-export function InvoicePDF({ invoice }: InvoicePDFProps) {
-  const statusStyle = getStatusStyle(invoice.status)
-  const titleText = invoice.invoiceType === "proforma" ? "PROFORMA INVOICE" : "TAX INVOICE"
+function ContractPDF({ contract }: ContractPDFProps) {
+  const statusStyle = getStatusStyle(contract.status)
 
   return (
     <Document>
@@ -301,47 +288,63 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
         <View style={styles.header}>
           <View style={styles.headerLeft}>
             <Text style={styles.labName}>
-              {invoice.lab.name || "Spectrum Testing & Inspection"}
+              {contract.lab.name || "Spectrum Testing & Inspection"}
             </Text>
-            {invoice.lab.address && (
-              <Text style={styles.labDetail}>{invoice.lab.address}</Text>
+            {contract.lab.address && (
+              <Text style={styles.labDetail}>{contract.lab.address}</Text>
             )}
-            {invoice.lab.phone && (
-              <Text style={styles.labDetail}>Tel: {invoice.lab.phone}</Text>
+            {contract.lab.phone && (
+              <Text style={styles.labDetail}>Tel: {contract.lab.phone}</Text>
             )}
-            {invoice.lab.email && (
+            {contract.lab.email && (
               <Text style={styles.labDetail}>
-                Email: {invoice.lab.email}
+                Email: {contract.lab.email}
               </Text>
             )}
-            {invoice.lab.trn && (
-              <Text style={styles.labDetail}>TRN: {invoice.lab.trn}</Text>
+            {contract.lab.trn && (
+              <Text style={styles.labDetail}>TRN: {contract.lab.trn}</Text>
             )}
           </View>
           <View>
-            <Text style={styles.invoiceTitle}>{titleText}</Text>
-            <View style={styles.invoiceInfoRow}>
-              <Text style={styles.invoiceInfoLabel}>Invoice No:</Text>
-              <Text style={styles.invoiceInfoValue}>
-                {invoice.invoiceNumber}
+            <Text style={styles.contractTitle}>SERVICE{"\n"}CONTRACT</Text>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Contract No:</Text>
+              <Text style={styles.infoValue}>
+                {contract.contractNumber}
               </Text>
             </View>
-            <View style={styles.invoiceInfoRow}>
-              <Text style={styles.invoiceInfoLabel}>Date:</Text>
-              <Text style={styles.invoiceInfoValue}>
-                {format(new Date(invoice.createdAt), "dd MMM yyyy")}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Date:</Text>
+              <Text style={styles.infoValue}>
+                {format(new Date(contract.createdAt), "dd MMM yyyy")}
               </Text>
             </View>
-            {invoice.dueDate && (
-              <View style={styles.invoiceInfoRow}>
-                <Text style={styles.invoiceInfoLabel}>Due Date:</Text>
-                <Text style={styles.invoiceInfoValue}>
-                  {format(new Date(invoice.dueDate), "dd MMM yyyy")}
+            {contract.startDate && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Start Date:</Text>
+                <Text style={styles.infoValue}>
+                  {format(new Date(contract.startDate), "dd MMM yyyy")}
                 </Text>
               </View>
             )}
-            <View style={styles.invoiceInfoRow}>
-              <Text style={styles.invoiceInfoLabel}>Status:</Text>
+            {contract.endDate && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>End Date:</Text>
+                <Text style={styles.infoValue}>
+                  {format(new Date(contract.endDate), "dd MMM yyyy")}
+                </Text>
+              </View>
+            )}
+            {contract.quotation && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Ref. Quotation:</Text>
+                <Text style={styles.infoValue}>
+                  {contract.quotation.quotationNumber}
+                </Text>
+              </View>
+            )}
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Status:</Text>
               <Text
                 style={[
                   styles.statusBadge,
@@ -351,7 +354,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
                   },
                 ]}
               >
-                {invoice.status}
+                {contract.status}
               </Text>
             </View>
           </View>
@@ -359,23 +362,23 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
 
         <View style={styles.divider} />
 
-        {/* Bill To */}
-        <View style={styles.billTo}>
-          <Text style={styles.billToTitle}>Bill To</Text>
-          <Text style={styles.billToName}>
-            {invoice.client.company || invoice.client.name}
+        {/* Client */}
+        <View style={styles.clientSection}>
+          <Text style={styles.sectionTitle}>Client</Text>
+          <Text style={styles.clientName}>
+            {contract.client.company || contract.client.name}
           </Text>
-          {invoice.client.company && (
-            <Text style={styles.billToDetail}>{invoice.client.name}</Text>
+          {contract.client.company && (
+            <Text style={styles.clientDetail}>{contract.client.name}</Text>
           )}
-          {invoice.client.address && (
-            <Text style={styles.billToDetail}>{invoice.client.address}</Text>
+          {contract.client.address && (
+            <Text style={styles.clientDetail}>{contract.client.address}</Text>
           )}
-          {invoice.client.email && (
-            <Text style={styles.billToDetail}>{invoice.client.email}</Text>
+          {contract.client.email && (
+            <Text style={styles.clientDetail}>{contract.client.email}</Text>
           )}
-          {invoice.client.trn && (
-            <Text style={styles.billToDetail}>TRN: {invoice.client.trn}</Text>
+          {contract.client.trn && (
+            <Text style={styles.clientDetail}>TRN: {contract.client.trn}</Text>
           )}
         </View>
 
@@ -394,7 +397,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
               Total
             </Text>
           </View>
-          {invoice.items.map((item, index) => (
+          {contract.items.map((item, index) => (
             <View
               key={item.id}
               style={[
@@ -428,48 +431,52 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>Subtotal</Text>
               <Text style={styles.summaryValue}>
-                {formatCurrency(invoice.subtotal)}
+                {formatCurrency(contract.subtotal)}
               </Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>
-                Tax ({invoice.taxRate}%)
+                Tax ({contract.taxRate}%)
               </Text>
               <Text style={styles.summaryValue}>
-                {formatCurrency(invoice.taxAmount)}
+                {formatCurrency(contract.taxAmount)}
               </Text>
             </View>
             <View style={styles.summaryDivider} />
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Total</Text>
               <Text style={styles.totalValue}>
-                {formatCurrency(invoice.total)}
+                {formatCurrency(contract.total)}
               </Text>
             </View>
           </View>
         </View>
 
+        {/* Terms */}
+        {contract.terms && (
+          <View style={styles.termsSection}>
+            <Text style={styles.sectionTitle}>Terms & Conditions</Text>
+            <Text style={styles.termsText}>{contract.terms}</Text>
+          </View>
+        )}
+
         {/* Notes */}
-        {invoice.notes && (
+        {contract.notes && (
           <View style={styles.notesSection}>
-            <Text style={styles.notesTitle}>Notes</Text>
-            <Text style={styles.notesText}>{invoice.notes}</Text>
+            <Text style={styles.sectionTitle}>Notes</Text>
+            <Text style={styles.notesText}>{contract.notes}</Text>
           </View>
         )}
 
         {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Payment is due within 30 days of the invoice date unless otherwise
-            stated.
+            This contract is binding upon acceptance and signature by both parties.
           </Text>
           <Text style={styles.footerText}>
-            Please include the invoice number on your payment for reference.
-          </Text>
-          <Text style={styles.footerText}>
-            {invoice.lab.name || "Spectrum Testing & Inspection"}
-            {invoice.lab.phone ? ` | Tel: ${invoice.lab.phone}` : ""}
-            {invoice.lab.email ? ` | ${invoice.lab.email}` : ""}
+            {contract.lab.name || "Spectrum Testing & Inspection"}
+            {contract.lab.phone ? ` | Tel: ${contract.lab.phone}` : ""}
+            {contract.lab.email ? ` | ${contract.lab.email}` : ""}
           </Text>
         </View>
       </Page>
@@ -477,7 +484,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
   )
 }
 
-export async function generateInvoicePDF(invoice: InvoicePDFProps["invoice"]) {
-  const buffer = await renderToBuffer(<InvoicePDF invoice={invoice} />)
+export async function generateContractPDF(contract: ContractPDFProps["contract"]) {
+  const buffer = await renderToBuffer(<ContractPDF contract={contract} />)
   return buffer
 }

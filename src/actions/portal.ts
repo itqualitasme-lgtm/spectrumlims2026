@@ -15,15 +15,15 @@ export async function getPortalDashboard() {
   const { customerId, labId } = await getPortalSession()
 
   const totalSamples = await db.sample.count({
-    where: { clientId: customerId, labId },
+    where: { clientId: customerId, labId, deletedAt: null },
   })
 
   const pendingSamples = await db.sample.count({
-    where: { clientId: customerId, labId, status: { in: ["pending", "registered", "assigned", "testing"] } },
+    where: { clientId: customerId, labId, deletedAt: null, status: { in: ["pending", "registered", "assigned", "testing"] } },
   })
 
   const completedSamples = await db.sample.count({
-    where: { clientId: customerId, labId, status: { in: ["completed", "reported"] } },
+    where: { clientId: customerId, labId, deletedAt: null, status: { in: ["completed", "reported"] } },
   })
 
   const totalReports = await db.report.count({
@@ -35,11 +35,11 @@ export async function getPortalDashboard() {
   })
 
   const totalInvoices = await db.invoice.count({
-    where: { clientId: customerId, labId },
+    where: { clientId: customerId, labId, deletedAt: null },
   })
 
   const invoices = await db.invoice.findMany({
-    where: { clientId: customerId, labId },
+    where: { clientId: customerId, labId, deletedAt: null },
   })
 
   const paidInvoices = invoices.filter((i) => i.status === "paid").length
@@ -49,7 +49,7 @@ export async function getPortalDashboard() {
     .reduce((sum, i) => sum + i.total, 0)
 
   const recentSamples = await db.sample.findMany({
-    where: { clientId: customerId, labId },
+    where: { clientId: customerId, labId, deletedAt: null },
     include: { sampleType: true },
     orderBy: { createdAt: "desc" },
     take: 5,
@@ -80,7 +80,7 @@ export async function getPortalSamples() {
   const { customerId, labId } = await getPortalSession()
 
   const samples = await db.sample.findMany({
-    where: { clientId: customerId, labId },
+    where: { clientId: customerId, labId, deletedAt: null },
     include: {
       sampleType: true,
       testResults: true,
@@ -146,7 +146,7 @@ export async function getPortalInvoices() {
   const { customerId, labId } = await getPortalSession()
 
   const invoices = await db.invoice.findMany({
-    where: { clientId: customerId, labId },
+    where: { clientId: customerId, labId, deletedAt: null },
     include: {
       items: true,
     },

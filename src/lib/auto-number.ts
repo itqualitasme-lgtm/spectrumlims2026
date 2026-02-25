@@ -15,10 +15,11 @@ export async function generateNextNumber(
 ): Promise<{ formatted: string; sequenceNumber: number }> {
   const dateStr = getDateStr()
 
-  // Atomic increment on FormatID table
-  const formatId = await db.formatID.update({
+  // Atomic upsert + increment on FormatID table (auto-creates if missing)
+  const formatId = await db.formatID.upsert({
     where: { labId_module: { labId, module } },
-    data: { lastNumber: { increment: 1 } },
+    update: { lastNumber: { increment: 1 } },
+    create: { labId, module, prefix: fallbackPrefix, lastNumber: 1 },
   })
 
   const num = String(formatId.lastNumber).padStart(3, "0")

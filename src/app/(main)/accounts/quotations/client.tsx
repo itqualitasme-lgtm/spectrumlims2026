@@ -10,6 +10,7 @@ import {
   Trash2,
   Eye,
   FileText,
+  FileSignature,
   Loader2,
   Plus,
   X,
@@ -59,6 +60,7 @@ import {
   getSamplesForQuotation,
   getQuotation,
 } from "@/actions/quotations"
+import { convertQuotationToContract } from "@/actions/contracts"
 
 type Quotation = {
   id: string
@@ -146,6 +148,12 @@ const statusBadge = (status: string) => {
       return (
         <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">
           Expired
+        </Badge>
+      )
+    case "converted":
+      return (
+        <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">
+          Converted
         </Badge>
       )
     default:
@@ -316,6 +324,24 @@ export function QuotationsClient({ quotations }: { quotations: Quotation[] }) {
     }
   }
 
+  const handleConvertToContract = async (quotation: Quotation) => {
+    try {
+      const contract = await convertQuotationToContract(quotation.id)
+      toast.success(
+        `Converted to contract ${contract.contractNumber}`,
+        {
+          action: {
+            label: "View Contract",
+            onClick: () => router.push("/accounts/contracts"),
+          },
+        }
+      )
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to convert quotation to contract")
+    }
+  }
+
   const handleDelete = async () => {
     if (!selectedQuotation) return
 
@@ -474,6 +500,21 @@ export function QuotationsClient({ quotations }: { quotations: Quotation[] }) {
                     <TooltipContent>Mark as Rejected</TooltipContent>
                   </Tooltip>
                 </>
+              )}
+              {quotation.status === "accepted" && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleConvertToContract(quotation)}
+                    >
+                      <FileSignature className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Convert to Contract</TooltipContent>
+                </Tooltip>
               )}
               {quotation.status === "draft" && (
                 <Tooltip>

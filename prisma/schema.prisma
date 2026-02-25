@@ -31,6 +31,7 @@ model Lab {
   reports              Report[]
   invoices             Invoice[]
   quotations           Quotation[]
+  contracts            Contract[]
   formatIds            FormatID[]
   roles                Role[]
   portalUsers          PortalUser[]
@@ -103,6 +104,7 @@ model User {
   reportsReviewed    Report[]     @relation("ReviewedBy")
   invoicesCreated    Invoice[]    @relation("InvoiceCreatedBy")
   quotationsCreated  Quotation[]  @relation("QuotationCreatedBy")
+  contractsCreated   Contract[]   @relation("ContractCreatedBy")
 }
 
 model PortalUser {
@@ -142,6 +144,7 @@ model Customer {
   samples        Sample[]
   invoices       Invoice[]
   quotations     Quotation[]
+  contracts      Contract[]
   portalUsers    PortalUser[]
 
   @@unique([labId, code])
@@ -198,6 +201,8 @@ model Sample {
   registeredById     String?
   registeredAt       DateTime?
   notes              String?
+  deletedAt          DateTime?
+  deletedById        String?
   labId              String
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -209,10 +214,11 @@ model Sample {
   registeredBy User?       @relation("RegisteredBy", fields: [registeredById], references: [id])
   lab          Lab         @relation(fields: [labId], references: [id])
 
-  testResults  TestResult[]
-  reports      Report[]
+  testResults    TestResult[]
+  reports        Report[]
   invoiceItems   InvoiceItem[]
   quotationItems QuotationItem[]
+  contractItems  ContractItem[]
 }
 
 // ============= TEST RESULTS =============
@@ -287,6 +293,7 @@ model ReportTemplate {
 model Invoice {
   id            String    @id @default(cuid())
   invoiceNumber String    @unique
+  invoiceType   String    @default("tax")
   clientId      String
   subtotal      Float     @default(0)
   taxRate       Float     @default(5)
@@ -296,6 +303,8 @@ model Invoice {
   dueDate       DateTime?
   paidDate      DateTime?
   notes         String?
+  deletedAt     DateTime?
+  deletedById   String?
   createdById   String
   labId         String
   createdAt     DateTime  @default(now())
@@ -343,6 +352,7 @@ model Quotation {
   createdBy User            @relation("QuotationCreatedBy", fields: [createdById], references: [id])
   lab       Lab             @relation(fields: [labId], references: [id])
   items     QuotationItem[]
+  contracts Contract[]
 }
 
 model QuotationItem {
@@ -356,6 +366,47 @@ model QuotationItem {
 
   quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
   sample    Sample?   @relation(fields: [sampleId], references: [id])
+}
+
+// ============= CONTRACTS =============
+
+model Contract {
+  id              String    @id @default(cuid())
+  contractNumber  String    @unique
+  clientId        String
+  quotationId     String?
+  subtotal        Float     @default(0)
+  taxRate         Float     @default(5)
+  taxAmount       Float     @default(0)
+  total           Float     @default(0)
+  status          String    @default("draft")
+  startDate       DateTime?
+  endDate         DateTime?
+  terms           String?
+  notes           String?
+  createdById     String
+  labId           String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  client    Customer       @relation(fields: [clientId], references: [id])
+  quotation Quotation?     @relation(fields: [quotationId], references: [id])
+  createdBy User           @relation("ContractCreatedBy", fields: [createdById], references: [id])
+  lab       Lab            @relation(fields: [labId], references: [id])
+  items     ContractItem[]
+}
+
+model ContractItem {
+  id          String  @id @default(cuid())
+  contractId  String
+  sampleId    String?
+  description String
+  quantity    Int     @default(1)
+  unitPrice   Float
+  total       Float
+
+  contract Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  sample   Sample?  @relation(fields: [sampleId], references: [id])
 }
 
 // ============= SYSTEM =============
