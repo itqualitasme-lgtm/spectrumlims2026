@@ -17,6 +17,7 @@ interface SampleType {
   id: string
   name: string
   description: string | null
+  specificationStandard: string | null
   defaultTests: string
   status: string
   labId: string
@@ -60,6 +61,15 @@ export function SampleTypesClient({
       accessorKey: "description",
       header: "Description",
       cell: ({ row }) => row.original.description || "-",
+    },
+    {
+      id: "specStandard",
+      header: "Standard",
+      cell: ({ row }) => (
+        <span className="text-sm">
+          {row.original.specificationStandard || "-"}
+        </span>
+      ),
     },
     {
       id: "testsCount",

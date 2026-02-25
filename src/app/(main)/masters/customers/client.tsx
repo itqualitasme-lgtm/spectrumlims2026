@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2, Ban, CheckCircle2 } from "lucide-react"
 import { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -92,7 +92,7 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
       header: "Status",
       cell: ({ row }) => (
         <Badge
-          variant={row.original.status === "active" ? "default" : "secondary"}
+          variant={row.original.status === "active" ? "default" : "destructive"}
         >
           {row.original.status}
         </Badge>
@@ -104,6 +104,19 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
       enableSorting: false,
       cell: ({ row }) => (
         <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-8 w-8 p-0"
+            title={row.original.status === "active" ? "Deactivate" : "Activate"}
+            onClick={() => handleToggleStatus(row.original)}
+          >
+            {row.original.status === "active" ? (
+              <Ban className="h-4 w-4 text-orange-500" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+            )}
+          </Button>
           <Button
             variant="ghost"
             size="sm"
@@ -131,6 +144,21 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
       ),
     },
   ]
+
+  async function handleToggleStatus(customer: Customer) {
+    const newStatus = customer.status === "active" ? "inactive" : "active"
+    try {
+      await updateCustomer(customer.id, { status: newStatus })
+      toast.success(
+        newStatus === "active"
+          ? `${customer.name} activated`
+          : `${customer.name} deactivated`
+      )
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update status")
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()

@@ -42,6 +42,7 @@ interface SampleTypeInfo {
   id: string
   name: string
   description?: string | null
+  specificationStandard?: string | null
 }
 
 interface TestResultInfo {
@@ -509,6 +510,9 @@ export function COAPDF({
   const reportTitle = report.title || "CERTIFICATE OF QUALITY"
   const sampleTypeName = sample.sampleType.name
 
+  // Specification standard for table column header (e.g. "ISO 8217: 2024")
+  const specStandard = sample.sampleType.specificationStandard || "Specification"
+
   // Chemist / tested by name
   const testedByName = testedBy?.name || "-"
 
@@ -677,7 +681,7 @@ export function COAPDF({
             <Text style={[styles.tableHeaderCell, styles.colTest, { textAlign: "left", paddingLeft: 4 }]}>Test</Text>
             <Text style={[styles.tableHeaderCell, styles.colMethod]}>Method</Text>
             <Text style={[styles.tableHeaderCell, styles.colUnit]}>Unit</Text>
-            <Text style={[styles.tableHeaderCell, styles.colSpec]}>Specification</Text>
+            <Text style={[styles.tableHeaderCell, styles.colSpec]}>{specStandard}</Text>
             <Text style={[styles.tableHeaderCell, styles.colResult, { borderRightWidth: 0 }]}>Result</Text>
           </View>
 

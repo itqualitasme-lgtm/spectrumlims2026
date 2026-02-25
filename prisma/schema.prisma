@@ -161,13 +161,14 @@ model ContactPerson {
 // ============= SAMPLE TYPES =============
 
 model SampleType {
-  id           String   @id @default(cuid())
-  name         String
-  description  String?
-  defaultTests String   @default("[]")
-  status       String   @default("active")
-  labId        String
-  createdAt    DateTime @default(now())
+  id                    String   @id @default(cuid())
+  name                  String
+  description           String?
+  specificationStandard String?
+  defaultTests          String   @default("[]")
+  status                String   @default("active")
+  labId                 String
+  createdAt             DateTime @default(now())
 
   lab     Lab      @relation(fields: [labId], references: [id])
   samples Sample[]

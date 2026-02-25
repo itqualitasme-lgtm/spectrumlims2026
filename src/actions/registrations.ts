@@ -78,22 +78,27 @@ export async function searchCustomers(query: string) {
   const customers = await db.customer.findMany({
     where: {
       labId,
-      status: "active",
       OR: [
         { name: { contains: query, mode: "insensitive" } },
         { company: { contains: query, mode: "insensitive" } },
         { code: { contains: query, mode: "insensitive" } },
       ],
     },
-    select: { id: true, name: true, company: true },
-    orderBy: { name: "asc" },
+    select: { id: true, name: true, company: true, status: true },
+    orderBy: [{ status: "asc" }, { name: "asc" }],
     take: 20,
   })
 
-  return customers.map((c) => ({
-    value: c.id,
-    label: c.company ? `${c.name} - ${c.company}` : c.name,
-  }))
+  return customers.map((c) => {
+    const isInactive = c.status !== "active"
+    const label = c.company ? `${c.name} - ${c.company}` : c.name
+    return {
+      value: c.id,
+      label: isInactive ? `${label} (Inactive)` : label,
+      disabled: isInactive,
+      disabledReason: isInactive ? "Account Inactive" : undefined,
+    }
+  })
 }
 
 export async function getCustomerById(id: string) {
@@ -196,6 +201,16 @@ export async function createSample(data: {
   const session = await requirePermission("process", "create")
   const user = session.user as any
   const labId = user.labId
+
+  // Block registration for inactive customers
+  const customer = await db.customer.findFirst({
+    where: { id: data.clientId, labId },
+    select: { status: true, name: true },
+  })
+  if (!customer) throw new Error("Customer not found")
+  if (customer.status !== "active") {
+    throw new Error(`Cannot register samples for inactive customer: ${customer.name}`)
+  }
 
   const { formatted: sampleNumber, sequenceNumber } = await generateNextNumber(labId, "sample", "SPL")
 

@@ -18,10 +18,17 @@ import {
   CommandItem,
 } from "@/components/ui/command"
 
+type SearchOption = {
+  value: string
+  label: string
+  disabled?: boolean
+  disabledReason?: string
+}
+
 interface AsyncSearchableSelectProps {
   value: string
   onValueChange: (value: string) => void
-  searchFn: (query: string) => Promise<{ value: string; label: string }[]>
+  searchFn: (query: string) => Promise<SearchOption[]>
   getByIdFn?: (id: string) => Promise<{ value: string; label: string } | null>
   placeholder?: string
   searchPlaceholder?: string
@@ -45,7 +52,7 @@ export function AsyncSearchableSelect({
 }: AsyncSearchableSelectProps) {
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState("")
-  const [options, setOptions] = useState<{ value: string; label: string }[]>([])
+  const [options, setOptions] = useState<SearchOption[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedLabel, setSelectedLabel] = useState(initialSelectedLabel || "")
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -142,7 +149,12 @@ export function AsyncSearchableSelect({
                   <CommandItem
                     key={option.value}
                     value={option.label}
-                    onSelect={() => handleSelect(option.value, option.label)}
+                    disabled={option.disabled}
+                    onSelect={() => {
+                      if (option.disabled) return
+                      handleSelect(option.value, option.label)
+                    }}
+                    className={cn(option.disabled && "opacity-50 cursor-not-allowed")}
                   >
                     <Check
                       className={cn(
@@ -150,7 +162,10 @@ export function AsyncSearchableSelect({
                         value === option.value ? "opacity-100" : "opacity-0"
                       )}
                     />
-                    {option.label}
+                    <span className="flex-1">{option.label}</span>
+                    {option.disabledReason && (
+                      <span className="text-xs text-destructive ml-2">{option.disabledReason}</span>
+                    )}
                   </CommandItem>
                 ))}
               </CommandGroup>

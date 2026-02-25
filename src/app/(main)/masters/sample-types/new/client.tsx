@@ -74,6 +74,7 @@ export function NewSampleTypeClient() {
   const [loading, setLoading] = useState(false)
   const [formName, setFormName] = useState("")
   const [formDescription, setFormDescription] = useState("")
+  const [formSpecStandard, setFormSpecStandard] = useState("")
   const [formStatus, setFormStatus] = useState("active")
   const [formTests, setFormTests] = useState<TestParam[]>([emptyParam()])
 
@@ -107,6 +108,7 @@ export function NewSampleTypeClient() {
       await createSampleType({
         name: formName.trim(),
         description: formDescription.trim() || undefined,
+        specificationStandard: formSpecStandard.trim() || undefined,
         defaultTests: serializeTests(formTests),
         status: formStatus,
       })
@@ -142,14 +144,14 @@ export function NewSampleTypeClient() {
           <CardTitle className="text-base">Sample Type Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Name *</Label>
               <Input
                 id="name"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Diesel"
+                placeholder="e.g. Gas Oil"
               />
             </div>
             <div className="grid gap-2">
@@ -159,6 +161,15 @@ export function NewSampleTypeClient() {
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
                 placeholder="Brief description"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="specStandard">Specification Standard</Label>
+              <Input
+                id="specStandard"
+                value={formSpecStandard}
+                onChange={(e) => setFormSpecStandard(e.target.value)}
+                placeholder="e.g. ISO 8217: 2024"
               />
             </div>
             <div className="grid gap-2">

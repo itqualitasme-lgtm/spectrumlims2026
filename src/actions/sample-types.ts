@@ -32,6 +32,7 @@ export async function getSampleType(id: string) {
 export async function createSampleType(data: {
   name: string
   description?: string
+  specificationStandard?: string
   defaultTests?: string
   status?: string
 }) {
@@ -42,6 +43,7 @@ export async function createSampleType(data: {
     data: {
       name: data.name,
       description: data.description || null,
+      specificationStandard: data.specificationStandard || null,
       defaultTests: data.defaultTests || "[]",
       status: data.status || "active",
       labId: user.labId,
@@ -66,6 +68,7 @@ export async function updateSampleType(
   data: {
     name?: string
     description?: string
+    specificationStandard?: string
     defaultTests?: string
     status?: string
   }
@@ -82,6 +85,7 @@ export async function updateSampleType(
     data: {
       name: data.name,
       description: data.description || null,
+      specificationStandard: data.specificationStandard !== undefined ? (data.specificationStandard || null) : undefined,
       defaultTests: data.defaultTests,
       status: data.status,
     },

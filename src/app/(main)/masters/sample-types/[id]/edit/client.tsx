@@ -37,6 +37,7 @@ interface SampleType {
   id: string
   name: string
   description: string | null
+  specificationStandard: string | null
   defaultTests: string
   status: string
   labId: string
@@ -102,6 +103,7 @@ export function EditSampleTypeClient({ sampleType }: { sampleType: SampleType })
   const [loading, setLoading] = useState(false)
   const [formName, setFormName] = useState(sampleType.name)
   const [formDescription, setFormDescription] = useState(sampleType.description || "")
+  const [formSpecStandard, setFormSpecStandard] = useState(sampleType.specificationStandard || "")
   const [formStatus, setFormStatus] = useState(sampleType.status)
   const initialTests = parseTests(sampleType.defaultTests)
   const [formTests, setFormTests] = useState<TestParam[]>(
@@ -138,6 +140,7 @@ export function EditSampleTypeClient({ sampleType }: { sampleType: SampleType })
       await updateSampleType(sampleType.id, {
         name: formName.trim(),
         description: formDescription.trim() || undefined,
+        specificationStandard: formSpecStandard.trim() || undefined,
         defaultTests: serializeTests(formTests),
         status: formStatus,
       })
@@ -173,14 +176,14 @@ export function EditSampleTypeClient({ sampleType }: { sampleType: SampleType })
           <CardTitle className="text-base">Sample Type Details</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="grid gap-2">
               <Label htmlFor="name">Name *</Label>
               <Input
                 id="name"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Diesel"
+                placeholder="e.g. Gas Oil"
               />
             </div>
             <div className="grid gap-2">
@@ -190,6 +193,15 @@ export function EditSampleTypeClient({ sampleType }: { sampleType: SampleType })
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
                 placeholder="Brief description"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="specStandard">Specification Standard</Label>
+              <Input
+                id="specStandard"
+                value={formSpecStandard}
+                onChange={(e) => setFormSpecStandard(e.target.value)}
+                placeholder="e.g. ISO 8217: 2024"
               />
             </div>
             <div className="grid gap-2">
