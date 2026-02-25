@@ -57,7 +57,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: 4,
-    borderWidth: 0.5,
+    borderTopWidth: 0.5,
+    borderBottomWidth: 0.5,
+    borderLeftWidth: 0.5,
+    borderRightWidth: 0.5,
     borderColor: "#d0d0d0",
     borderRadius: 2,
   },
@@ -154,7 +157,7 @@ function LabelPDF({ samples, labName, qrDataUrls }: LabelPDFInternalProps) {
                 ))}
                 {/* Fill empty space if odd number of labels in row */}
                 {row.length < LABELS_PER_ROW && (
-                  <View style={[styles.label, { borderWidth: 0 }]} />
+                  <View style={[styles.label, { borderTopWidth: 0, borderBottomWidth: 0, borderLeftWidth: 0, borderRightWidth: 0 }]} />
                 )}
               </View>
             ))}

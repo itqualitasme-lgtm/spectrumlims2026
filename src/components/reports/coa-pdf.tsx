@@ -269,7 +269,10 @@ const styles = StyleSheet.create({
   // ---- Table ----
   table: {
     marginBottom: 6,
-    borderWidth: 1,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
     borderColor: BORDER,
   },
   tableHeader: {
@@ -846,9 +849,353 @@ export function COAPDF({
   )
 }
 
+// ============= BATCH PDF (multiple reports in one document) =============
+
+function COABatchPDF({ reports }: { reports: COAPDFProps[] }) {
+  return (
+    <Document
+      title={`COA Reports - ${reports.length} certificates`}
+      author={reports[0]?.lab.name || "Spectrum LIMS"}
+      subject="Certificate of Quality"
+      creator="Spectrum LIMS"
+    >
+      {reports.map((props, idx) => {
+        // Duplicate the page rendering logic inline via a helper
+        return <COAPageContent key={idx} {...props} />
+      })}
+    </Document>
+  )
+}
+
+// Extract page content to a reusable component
+function COAPageContent(props: COAPDFProps) {
+  const {
+    report,
+    sample,
+    testResults,
+    lab,
+    testedBy,
+    template,
+    qrCodeDataUrl,
+    verificationUrl,
+  } = props
+
+  const footerText = template?.footerText || lab.reportFooterText
+  const footerLines = footerText
+    ? footerText.split("\n").filter((l) => l.trim())
+    : [
+        "The test Report shall not be reproduced (except in full) without the written approval of SPECTRUM.",
+        "When analysis is witnessed by us or carried out by sub contract labs, our responsibility is solely to ensure that the analysis is conducted to standard test methods in accordance with industry accepted practice.",
+        "We are not responsible for apparatus, instrumentation and measuring devices, their calibration or working order, reagents and solutions are accepted as prepared.",
+      ]
+
+  const headerText = template?.headerText || lab.reportHeaderText
+  const headerSubLines = headerText
+    ? headerText.split("\n").filter((l) => l.trim())
+    : []
+
+  const showLabLogo = template?.showLabLogo !== false
+  const logoUrl = template?.logoUrl || lab.logo || null
+  const accreditationLogoUrl = template?.accreditationLogoUrl || null
+  const accreditationText = template?.accreditationText || null
+
+  const reportTitle = report.title || "CERTIFICATE OF QUALITY"
+  const sampleTypeName = sample.sampleType.name
+  const specStandard = sample.sampleType.specificationStandard || "Specification"
+  const testedByName = testedBy?.name || "-"
+
+  const clientName = sample.client.company || sample.client.name
+  const collectionDateStr = sample.collectionDate
+    ? format(new Date(sample.collectionDate), "dd MMM yyyy")
+    : "-"
+  const registeredAtStr = sample.registeredAt
+    ? format(new Date(sample.registeredAt), "dd MMM yyyy")
+    : collectionDateStr
+  const reportDateStr = report.reviewedAt
+    ? format(new Date(report.reviewedAt), "dd MMM yyyy")
+    : format(new Date(report.createdAt), "dd MMM yyyy")
+
+  const completedResults = testResults.filter(
+    (r) => r.status === "completed" && r.resultValue
+  )
+
+  const specDisplay = (min: string | null | undefined, max: string | null | undefined): string => {
+    if (min && max) return `${min} - ${max}`
+    if (min) return `Min ${min}`
+    if (max) return `Max ${max}`
+    return "-"
+  }
+
+  return (
+    <Page size="A4" style={styles.page}>
+      {/* HEADER (fixed on every page) */}
+      <View style={styles.header} fixed>
+        <View style={styles.headerRow}>
+          {showLabLogo && logoUrl ? (
+            <Image style={styles.headerLogo} src={logoUrl} />
+          ) : (
+            <View style={{ width: 60 }} />
+          )}
+          <View style={styles.headerCenter}>
+            {headerSubLines.length > 0 && (
+              <Text style={{ fontSize: 7, color: GRAY_TEXT, marginBottom: 1, textAlign: "center" }}>
+                {headerSubLines[0]}
+              </Text>
+            )}
+            <Text style={styles.labName}>{lab.name}</Text>
+            {headerSubLines.slice(1).map((line, idx) => (
+              <Text key={idx} style={styles.headerSubline}>{line}</Text>
+            ))}
+            {accreditationText && (
+              <Text style={{ fontSize: 6.5, color: RED_BRAND, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>
+                {accreditationText}
+              </Text>
+            )}
+          </View>
+          {accreditationLogoUrl ? (
+            <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
+          ) : (
+            <View style={{ width: 50 }} />
+          )}
+        </View>
+      </View>
+
+      {/* TITLE */}
+      <View style={styles.titleSection}>
+        <Text style={styles.title}>{reportTitle.toUpperCase()}</Text>
+        <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
+      </View>
+
+      {/* REPORT NO */}
+      <View style={styles.reportNoRow}>
+        <Text style={styles.reportNoText}>
+          REPORT NO.: {report.reportNumber}
+        </Text>
+      </View>
+
+      {/* CLIENT & SAMPLE INFO */}
+      <View style={styles.infoSection}>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Client</Text>
+          <Text style={styles.infoSep}>:</Text>
+          <Text style={styles.infoValue}>{clientName}</Text>
+        </View>
+        {sample.reference && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Reference</Text>
+            <Text style={styles.infoSep}>:</Text>
+            <Text style={styles.infoValue}>{sample.reference}</Text>
+          </View>
+        )}
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Sample Description</Text>
+          <Text style={styles.infoSep}>:</Text>
+          <Text style={styles.infoValue}>{sample.description || sampleTypeName}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Sample Identification No.</Text>
+          <Text style={styles.infoSep}>:</Text>
+          <Text style={styles.infoValue}>{sample.sampleNumber}</Text>
+        </View>
+        {sample.samplePoint && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Sample Point</Text>
+            <Text style={styles.infoSep}>:</Text>
+            <Text style={styles.infoValue}>{sample.samplePoint}</Text>
+          </View>
+        )}
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Date Sample Received</Text>
+          <Text style={styles.infoSep}>:</Text>
+          <Text style={styles.infoValue}>{registeredAtStr}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Date of Report</Text>
+          <Text style={styles.infoSep}>:</Text>
+          <Text style={styles.infoValue}>{reportDateStr}</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Sample Delivered By</Text>
+          <Text style={styles.infoSep}>:</Text>
+          <Text style={styles.infoValue}>Client</Text>
+        </View>
+        <View style={styles.infoRow}>
+          <Text style={styles.infoLabel}>Sample Drawn By</Text>
+          <Text style={styles.infoSep}>:</Text>
+          <Text style={styles.infoValue}>Client</Text>
+        </View>
+      </View>
+
+      {/* TEST RESULTS TABLE */}
+      <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", marginBottom: 4, marginTop: 6 }}>
+        TEST RESULTS
+      </Text>
+      <View style={styles.table}>
+        <View style={styles.tableHeader}>
+          <Text style={[styles.tableHeaderCell, styles.colTest, { textAlign: "left", paddingLeft: 4 }]}>Test</Text>
+          <Text style={[styles.tableHeaderCell, styles.colMethod]}>Method</Text>
+          <Text style={[styles.tableHeaderCell, styles.colUnit]}>Unit</Text>
+          <Text style={[styles.tableHeaderCell, styles.colSpec]}>{specStandard}</Text>
+          <Text style={[styles.tableHeaderCell, styles.colResult, { borderRightWidth: 0 }]}>Result</Text>
+        </View>
+        {completedResults.map((tr, idx) => (
+          <View
+            key={tr.id}
+            style={[styles.tableRow, idx % 2 === 1 ? styles.tableRowAlt : {}]}
+            wrap={false}
+          >
+            <Text style={[styles.tableCell, styles.colTest, { textAlign: "left", paddingLeft: 4 }]}>
+              {tr.parameter}
+            </Text>
+            <Text style={[styles.tableCell, styles.colMethod]}>
+              {tr.testMethod || "-"}
+            </Text>
+            <Text style={[styles.tableCell, styles.colUnit]}>
+              {tr.unit || "-"}
+            </Text>
+            <Text style={[styles.tableCell, styles.colSpec]}>
+              {specDisplay(tr.specMin, tr.specMax)}
+            </Text>
+            <Text style={[styles.tableCell, styles.colResult, { borderRightWidth: 0, fontFamily: "Helvetica-Bold" }]}>
+              {tr.resultValue || "-"}
+            </Text>
+          </View>
+        ))}
+      </View>
+
+      {/* REMARKS */}
+      {report.summary && (
+        <View style={{ marginBottom: 4 }}>
+          <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", marginBottom: 2 }}>
+            *Remarks:
+          </Text>
+          <Text style={{ fontSize: 7.5, color: BLACK, lineHeight: 1.5 }}>
+            {report.summary}
+          </Text>
+        </View>
+      )}
+
+      {/* META INFO */}
+      <View style={styles.metaSection}>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>Test method deviation</Text>
+          <Text style={styles.metaSep}>:</Text>
+          <Text style={styles.metaValue}>None</Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>Test conducted by</Text>
+          <Text style={styles.metaSep}>:</Text>
+          <Text style={styles.metaValue}>{testedByName}</Text>
+        </View>
+        <View style={styles.metaRow}>
+          <Text style={styles.metaLabel}>Report prepared by</Text>
+          <Text style={styles.metaSep}>:</Text>
+          <Text style={styles.metaValue}>{report.createdBy.name}</Text>
+        </View>
+        <Text style={styles.metaNote}>
+          The above test results are only applicable to the sample(s) referred above
+        </Text>
+      </View>
+
+      {/* REPORTED BY + SIGNATURES + QR */}
+      <View style={styles.reportedBySection}>
+        <Text style={styles.reportedByLabel}>Reported by:</Text>
+
+        <View style={styles.signaturesRow}>
+          {/* Tested By (Chemist) */}
+          <View style={styles.signatureBlock}>
+            {report.createdBy.signatureUrl && (
+              <Image style={styles.signatureImage} src={report.createdBy.signatureUrl} />
+            )}
+            <View style={styles.signatureLine} />
+            <Text style={styles.signatureName}>{report.createdBy.name}</Text>
+            {report.createdBy.designation && (
+              <Text style={styles.signatureDesignation}>{report.createdBy.designation}</Text>
+            )}
+          </View>
+
+          {/* QR Code in center */}
+          {qrCodeDataUrl ? (
+            <View style={styles.qrContainer}>
+              <Image style={styles.qrImage} src={qrCodeDataUrl} />
+              <Text style={styles.qrLabel}>Scan to verify</Text>
+              {props.verificationCode && (
+                <Text style={styles.qrCode}>{props.verificationCode}</Text>
+              )}
+            </View>
+          ) : (
+            <View style={{ width: 75 }} />
+          )}
+
+          {/* Authenticated By (Lab Manager) */}
+          <View style={styles.signatureBlock}>
+            {report.reviewedBy?.signatureUrl && (
+              <Image style={styles.signatureImage} src={report.reviewedBy.signatureUrl} />
+            )}
+            <View style={styles.signatureLine} />
+            <Text style={styles.signatureLabel}>LABORATORY OPERATIONS</Text>
+            {report.reviewedBy ? (
+              <>
+                <Text style={styles.signatureName}>{report.reviewedBy.name}</Text>
+                {report.reviewedBy.designation && (
+                  <Text style={styles.signatureDesignation}>{report.reviewedBy.designation}</Text>
+                )}
+              </>
+            ) : (
+              <Text style={styles.signatureName}>Laboratory Manager</Text>
+            )}
+          </View>
+        </View>
+      </View>
+
+      {/* FOOTER (fixed on every page) */}
+      <View style={styles.footer} fixed>
+        {footerLines.map((line, idx) => (
+          <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
+        ))}
+
+        {verificationUrl && (
+          <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
+            Verify this report: {verificationUrl}
+          </Text>
+        )}
+
+        {/* Red contact bar */}
+        <View style={styles.footerBar}>
+          <Text style={styles.footerBarText}>
+            {[
+              lab.phone && `Tel.: ${lab.phone}`,
+              lab.address,
+              lab.email && `E-mail: ${lab.email}`,
+              lab.website,
+            ]
+              .filter(Boolean)
+              .join("  |  ")}
+          </Text>
+        </View>
+      </View>
+
+      {/* Page Number */}
+      <Text
+        style={styles.pageNumber}
+        render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+        fixed
+      />
+    </Page>
+  )
+}
+
 // ============= PDF GENERATION UTILITY =============
 
 export async function generateCOAPDF(props: COAPDFProps): Promise<Buffer> {
   const buffer = await renderToBuffer(<COAPDF {...props} />)
+  return buffer as Buffer
+}
+
+export async function generateBatchCOAPDF(reports: COAPDFProps[]): Promise<Buffer> {
+  if (reports.length === 1) {
+    return generateCOAPDF(reports[0])
+  }
+  const buffer = await renderToBuffer(<COABatchPDF reports={reports} />)
   return buffer as Buffer
 }

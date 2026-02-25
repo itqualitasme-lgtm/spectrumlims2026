@@ -12,8 +12,6 @@ export async function updateLabSettings(data: {
   email?: string
   website?: string
   trn?: string
-  reportHeaderText?: string
-  reportFooterText?: string
 }) {
   const session = await requirePermission("admin", "edit")
   const user = session.user as any
@@ -32,8 +30,6 @@ export async function updateLabSettings(data: {
       email: data.email?.trim() || null,
       website: data.website?.trim() || null,
       trn: data.trn?.trim() || null,
-      reportHeaderText: data.reportHeaderText?.trim() || null,
-      reportFooterText: data.reportFooterText?.trim() || null,
     },
   })
 

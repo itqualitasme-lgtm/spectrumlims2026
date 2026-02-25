@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
@@ -11,6 +11,7 @@ import {
   Trash2,
   FileText,
   Loader2,
+  Printer,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -23,6 +24,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -92,6 +94,9 @@ function getChemistName(report: Report): string {
 export function ReportsClient({ reports }: { reports: Report[] }) {
   const router = useRouter()
 
+  // Selection for batch print
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
   // Dialog states
   const [createOpen, setCreateOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -101,6 +106,39 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
   // Selected report for actions
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
   const [revisionReason, setRevisionReason] = useState("")
+
+  const printableReports = useMemo(
+    () => reports.filter((r) => r.status === "approved" || r.status === "published"),
+    [reports]
+  )
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAllPrintable = () => {
+    if (selectedIds.size === printableReports.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(printableReports.map((r) => r.id)))
+    }
+  }
+
+  const handleBatchPrint = () => {
+    const printableIds = Array.from(selectedIds).filter((id) =>
+      printableReports.some((r) => r.id === id)
+    )
+    if (printableIds.length === 0) {
+      toast.error("No authenticated/published reports selected")
+      return
+    }
+    window.open(`/api/reports/batch-coa?ids=${printableIds.join(",")}`, "_blank")
+  }
 
   // Create form
   const [sampleId, setSampleId] = useState("")
@@ -234,6 +272,28 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
   }
 
   const columns: ColumnDef<Report, any>[] = [
+    {
+      id: "select",
+      header: () => (
+        <Checkbox
+          checked={printableReports.length > 0 && selectedIds.size === printableReports.length}
+          onCheckedChange={toggleSelectAllPrintable}
+          className="h-4 w-4"
+        />
+      ),
+      cell: ({ row }) => {
+        const isPrintable = row.original.status === "approved" || row.original.status === "published"
+        if (!isPrintable) return null
+        return (
+          <Checkbox
+            checked={selectedIds.has(row.original.id)}
+            onCheckedChange={() => toggleSelect(row.original.id)}
+            className="h-4 w-4"
+          />
+        )
+      },
+      enableSorting: false,
+    },
     {
       accessorKey: "reportNumber",
       header: "Report #",
@@ -401,6 +461,32 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
         actionLabel="Create Report"
         onAction={handleOpenCreate}
       />
+
+      {/* Batch actions bar */}
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3">
+          <span className="text-xs text-muted-foreground">
+            {selectedIds.size} selected
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={handleBatchPrint}
+          >
+            <Printer className="mr-1 h-3 w-3" />
+            Print COA ({selectedIds.size})
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={() => setSelectedIds(new Set())}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
 
       <DataTable
         columns={columns}
