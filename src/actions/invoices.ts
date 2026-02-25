@@ -164,6 +164,87 @@ export async function createInvoice(data: {
   return invoice
 }
 
+export async function updateInvoice(
+  id: string,
+  data: {
+    clientId: string
+    items: Array<{
+      description: string
+      quantity: number
+      unitPrice: number
+      sampleId?: string
+    }>
+    dueDate?: string
+    notes?: string
+    taxRate?: number
+  }
+) {
+  const session = await requirePermission("accounts", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const existing = await db.invoice.findFirst({ where: { id, labId, deletedAt: null } })
+  if (!existing) throw new Error("Invoice not found")
+
+  if (existing.status !== "draft") {
+    throw new Error("Can only edit invoices with draft status")
+  }
+
+  const taxRate = data.taxRate ?? existing.taxRate
+  const subtotal = data.items.reduce(
+    (sum, item) => sum + item.quantity * item.unitPrice,
+    0
+  )
+  const taxAmount = subtotal * taxRate / 100
+  const total = subtotal + taxAmount
+
+  const invoice = await db.$transaction(async (tx) => {
+    // Delete existing items
+    await tx.invoiceItem.deleteMany({ where: { invoiceId: id } })
+
+    // Update invoice
+    const inv = await tx.invoice.update({
+      where: { id },
+      data: {
+        clientId: data.clientId,
+        subtotal,
+        taxRate,
+        taxAmount,
+        total,
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        notes: data.notes || null,
+      },
+    })
+
+    // Create new items
+    await tx.invoiceItem.createMany({
+      data: data.items.map((item) => ({
+        invoiceId: id,
+        sampleId: item.sampleId || null,
+        description: item.description,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        total: item.quantity * item.unitPrice,
+      })),
+    })
+
+    return inv
+  })
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "accounts",
+    "edit",
+    `Updated invoice ${invoice.invoiceNumber}`
+  )
+
+  revalidatePath("/accounts/invoices")
+
+  return invoice
+}
+
 export async function updateInvoiceStatus(id: string, status: string) {
   const session = await requirePermission("accounts", "edit")
   const user = session.user as any
