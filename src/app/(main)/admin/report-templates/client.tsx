@@ -37,6 +37,7 @@ interface ReportTemplate {
   logoUrl: string | null
   accreditationLogoUrl: string | null
   accreditationText: string | null
+  sealUrl: string | null
   showLabLogo: boolean
   isDefault: boolean
   labId: string
@@ -63,6 +64,7 @@ export function ReportTemplatesClient({
   const [formLogoUrl, setFormLogoUrl] = useState("")
   const [formAccreditationLogoUrl, setFormAccreditationLogoUrl] = useState("")
   const [formAccreditationText, setFormAccreditationText] = useState("")
+  const [formSealUrl, setFormSealUrl] = useState("")
   const [formShowLabLogo, setFormShowLabLogo] = useState(true)
   const [formIsDefault, setFormIsDefault] = useState(false)
 
@@ -74,6 +76,7 @@ export function ReportTemplatesClient({
     setFormLogoUrl("")
     setFormAccreditationLogoUrl("")
     setFormAccreditationText("")
+    setFormSealUrl("")
     setFormShowLabLogo(true)
     setFormIsDefault(templates.length === 0)
     setDialogOpen(true)
@@ -87,6 +90,7 @@ export function ReportTemplatesClient({
     setFormLogoUrl(item.logoUrl || "")
     setFormAccreditationLogoUrl(item.accreditationLogoUrl || "")
     setFormAccreditationText(item.accreditationText || "")
+    setFormSealUrl(item.sealUrl || "")
     setFormShowLabLogo(item.showLabLogo)
     setFormIsDefault(item.isDefault)
     setDialogOpen(true)
@@ -123,6 +127,7 @@ export function ReportTemplatesClient({
         const parts = []
         if (row.original.showLabLogo) parts.push("Lab")
         if (row.original.accreditationLogoUrl) parts.push("Accreditation")
+        if (row.original.sealUrl) parts.push("Seal")
         if (row.original.logoUrl) parts.push("Custom")
         return parts.length > 0 ? (
           <span className="text-sm">{parts.join(", ")}</span>
@@ -178,6 +183,7 @@ export function ReportTemplatesClient({
           logoUrl: formLogoUrl || undefined,
           accreditationLogoUrl: formAccreditationLogoUrl || undefined,
           accreditationText: formAccreditationText || undefined,
+          sealUrl: formSealUrl || undefined,
           showLabLogo: formShowLabLogo,
           isDefault: formIsDefault,
         })
@@ -190,6 +196,7 @@ export function ReportTemplatesClient({
           logoUrl: formLogoUrl || undefined,
           accreditationLogoUrl: formAccreditationLogoUrl || undefined,
           accreditationText: formAccreditationText || undefined,
+          sealUrl: formSealUrl || undefined,
           showLabLogo: formShowLabLogo,
           isDefault: formIsDefault,
         })
@@ -331,6 +338,19 @@ export function ReportTemplatesClient({
                   placeholder="Upload or paste accreditation logo..."
                 />
               </div>
+            </div>
+
+            <div className="grid gap-2">
+              <Label>Company Digital Seal</Label>
+              <ImageUpload
+                value={formSealUrl}
+                onChange={setFormSealUrl}
+                folder="seals"
+                placeholder="Upload company digital seal image..."
+              />
+              <p className="text-xs text-muted-foreground">
+                Displayed next to the Lab Manager signature on reports. PNG with transparent background recommended.
+              </p>
             </div>
           </div>
 

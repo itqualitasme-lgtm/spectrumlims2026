@@ -105,6 +105,7 @@ interface TemplateInfo {
   logoUrl?: string | null
   accreditationLogoUrl?: string | null
   accreditationText?: string | null
+  sealUrl?: string | null
   showLabLogo?: boolean
 }
 
@@ -759,20 +760,18 @@ export function COAPDF({
           </Text>
         </View>
 
-        {/* ===== REPORTED BY + SIGNATURES + QR ===== */}
+        {/* ===== REPORTED BY + SIGNATURE + SEAL + QR ===== */}
         <View style={styles.reportedBySection}>
           <Text style={styles.reportedByLabel}>Reported by:</Text>
 
           <View style={styles.signaturesRow}>
-            {/* Tested By (Chemist) */}
+            {/* Company Seal */}
             <View style={styles.signatureBlock}>
-              {report.createdBy.signatureUrl && (
-                <Image style={styles.signatureImage} src={report.createdBy.signatureUrl} />
-              )}
-              <View style={styles.signatureLine} />
-              <Text style={styles.signatureName}>{report.createdBy.name}</Text>
-              {report.createdBy.designation && (
-                <Text style={styles.signatureDesignation}>{report.createdBy.designation}</Text>
+              {template?.sealUrl && (
+                <Image
+                  style={{ width: 80, height: 80, objectFit: "contain" as any }}
+                  src={template.sealUrl}
+                />
               )}
             </View>
 
@@ -789,13 +788,13 @@ export function COAPDF({
               <View style={{ width: 75 }} />
             )}
 
-            {/* Authenticated By (Lab Manager) */}
+            {/* Lab Manager Signature */}
             <View style={styles.signatureBlock}>
+              <Text style={styles.signatureLabel}>LABORATORY OPERATIONS</Text>
               {report.reviewedBy?.signatureUrl && (
                 <Image style={styles.signatureImage} src={report.reviewedBy.signatureUrl} />
               )}
               <View style={styles.signatureLine} />
-              <Text style={styles.signatureLabel}>LABORATORY OPERATIONS</Text>
               {report.reviewedBy ? (
                 <>
                   <Text style={styles.signatureName}>{report.reviewedBy.name}</Text>

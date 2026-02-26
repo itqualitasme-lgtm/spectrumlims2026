@@ -16,7 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Pencil, Trash2, Ban, CheckCircle2 } from "lucide-react"
+import { Pencil, Trash2, Ban, CheckCircle2, RefreshCw, Loader2 } from "lucide-react"
 import { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -25,6 +25,7 @@ import {
   updateCustomer,
   deleteCustomer,
 } from "@/actions/customers"
+import { syncZohoCustomers } from "@/actions/zoho-sync"
 
 interface Customer {
   id: string
@@ -37,6 +38,7 @@ interface Customer {
   contactPerson: string | null
   trn: string | null
   paymentTerm: string | null
+  zohoContactId: string | null
   status: string
   labId: string
   createdAt: string
@@ -46,7 +48,13 @@ interface Customer {
   }
 }
 
-export function CustomersClient({ customers }: { customers: Customer[] }) {
+export function CustomersClient({
+  customers,
+  zohoConfigured,
+}: {
+  customers: Customer[]
+  zohoConfigured: boolean
+}) {
   const router = useRouter()
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<Customer | null>(null)
@@ -54,6 +62,24 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingName, setDeletingName] = useState("")
+  const [syncing, setSyncing] = useState(false)
+
+  async function handleZohoSync() {
+    setSyncing(true)
+    try {
+      const result = await syncZohoCustomers()
+      if (result.success) {
+        toast.success(result.message)
+      } else {
+        toast.error(result.message)
+      }
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Sync failed")
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const columns: ColumnDef<Customer, any>[] = [
     {
@@ -91,11 +117,18 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => (
-        <Badge
-          variant={row.original.status === "active" ? "default" : "destructive"}
-        >
-          {row.original.status}
-        </Badge>
+        <div className="flex items-center gap-1.5">
+          <Badge
+            variant={row.original.status === "active" ? "default" : "destructive"}
+          >
+            {row.original.status}
+          </Badge>
+          {row.original.zohoContactId && (
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 text-blue-600 border-blue-300">
+              Zoho
+            </Badge>
+          )}
+        </div>
       ),
     },
     {
@@ -234,7 +267,17 @@ export function CustomersClient({ customers }: { customers: Customer[] }) {
           setEditingItem(null)
           setDialogOpen(true)
         }}
-      />
+      >
+        {zohoConfigured && (
+          <Button variant="outline" onClick={handleZohoSync} disabled={syncing}>
+            {syncing ? (
+              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing...</>
+            ) : (
+              <><RefreshCw className="mr-2 h-4 w-4" /> Sync from Zoho</>
+            )}
+          </Button>
+        )}
+      </PageHeader>
 
       <DataTable
         columns={columns}

@@ -46,3 +46,39 @@ export async function updateLabSettings(data: {
 
   return lab
 }
+
+export async function updateZohoSettings(data: {
+  zohoClientId?: string
+  zohoClientSecret?: string
+  zohoRefreshToken?: string
+  zohoOrgId?: string
+  zohoApiDomain?: string
+}) {
+  const session = await requirePermission("admin", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const lab = await db.lab.update({
+    where: { id: labId },
+    data: {
+      zohoClientId: data.zohoClientId?.trim() || null,
+      zohoClientSecret: data.zohoClientSecret?.trim() || null,
+      zohoRefreshToken: data.zohoRefreshToken?.trim() || null,
+      zohoOrgId: data.zohoOrgId?.trim() || null,
+      zohoApiDomain: data.zohoApiDomain || null,
+    },
+  })
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "settings",
+    "update",
+    "Updated Zoho Books integration settings"
+  )
+
+  revalidatePath("/admin/settings")
+
+  return lab
+}

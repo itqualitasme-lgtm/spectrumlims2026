@@ -174,6 +174,7 @@ export async function GET(request: NextRequest) {
             logoUrl: template.logoUrl,
             accreditationLogoUrl: template.accreditationLogoUrl,
             accreditationText: template.accreditationText,
+            sealUrl: template.sealUrl,
             showLabLogo: template.showLabLogo,
           } : null,
           qrCodeDataUrl,

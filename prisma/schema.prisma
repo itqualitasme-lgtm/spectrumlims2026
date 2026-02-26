@@ -21,6 +21,11 @@ model Lab {
   logo             String?
   reportHeaderText String?
   reportFooterText String?
+  zohoClientId     String?
+  zohoClientSecret String?
+  zohoRefreshToken String?
+  zohoOrgId        String?
+  zohoApiDomain    String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
@@ -134,6 +139,7 @@ model Customer {
   contactPerson String?
   trn           String?
   paymentTerm   String?
+  zohoContactId String?
   status        String   @default("active")
   labId         String
   createdAt     DateTime @default(now())
@@ -148,6 +154,7 @@ model Customer {
   portalUsers    PortalUser[]
 
   @@unique([labId, code])
+  @@index([labId, zohoContactId])
 }
 
 model ContactPerson {
@@ -276,6 +283,7 @@ model ReportTemplate {
   logoUrl         String?
   accreditationLogoUrl String?
   accreditationText    String?
+  sealUrl              String?
   showLabLogo     Boolean  @default(true)
   isDefault       Boolean  @default(false)
   labId           String
