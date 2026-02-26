@@ -475,6 +475,16 @@ function formatDate(date: Date | string | null | undefined): string {
   }
 }
 
+function formatDateTime(date: Date | string | null | undefined): string {
+  if (!date) return "N/A"
+  try {
+    const d = typeof date === "string" ? new Date(date) : date
+    return format(d, "dd-MM-yyyy HH:mm")
+  } catch {
+    return "N/A"
+  }
+}
+
 function buildSpecString(specMin?: string | null, specMax?: string | null): string {
   if (specMin && specMax) return `${specMin} - ${specMax}`
   if (specMin) return `Min ${specMin}`
@@ -662,7 +672,7 @@ export function COAPDF({
                 <Text style={styles.infoGridLabel}>Date Reported</Text>
                 <Text style={styles.infoSep}>:</Text>
                 <Text style={styles.infoValue}>
-                  {formatDate(report.reviewedAt || report.createdAt)}
+                  {formatDateTime(report.reviewedAt || report.createdAt)}
                 </Text>
               </View>
             </View>
@@ -924,8 +934,8 @@ function COAPageContent(props: COAPDFProps) {
     ? format(new Date(sample.registeredAt), "dd MMM yyyy")
     : collectionDateStr
   const reportDateStr = report.reviewedAt
-    ? format(new Date(report.reviewedAt), "dd MMM yyyy")
-    : format(new Date(report.createdAt), "dd MMM yyyy")
+    ? format(new Date(report.reviewedAt), "dd MMM yyyy HH:mm")
+    : format(new Date(report.createdAt), "dd MMM yyyy HH:mm")
 
   const completedResults = testResults.filter(
     (r) => r.status === "completed" && r.resultValue
