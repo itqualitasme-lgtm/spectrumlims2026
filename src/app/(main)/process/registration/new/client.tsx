@@ -317,6 +317,10 @@ export function NewRegistrationClient({
         toast.error("Each sample must have at least one test selected")
         return
       }
+      if (!s.samplePoint.trim()) {
+        toast.error("Sample Point is required for every sample")
+        return
+      }
     }
 
     setLoading(true)
@@ -382,7 +386,7 @@ export function NewRegistrationClient({
                 <span>Sub#</span>
                 <span>Sample No.</span>
                 <span>Sample Type</span>
-                <span>Sample Point</span>
+                <span>Sample Point *</span>
                 <span>Bottle</span>
                 <span>Description</span>
                 <span></span>
@@ -522,7 +526,7 @@ export function NewRegistrationClient({
             <span>Sample Type *</span>
             <span>Qty</span>
             <span>Bottle</span>
-            <span>Sample Point</span>
+            <span>Sample Point *</span>
             <span>Description</span>
             <span>Remarks</span>
             <span>Tests</span>
