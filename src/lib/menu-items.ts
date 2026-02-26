@@ -63,12 +63,6 @@ export const menuGroups: MenuGroup[] = [
     title: "Process",
     items: [
       {
-        title: "Status Tracking",
-        href: "/process/status-tracking",
-        icon: Activity,
-        permission: "process:view",
-      },
-      {
         title: "Sample Registration",
         href: "/process/registration",
         icon: ClipboardList,
@@ -126,6 +120,17 @@ export const menuGroups: MenuGroup[] = [
         href: "/accounts/trash/invoices",
         icon: Trash2,
         permission: "accounts:delete",
+      },
+    ],
+  },
+  {
+    title: "Utilities",
+    items: [
+      {
+        title: "Status Tracking",
+        href: "/process/status-tracking",
+        icon: Activity,
+        permission: "process:view",
       },
     ],
   },
