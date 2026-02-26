@@ -9,12 +9,11 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DataTable } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header"
-import { Search, RotateCcw, Loader2 } from "lucide-react"
+import { Search, RotateCcw, Loader2, Check, X } from "lucide-react"
 import {
   getStatusTrackingData,
   searchCustomersForTracking,
 } from "@/actions/status-tracking"
-import Link from "next/link"
 
 type RegistrationRow = {
   id: string
@@ -28,7 +27,8 @@ type RegistrationRow = {
   registeredAt: string
   dueDate: string | null
   completionDate: string | null
-  reportApprovedAt: string | null
+  hasProforma: boolean
+  hasTaxInvoice: boolean
 }
 
 type CustomerOption = { id: string; name: string }
@@ -68,7 +68,6 @@ export function StatusTrackingClient() {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined)
 
-  // Close dropdown on outside click
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -137,7 +136,7 @@ export function StatusTrackingClient() {
       accessorKey: "registrationNumber",
       header: "Reg #",
       cell: ({ row }) => (
-        <span className="text-xs font-medium font-mono">
+        <span className="font-medium font-mono text-[11px]">
           {row.original.registrationNumber}
         </span>
       ),
@@ -146,53 +145,51 @@ export function StatusTrackingClient() {
       accessorKey: "client",
       header: "Customer",
       cell: ({ row }) => (
-        <span className="text-xs">{row.original.client}</span>
+        <span className="text-[11px]">{row.original.client}</span>
       ),
     },
     {
       accessorKey: "sampleTypes",
       header: "Type",
       cell: ({ row }) => (
-        <span className="text-xs">{row.original.sampleTypes}</span>
+        <span className="text-[11px]">{row.original.sampleTypes}</span>
       ),
     },
     {
       accessorKey: "sampleCount",
       header: "Qty",
       cell: ({ row }) => (
-        <Badge variant="secondary" className="text-xs">
-          {row.original.sampleCount}
-        </Badge>
+        <span className="text-[11px] font-medium">{row.original.sampleCount}</span>
       ),
     },
     {
       accessorKey: "reference",
       header: "PO/Ref",
       cell: ({ row }) => (
-        <span className="text-xs">{row.original.reference || "-"}</span>
+        <span className="text-[11px]">{row.original.reference || "-"}</span>
       ),
     },
     {
       accessorKey: "testCount",
       header: "Tests",
       cell: ({ row }) => (
-        <span className="text-xs font-medium">{row.original.testCount}</span>
+        <span className="text-[11px] font-medium">{row.original.testCount}</span>
       ),
     },
     {
       accessorKey: "registeredAt",
       header: "Received",
-      cell: ({ row }) => <span className="text-xs">{formatDate(row.original.registeredAt)}</span>,
+      cell: ({ row }) => <span className="text-[11px]">{formatDate(row.original.registeredAt)}</span>,
     },
     {
       accessorKey: "dueDate",
       header: "Due",
       cell: ({ row }) => {
         const due = row.original.dueDate
-        if (!due) return <span className="text-xs">-</span>
+        if (!due) return <span className="text-[11px]">-</span>
         const isOverdue = new Date(due) < new Date() && row.original.status !== "completed" && row.original.status !== "reported"
         return (
-          <span className={`text-xs ${isOverdue ? "text-destructive font-medium" : ""}`}>
+          <span className={`text-[11px] ${isOverdue ? "text-destructive font-medium" : ""}`}>
             {formatDate(due)}
           </span>
         )
@@ -201,12 +198,25 @@ export function StatusTrackingClient() {
     {
       accessorKey: "completionDate",
       header: "Completed",
-      cell: ({ row }) => <span className="text-xs">{formatDate(row.original.completionDate)}</span>,
+      cell: ({ row }) => <span className="text-[11px]">{formatDate(row.original.completionDate)}</span>,
     },
     {
-      accessorKey: "reportApprovedAt",
-      header: "Approved",
-      cell: ({ row }) => <span className="text-xs">{formatDate(row.original.reportApprovedAt)}</span>,
+      accessorKey: "hasProforma",
+      header: "Proforma",
+      cell: ({ row }) => (
+        row.original.hasProforma
+          ? <Check className="h-3.5 w-3.5 text-green-600" />
+          : <X className="h-3.5 w-3.5 text-muted-foreground/40" />
+      ),
+    },
+    {
+      accessorKey: "hasTaxInvoice",
+      header: "Invoiced",
+      cell: ({ row }) => (
+        row.original.hasTaxInvoice
+          ? <Check className="h-3.5 w-3.5 text-green-600" />
+          : <X className="h-3.5 w-3.5 text-muted-foreground/40" />
+      ),
     },
     {
       accessorKey: "status",
@@ -214,7 +224,7 @@ export function StatusTrackingClient() {
       cell: ({ row }) => {
         const s = row.original.status
         return (
-          <Badge className={`text-[10px] px-1.5 py-0 ${statusColors[s] || ""}`} variant="outline">
+          <Badge className={`text-[9px] px-1.5 py-0 ${statusColors[s] || ""}`} variant="outline">
             {s.charAt(0).toUpperCase() + s.slice(1)}
           </Badge>
         )
@@ -225,37 +235,35 @@ export function StatusTrackingClient() {
   const hasFilters = !!selectedCustomer || !!sampleNumber.trim() || !!fromDate || !!toDate
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-2">
       <PageHeader
         title="Status Tracking"
         description="Search by customer, registration number, or date range"
       />
 
-      {/* Search Bar */}
       <Card>
-        <CardContent className="py-3">
+        <CardContent className="py-2">
           <div className="flex items-end gap-2 flex-wrap">
-            {/* Customer Search */}
-            <div className="space-y-1 relative" ref={dropdownRef}>
-              <Label className="text-xs">Customer</Label>
+            <div className="space-y-0.5 relative" ref={dropdownRef}>
+              <Label className="text-[10px]">Customer</Label>
               <div className="relative">
                 <Input
-                  className="h-8 w-56"
+                  className="h-7 w-52 text-xs"
                   placeholder="Type customer name..."
                   value={customerQuery}
                   onChange={(e) => handleCustomerSearch(e.target.value)}
                   onFocus={() => { if (customerOptions.length > 0) setShowDropdown(true) }}
                 />
                 {searchingCustomers && (
-                  <Loader2 className="absolute right-2 top-1.5 h-4 w-4 animate-spin text-muted-foreground" />
+                  <Loader2 className="absolute right-2 top-1.5 h-3.5 w-3.5 animate-spin text-muted-foreground" />
                 )}
               </div>
               {showDropdown && customerOptions.length > 0 && (
-                <div className="absolute z-50 top-full mt-1 w-56 bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto">
+                <div className="absolute z-50 top-full mt-1 w-52 bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto">
                   {customerOptions.map((c) => (
                     <button
                       key={c.id}
-                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+                      className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted transition-colors"
                       onClick={() => selectCustomer(c)}
                     >
                       {c.name}
@@ -265,11 +273,10 @@ export function StatusTrackingClient() {
               )}
             </div>
 
-            {/* Registration/Sample Number */}
-            <div className="space-y-1">
-              <Label className="text-xs">Reg. No</Label>
+            <div className="space-y-0.5">
+              <Label className="text-[10px]">Reg. No</Label>
               <Input
-                className="h-8 w-40"
+                className="h-7 w-36 text-xs"
                 placeholder="REG-260226..."
                 value={sampleNumber}
                 onChange={(e) => setSampleNumber(e.target.value)}
@@ -277,33 +284,32 @@ export function StatusTrackingClient() {
               />
             </div>
 
-            {/* Date Range */}
-            <div className="space-y-1">
-              <Label className="text-xs">From</Label>
+            <div className="space-y-0.5">
+              <Label className="text-[10px]">From</Label>
               <Input
                 type="date"
-                className="h-8 w-32"
+                className="h-7 w-[120px] text-xs"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">To</Label>
+            <div className="space-y-0.5">
+              <Label className="text-[10px]">To</Label>
               <Input
                 type="date"
-                className="h-8 w-32"
+                className="h-7 w-[120px] text-xs"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
               />
             </div>
 
-            <Button size="sm" onClick={handleSearch} disabled={isPending || !hasFilters}>
-              <Search className="mr-1 h-3.5 w-3.5" />
-              {isPending ? "Searching..." : "Search"}
+            <Button size="sm" className="h-7 text-xs" onClick={handleSearch} disabled={isPending || !hasFilters}>
+              <Search className="mr-1 h-3 w-3" />
+              {isPending ? "..." : "Search"}
             </Button>
             {hasSearched && (
-              <Button size="sm" variant="ghost" onClick={handleReset}>
-                <RotateCcw className="mr-1 h-3.5 w-3.5" />
+              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleReset}>
+                <RotateCcw className="mr-1 h-3 w-3" />
                 Clear
               </Button>
             )}
@@ -311,16 +317,15 @@ export function StatusTrackingClient() {
         </CardContent>
       </Card>
 
-      {/* Results */}
       {!hasSearched ? (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground text-sm">
+          <CardContent className="py-10 text-center text-muted-foreground text-xs">
             Select a customer, enter a registration number, or choose a date range to search.
           </CardContent>
         </Card>
       ) : registrations.length === 0 ? (
         <Card>
-          <CardContent className="py-12 text-center text-muted-foreground text-sm">
+          <CardContent className="py-10 text-center text-muted-foreground text-xs">
             No registrations found for the selected criteria.
           </CardContent>
         </Card>

@@ -48,7 +48,6 @@ export async function getStatusTrackingData(filters: {
   }
 
   if (filters.sampleNumber) {
-    // Search by registration number or sample number
     regWhere.OR = [
       { registrationNumber: { contains: filters.sampleNumber, mode: "insensitive" } },
       { samples: { some: { sampleNumber: { contains: filters.sampleNumber, mode: "insensitive" }, deletedAt: null } } },
@@ -72,10 +71,12 @@ export async function getStatusTrackingData(filters: {
           testResults: {
             select: { status: true, dueDate: true, enteredAt: true },
           },
-          reports: {
-            select: { status: true, reviewedAt: true },
-            take: 1,
-            orderBy: { createdAt: "desc" },
+          invoiceItems: {
+            select: {
+              invoice: {
+                select: { invoiceType: true, status: true, deletedAt: true },
+              },
+            },
           },
         },
         orderBy: { subSampleNumber: "asc" },
@@ -99,12 +100,12 @@ export async function getStatusTrackingData(filters: {
       // Aggregate test counts
       const totalTests = reg.samples.reduce((sum, s) => sum + s.testResults.length, 0)
 
-      // Aggregate due dates
+      // Due date: MAXIMUM due date across all test results (latest deadline)
       const allDueDates = reg.samples.flatMap((s) =>
         s.testResults.filter((tr) => tr.dueDate).map((tr) => tr.dueDate!)
       )
-      const earliestDue = allDueDates.length > 0
-        ? new Date(Math.min(...allDueDates.map((d) => d.getTime())))
+      const maxDueDate = allDueDates.length > 0
+        ? new Date(Math.max(...allDueDates.map((d) => d.getTime())))
         : null
 
       // Completion: all tests done across all samples
@@ -117,18 +118,19 @@ export async function getStatusTrackingData(filters: {
         ? new Date(Math.max(...completedDates.map((d) => d.getTime())))
         : null
 
-      // Report approval: check if all samples have approved reports
-      const reportApprovedDates = reg.samples
-        .filter((s) => s.reports[0]?.reviewedAt)
-        .map((s) => s.reports[0].reviewedAt!)
-      const reportApprovedAt = reportApprovedDates.length === reg.samples.length && reportApprovedDates.length > 0
-        ? new Date(Math.max(...reportApprovedDates.map((d) => d.getTime())))
-        : null
-
       // Overall status
       const statuses = reg.samples.map((s) => s.status)
       const allSame = statuses.length > 0 && statuses.every((s) => s === statuses[0])
       const overallStatus = allSame ? statuses[0] : "mixed"
+
+      // Check proforma & tax invoice status from invoice items
+      const allInvoiceItems = reg.samples.flatMap((s) => s.invoiceItems)
+      const activeInvoices = allInvoiceItems
+        .map((ii) => ii.invoice)
+        .filter((inv) => !inv.deletedAt)
+
+      const hasProforma = activeInvoices.some((inv) => inv.invoiceType === "proforma")
+      const hasTaxInvoice = activeInvoices.some((inv) => inv.invoiceType === "tax")
 
       return {
         id: reg.id,
@@ -140,9 +142,10 @@ export async function getStatusTrackingData(filters: {
         status: overallStatus,
         testCount: totalTests,
         registeredAt: reg.registeredAt?.toISOString() || reg.createdAt.toISOString(),
-        dueDate: earliestDue?.toISOString() || null,
+        dueDate: maxDueDate?.toISOString() || null,
         completionDate: completionDate?.toISOString() || null,
-        reportApprovedAt: reportApprovedAt?.toISOString() || null,
+        hasProforma,
+        hasTaxInvoice,
       }
     }),
   }
