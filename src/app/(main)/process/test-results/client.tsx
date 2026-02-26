@@ -457,7 +457,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                             </div>
                           )}
                           {/* Samples */}
-                          {tg.samples.map((sample) => {
+                          {tg.samples.map((sample, sIdx) => {
                             const isSelected = selectedSampleId === sample.id
                             const completedTests = sample.testResults.filter((tr) => tr.status === "completed").length
                             const totalTests = sample.testResults.length
@@ -466,6 +466,12 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                             const shortNum = reg.regNumber
                               ? sample.sampleNumber.replace(reg.regNumber + "-", "")
                               : sample.sampleNumber
+                            // Build detail line: sample point, description, bottle size
+                            const details = [
+                              sample.samplePoint,
+                              sample.description,
+                              sample.quantity ? `${sample.quantity}` : null,
+                            ].filter(Boolean).join(" · ")
 
                             return (
                               <button
@@ -478,10 +484,13 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                               >
                                 <div className="flex items-center justify-between gap-2">
                                   <div className="flex items-center gap-1.5 min-w-0">
+                                    {reg.regNumber && (
+                                      <span className="text-[9px] text-muted-foreground shrink-0 w-4 text-right">{sIdx + 1}.</span>
+                                    )}
                                     <span className="font-mono text-xs font-semibold shrink-0">{shortNum}</span>
-                                    {sample.samplePoint && (
+                                    {details && (
                                       <span className="text-[10px] text-muted-foreground truncate">
-                                        {sample.samplePoint}
+                                        {details}
                                       </span>
                                     )}
                                   </div>
@@ -489,28 +498,27 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                     {hasRevision && (
                                       <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1 py-0">Rev</Badge>
                                     )}
+                                    {totalTests > 0 && (
+                                      <div className="flex items-center gap-1">
+                                        <div className="w-8 h-1 rounded-full bg-muted">
+                                          <div
+                                            className={`h-1 rounded-full ${
+                                              completedTests === totalTests ? "bg-green-500" : "bg-blue-500"
+                                            }`}
+                                            style={{ width: `${(completedTests / totalTests) * 100}%` }}
+                                          />
+                                        </div>
+                                        <span className="text-[9px] text-muted-foreground">{completedTests}/{totalTests}</span>
+                                      </div>
+                                    )}
                                     {sampleStatusBadge(sample.status)}
                                   </div>
                                 </div>
-                                <div className="flex items-center justify-between gap-2 mt-0.5">
-                                  <span className="text-[10px] text-muted-foreground truncate">
-                                    {!reg.regNumber && sample.sampleType.name}
-                                    {sample.description || ""}
-                                  </span>
-                                  {totalTests > 0 && (
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <div className="w-10 h-1 rounded-full bg-muted">
-                                        <div
-                                          className={`h-1 rounded-full ${
-                                            completedTests === totalTests ? "bg-green-500" : "bg-blue-500"
-                                          }`}
-                                          style={{ width: `${(completedTests / totalTests) * 100}%` }}
-                                        />
-                                      </div>
-                                      <span className="text-[9px] text-muted-foreground">{completedTests}/{totalTests}</span>
-                                    </div>
-                                  )}
-                                </div>
+                                {!reg.regNumber && (
+                                  <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+                                    {sample.sampleType.name}
+                                  </div>
+                                )}
                               </button>
                             )
                           })}

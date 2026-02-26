@@ -62,7 +62,7 @@ type Report = {
 type RegistrationContext = {
   id: string
   registrationNumber: string
-  samples: { id: string; sampleNumber: string; subSampleNumber: number; status: string; samplePoint: string | null; quantity: string | null; description: string | null }[]
+  samples: { id: string; sampleNumber: string; subSampleNumber: number; status: string; samplePoint: string | null; quantity: string | null; description: string | null; sampleGroup: string | null }[]
 }
 
 type SampleDetail = {
