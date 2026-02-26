@@ -56,8 +56,8 @@ const BOTTLE_SIZES = [
 
 type SampleRow = {
   id: number
+  groupId: number  // rows with the same groupId share sample type + tests
   sampleTypeId: string
-  qty: number
   bottleQty: string
   samplePoint: string
   description: string
@@ -67,12 +67,14 @@ type SampleRow = {
 }
 
 let rowIdCounter = 1
+let groupIdCounter = 1
 
 function createEmptyRow(): SampleRow {
+  const gid = groupIdCounter++
   return {
     id: rowIdCounter++,
+    groupId: gid,
     sampleTypeId: "",
-    qty: 1,
     bottleQty: "1 Ltr",
     samplePoint: "",
     description: "",
@@ -163,47 +165,125 @@ export function NewRegistrationClient({
 
   const handleSampleTypeChange = (rowId: number, value: string) => {
     const tests = getTestsForType(value)
-    updateRow(rowId, {
-      sampleTypeId: value,
-      selectedTests: new Set<number>(),
-      expanded: tests.length > 0,
+    // Propagate to all rows in the same group
+    setSamples((prev) => {
+      const row = prev.find((s) => s.id === rowId)
+      if (!row) return prev
+      return prev.map((s) =>
+        s.groupId === row.groupId
+          ? { ...s, sampleTypeId: value, selectedTests: new Set<number>(), expanded: s.id === rowId && tests.length > 0 }
+          : s
+      )
     })
   }
 
   const toggleTest = (rowId: number, index: number) => {
-    setSamples((prev) =>
-      prev.map((s) => {
-        if (s.id !== rowId) return s
-        const next = new Set(s.selectedTests)
-        if (next.has(index)) next.delete(index)
-        else next.add(index)
-        return { ...s, selectedTests: next }
-      })
-    )
+    setSamples((prev) => {
+      const row = prev.find((s) => s.id === rowId)
+      if (!row) return prev
+      const next = new Set(row.selectedTests)
+      if (next.has(index)) next.delete(index)
+      else next.add(index)
+      // Propagate to all rows in same group
+      return prev.map((s) =>
+        s.groupId === row.groupId ? { ...s, selectedTests: new Set(next) } : s
+      )
+    })
   }
 
   const toggleAllTests = (rowId: number) => {
-    setSamples((prev) =>
-      prev.map((s) => {
-        if (s.id !== rowId) return s
-        const tests = getTestsForType(s.sampleTypeId)
-        if (s.selectedTests.size === tests.length) {
-          return { ...s, selectedTests: new Set() }
+    setSamples((prev) => {
+      const row = prev.find((s) => s.id === rowId)
+      if (!row) return prev
+      const tests = getTestsForType(row.sampleTypeId)
+      const newSelected = row.selectedTests.size === tests.length
+        ? new Set<number>()
+        : new Set(tests.map((_, i) => i))
+      return prev.map((s) =>
+        s.groupId === row.groupId ? { ...s, selectedTests: new Set(newSelected) } : s
+      )
+    })
+  }
+
+  // Handle qty change: expand/contract rows in the group
+  const handleQtyChange = (rowId: number, newQty: number) => {
+    const qty = Math.max(1, Math.min(99, newQty))
+    setSamples((prev) => {
+      const row = prev.find((s) => s.id === rowId)
+      if (!row) return prev
+      const groupId = row.groupId
+      const groupRows = prev.filter((s) => s.groupId === groupId)
+      const currentQty = groupRows.length
+
+      if (qty === currentQty) return prev
+
+      // Find the position of the last row in this group
+      const lastGroupIdx = prev.findLastIndex((s) => s.groupId === groupId)
+
+      if (qty > currentQty) {
+        // Add more rows after the last row in the group
+        const newRows: SampleRow[] = []
+        for (let i = 0; i < qty - currentQty; i++) {
+          newRows.push({
+            id: rowIdCounter++,
+            groupId,
+            sampleTypeId: row.sampleTypeId,
+            bottleQty: row.bottleQty,
+            samplePoint: "",
+            description: "",
+            remarks: row.remarks,
+            selectedTests: new Set(row.selectedTests),
+            expanded: false,
+          })
         }
-        return { ...s, selectedTests: new Set(tests.map((_, i) => i)) }
-      })
-    )
+        const result = [...prev]
+        result.splice(lastGroupIdx + 1, 0, ...newRows)
+        return result
+      } else {
+        // Remove rows from the end of the group
+        const toRemove = currentQty - qty
+        // Remove from the end of the group
+        const reversedGroupIds: number[] = []
+        for (let i = prev.length - 1; i >= 0; i--) {
+          if (prev[i].groupId === groupId) {
+            reversedGroupIds.push(i)
+          }
+        }
+        const removeIndices = new Set(reversedGroupIds.slice(0, toRemove))
+        return prev.filter((_, i) => !removeIndices.has(i))
+      }
+    })
   }
 
   const addSampleRow = () => setSamples((prev) => [...prev, createEmptyRow()])
 
-  const removeSampleRow = (id: number) => {
-    if (samples.length <= 1) return
-    setSamples((prev) => prev.filter((s) => s.id !== id))
+  const removeGroup = (groupId: number) => {
+    setSamples((prev) => {
+      const remaining = prev.filter((s) => s.groupId !== groupId)
+      return remaining.length > 0 ? remaining : [createEmptyRow()]
+    })
   }
 
   const toggleExpanded = (id: number) => {
     updateRow(id, { expanded: !samples.find((s) => s.id === id)?.expanded })
+  }
+
+  // Propagate bottle size changes to all rows in group
+  const updateGroupBottle = (rowId: number, value: string) => {
+    setSamples((prev) => {
+      const row = prev.find((s) => s.id === rowId)
+      if (!row) return prev
+      return prev.map((s) => s.groupId === row.groupId ? { ...s, bottleQty: value } : s)
+    })
+  }
+
+  // Propagate remarks changes to all rows in group
+  const updateGroupRemarks = (rowId: number, value: string) => {
+    setSamples((prev) => {
+      const row = prev.find((s) => s.id === rowId)
+      if (!row) return prev
+      return prev.map((s) => s.groupId === row.groupId ? { ...s, remarks: value } : s)
+    })
   }
 
   const resetForm = () => {
@@ -219,6 +299,7 @@ export function NewRegistrationClient({
     setRegistrationId("")
     setRegisteredSamples([])
     rowIdCounter = 1
+    groupIdCounter = 1
     setSamples([createEmptyRow()])
   }
 
@@ -227,9 +308,7 @@ export function NewRegistrationClient({
     window.open(`/api/samples/labels?ids=${ids}`, "_blank")
   }
 
-  const totalSampleCount = samples
-    .filter((s) => s.sampleTypeId)
-    .reduce((sum, s) => sum + Math.max(1, s.qty), 0)
+  const totalSampleCount = samples.filter((s) => s.sampleTypeId).length
 
   const handleSubmit = async () => {
     if (!clientId) {
@@ -270,7 +349,7 @@ export function NewRegistrationClient({
         collectionDate: `${collectionDate}T${collectionTime}`,
         rows: validSamples.map((s) => ({
           sampleTypeId: s.sampleTypeId,
-          qty: Math.max(1, s.qty),
+          qty: 1,
           bottleQty: s.bottleQty,
           samplePoint: s.samplePoint || undefined,
           description: s.description || undefined,
@@ -470,55 +549,79 @@ export function NewRegistrationClient({
           <div className="divide-y">
             {samples.map((row, idx) => {
               const tests = getTestsForType(row.sampleTypeId)
+              const groupRows = samples.filter((s) => s.groupId === row.groupId)
+              const isFirstInGroup = groupRows[0]?.id === row.id
               return (
-                <div key={row.id}>
+                <div key={row.id} className={!isFirstInGroup ? "bg-muted/20" : ""}>
                   {/* Main row */}
                   <div className="grid grid-cols-[28px_1fr_60px_100px_1fr_1fr_1fr_80px_28px] gap-x-2 items-center py-1.5 px-1">
                     <span className="text-xs font-mono text-muted-foreground">{idx + 1}</span>
-                    <SearchableSelect
-                      options={sampleTypeOptions}
-                      value={row.sampleTypeId}
-                      onValueChange={(v) => handleSampleTypeChange(row.id, v)}
-                      placeholder="Select..."
-                      searchPlaceholder="Search..."
-                      className="h-8 text-xs"
-                    />
-                    <Input
-                      type="number"
-                      min={1}
-                      max={99}
-                      className="h-8 text-xs text-center"
-                      value={row.qty}
-                      onChange={(e) => updateRow(row.id, { qty: Math.max(1, Math.min(99, parseInt(e.target.value) || 1)) })}
-                    />
-                    <Select value={row.bottleQty} onValueChange={(v) => updateRow(row.id, { bottleQty: v })}>
-                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {BOTTLE_SIZES.map((s) => (
-                          <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+
+                    {isFirstInGroup ? (
+                      <>
+                        <SearchableSelect
+                          options={sampleTypeOptions}
+                          value={row.sampleTypeId}
+                          onValueChange={(v) => handleSampleTypeChange(row.id, v)}
+                          placeholder="Select..."
+                          searchPlaceholder="Search..."
+                          className="h-8 text-xs"
+                        />
+                        <Input
+                          type="number"
+                          min={1}
+                          max={25}
+                          className="h-8 text-xs text-center"
+                          value={groupRows.length}
+                          onChange={(e) => handleQtyChange(row.id, Math.max(1, Math.min(25, parseInt(e.target.value) || 1)))}
+                        />
+                        <Select value={row.bottleQty} onValueChange={(v) => updateGroupBottle(row.id, v)}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {BOTTLE_SIZES.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-xs text-muted-foreground italic pl-1">↳ {sampleTypes.find((st) => st.id === row.sampleTypeId)?.name || ""}</span>
+                        <span />
+                        <span />
+                      </>
+                    )}
+
                     <Input className="h-8 text-xs" value={row.samplePoint} onChange={(e) => updateRow(row.id, { samplePoint: e.target.value })} placeholder="Tank No-4" />
                     <Input className="h-8 text-xs" value={row.description} onChange={(e) => updateRow(row.id, { description: e.target.value })} placeholder="e.g. MHC Oil" />
-                    <Input className="h-8 text-xs" value={row.remarks} onChange={(e) => updateRow(row.id, { remarks: e.target.value })} placeholder="Notes..." />
-                    {tests.length > 0 ? (
-                      <Button variant="ghost" size="sm" className="h-7 text-xs px-2 justify-start" onClick={() => toggleExpanded(row.id)}>
-                        <Badge variant="secondary" className="text-[10px] px-1 py-0 mr-1">{row.selectedTests.size}/{tests.length}</Badge>
-                        {row.expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                      </Button>
+
+                    {isFirstInGroup ? (
+                      <>
+                        <Input className="h-8 text-xs" value={row.remarks} onChange={(e) => updateGroupRemarks(row.id, e.target.value)} placeholder="Notes..." />
+                        {tests.length > 0 ? (
+                          <Button variant="ghost" size="sm" className="h-7 text-xs px-2 justify-start" onClick={() => toggleExpanded(row.id)}>
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 mr-1">{row.selectedTests.size}/{tests.length}</Badge>
+                            {row.expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          </Button>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">-</span>
+                        )}
+                        {/* Delete entire group */}
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => removeGroup(row.groupId)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </>
                     ) : (
-                      <span className="text-xs text-muted-foreground">-</span>
+                      <>
+                        <span />
+                        <span />
+                        <span />
+                      </>
                     )}
-                    {samples.length > 1 ? (
-                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => removeSampleRow(row.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    ) : <span />}
                   </div>
 
-                  {/* Expanded test panel */}
-                  {row.expanded && tests.length > 0 && (
+                  {/* Expanded test panel — only on first row of group */}
+                  {isFirstInGroup && row.expanded && tests.length > 0 && (
                     <div className="ml-7 mr-1 mb-1.5 rounded border text-xs overflow-hidden">
                       {/* Header */}
                       <div className="flex items-center gap-3 px-2 py-1 bg-muted/50 border-b">
