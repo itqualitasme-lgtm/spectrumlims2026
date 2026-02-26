@@ -7,6 +7,7 @@ export async function getStatusTrackingData(filters?: {
   from?: string
   to?: string
   clientId?: string
+  status?: string
 }) {
   const session = await requirePermission("masters", "view")
   const user = session.user as any
@@ -21,108 +22,69 @@ export async function getStatusTrackingData(filters?: {
     : now
 
   const dateFilter = { gte: rangeStart, lte: rangeEnd }
-  const clientFilter = filters?.clientId ? { clientId: filters.clientId } : {}
-  const sampleWhere = { labId, deletedAt: null, ...clientFilter }
-  const invoiceWhere = {
-    labId,
-    deletedAt: null,
-    ...(filters?.clientId ? { clientId: filters.clientId } : {}),
+  const sampleWhere: any = { labId, deletedAt: null }
+
+  if (filters?.clientId) {
+    sampleWhere.clientId = filters.clientId
   }
 
+  // Status counts - all within date range
   const [
-    // Sample status counts (within date range)
     samplesRegistered,
     samplesAssigned,
     samplesTesting,
     samplesCompleted,
     samplesReported,
-
-    // Report status counts (all time for pending items)
-    reportsDraft,
-    reportsReview,
-    reportsRevision,
-    reportsApproved,
-    reportsPublished,
-
-    // Invoice status counts
-    invoicesDraft,
-    invoicesSent,
-    invoicesOverdue,
-    invoicesPaid,
-
-    // Pending samples list (not completed)
-    pendingSamples,
-
-    // Overdue test results
-    overdueTestResults,
-
-    // Outstanding invoice amount
-    outstandingInvoices,
   ] = await Promise.all([
-    // Sample statuses
     db.sample.count({ where: { ...sampleWhere, status: "registered", createdAt: dateFilter } }),
     db.sample.count({ where: { ...sampleWhere, status: "assigned", createdAt: dateFilter } }),
     db.sample.count({ where: { ...sampleWhere, status: "testing", createdAt: dateFilter } }),
     db.sample.count({ where: { ...sampleWhere, status: "completed", createdAt: dateFilter } }),
     db.sample.count({ where: { ...sampleWhere, status: "reported", createdAt: dateFilter } }),
-
-    // Report statuses (all pending regardless of date)
-    db.report.count({ where: { labId, status: "draft" } }),
-    db.report.count({ where: { labId, status: "review" } }),
-    db.report.count({ where: { labId, status: "revision" } }),
-    db.report.count({ where: { labId, status: "approved" } }),
-    db.report.count({ where: { labId, status: "published" } }),
-
-    // Invoice statuses
-    db.invoice.count({ where: { ...invoiceWhere, status: "draft" } }),
-    db.invoice.count({ where: { ...invoiceWhere, status: "sent" } }),
-    db.invoice.count({ where: { ...invoiceWhere, status: "overdue" } }),
-    db.invoice.count({ where: { ...invoiceWhere, status: "paid" } }),
-
-    // Pending samples (active, not completed/reported)
-    db.sample.findMany({
-      where: {
-        ...sampleWhere,
-        status: { in: ["registered", "assigned", "testing"] },
-      },
-      include: {
-        client: { select: { name: true, company: true } },
-        sampleType: { select: { name: true } },
-        assignedTo: { select: { name: true } },
-        _count: { select: { testResults: true } },
-      },
-      orderBy: { createdAt: "desc" },
-      take: 50,
-    }),
-
-    // Overdue test results (past due date, still pending)
-    db.testResult.findMany({
-      where: {
-        sample: { labId, deletedAt: null },
-        status: "pending",
-        dueDate: { lt: now },
-      },
-      include: {
-        sample: {
-          select: {
-            sampleNumber: true,
-            client: { select: { name: true, company: true } },
-            sampleType: { select: { name: true } },
-          },
-        },
-      },
-      orderBy: { dueDate: "asc" },
-      take: 50,
-    }),
-
-    // Outstanding invoices
-    db.invoice.findMany({
-      where: { ...invoiceWhere, status: { in: ["sent", "overdue"] } },
-      select: { total: true },
-    }),
   ])
 
-  const outstandingAmount = outstandingInvoices.reduce((sum, i) => sum + Number(i.total), 0)
+  // Build sample list filter
+  const listWhere: any = { ...sampleWhere, createdAt: dateFilter }
+  if (filters?.status && filters.status !== "all") {
+    listWhere.status = filters.status
+  }
+
+  // Fetch samples with full tracking data
+  const samples = await db.sample.findMany({
+    where: listWhere,
+    include: {
+      client: { select: { name: true, company: true } },
+      sampleType: { select: { name: true } },
+      assignedTo: { select: { name: true } },
+      collectedBy: { select: { name: true } },
+      registeredBy: { select: { name: true } },
+      _count: { select: { testResults: true } },
+      reports: {
+        select: {
+          status: true,
+          reviewedAt: true,
+          createdAt: true,
+        },
+        take: 1,
+        orderBy: { createdAt: "desc" },
+      },
+      testResults: {
+        select: {
+          status: true,
+          dueDate: true,
+          enteredAt: true,
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  })
+
+  // Fetch customers for filter dropdown
+  const customers = await db.customer.findMany({
+    where: { labId, status: "active" },
+    select: { id: true, name: true, company: true },
+    orderBy: { name: "asc" },
+  })
 
   return {
     sampleStatus: {
@@ -132,46 +94,51 @@ export async function getStatusTrackingData(filters?: {
       completed: samplesCompleted,
       reported: samplesReported,
     },
-    reportStatus: {
-      draft: reportsDraft,
-      review: reportsReview,
-      revision: reportsRevision,
-      approved: reportsApproved,
-      published: reportsPublished,
-    },
-    pipeline: {
-      testingPending: samplesRegistered + samplesAssigned + samplesTesting,
-      authenticationPending: reportsDraft + reportsReview,
-      revisionPending: reportsRevision,
-      invoicePending: invoicesDraft,
-      receiptPending: invoicesSent + invoicesOverdue,
-      overdueTests: overdueTestResults.length,
-      outstandingAmount,
-    },
-    accountsStatus: {
-      draft: invoicesDraft,
-      sent: invoicesSent,
-      overdue: invoicesOverdue,
-      paid: invoicesPaid,
-    },
-    pendingSamples: pendingSamples.map((s) => ({
-      id: s.id,
-      sampleNumber: s.sampleNumber,
-      client: s.client.company || s.client.name,
-      sampleType: s.sampleType.name,
-      assignedTo: s.assignedTo?.name || "Unassigned",
-      status: s.status,
-      testCount: s._count.testResults,
-      createdAt: s.createdAt.toISOString(),
-      registeredAt: s.registeredAt?.toISOString() || s.createdAt.toISOString(),
-    })),
-    overdueTests: overdueTestResults.map((tr) => ({
-      id: tr.id,
-      parameter: tr.parameter,
-      sampleNumber: tr.sample.sampleNumber,
-      client: tr.sample.client.company || tr.sample.client.name,
-      sampleType: tr.sample.sampleType.name,
-      dueDate: tr.dueDate?.toISOString() || null,
+    samples: samples.map((s) => {
+      // Calculate due date from test results (earliest due)
+      const dueDates = s.testResults
+        .filter((tr) => tr.dueDate)
+        .map((tr) => tr.dueDate!)
+      const earliestDue = dueDates.length > 0
+        ? new Date(Math.min(...dueDates.map((d) => d.getTime())))
+        : null
+
+      // Completion date = when all tests were completed (latest enteredAt)
+      const allTestsDone = s.testResults.length > 0 && s.testResults.every((tr) => tr.status === "completed")
+      const completedDates = s.testResults
+        .filter((tr) => tr.enteredAt)
+        .map((tr) => tr.enteredAt!)
+      const completionDate = allTestsDone && completedDates.length > 0
+        ? new Date(Math.max(...completedDates.map((d) => d.getTime())))
+        : null
+
+      // Report info
+      const report = s.reports[0] || null
+      const reportApprovedAt = report?.reviewedAt || null
+
+      return {
+        id: s.id,
+        sampleNumber: s.sampleNumber,
+        client: s.client.company || s.client.name,
+        sampleType: s.sampleType.name,
+        reference: s.reference || null,
+        quantity: s.quantity || "1",
+        status: s.status,
+        collectionLocation: s.collectionLocation || null,
+        collectedBy: s.collectedBy?.name || null,
+        assignedTo: s.assignedTo?.name || null,
+        registeredBy: s.registeredBy?.name || null,
+        testCount: s._count.testResults,
+        registeredAt: s.registeredAt?.toISOString() || s.createdAt.toISOString(),
+        dueDate: earliestDue?.toISOString() || null,
+        completionDate: completionDate?.toISOString() || null,
+        reportStatus: report?.status || null,
+        reportApprovedAt: reportApprovedAt?.toISOString() || null,
+      }
+    }),
+    customers: customers.map((c) => ({
+      id: c.id,
+      name: c.company || c.name,
     })),
   }
 }

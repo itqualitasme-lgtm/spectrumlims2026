@@ -2,31 +2,50 @@
 
 import { useState, useTransition } from "react"
 import { type ColumnDef } from "@tanstack/react-table"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { DataTable } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header"
-import {
-  FlaskConical,
-  ShieldCheck,
-  Receipt,
-  AlertTriangle,
-  Filter,
-  RotateCcw,
-  TestTube,
-} from "lucide-react"
+import { Filter, RotateCcw } from "lucide-react"
 import { getStatusTrackingData } from "@/actions/status-tracking"
+import Link from "next/link"
 
 type StatusData = Awaited<ReturnType<typeof getStatusTrackingData>>
+type SampleRow = StatusData["samples"][0]
+
+const statusColors: Record<string, string> = {
+  registered: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+  assigned: "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
+  testing: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+  completed: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
+  reported: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+}
+
+function formatDate(iso: string | null) {
+  if (!iso) return "-"
+  return new Date(iso).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  })
+}
 
 export function StatusTrackingClient({ initialData }: { initialData: StatusData }) {
   const [data, setData] = useState(initialData)
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
+  const [clientId, setClientId] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("all")
   const [isPending, startTransition] = useTransition()
 
   function handleFilter() {
@@ -34,6 +53,8 @@ export function StatusTrackingClient({ initialData }: { initialData: StatusData 
       const result = await getStatusTrackingData({
         from: fromDate || undefined,
         to: toDate || undefined,
+        clientId: clientId !== "all" ? clientId : undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
       })
       setData(result)
     })
@@ -42,65 +63,110 @@ export function StatusTrackingClient({ initialData }: { initialData: StatusData 
   function handleReset() {
     setFromDate("")
     setToDate("")
+    setClientId("all")
+    setStatusFilter("all")
     startTransition(async () => {
       const result = await getStatusTrackingData()
       setData(result)
     })
   }
 
-  const pendingSampleColumns: ColumnDef<StatusData["pendingSamples"][0]>[] = [
-    { accessorKey: "sampleNumber", header: "Sample #" },
-    { accessorKey: "client", header: "Client" },
-    { accessorKey: "sampleType", header: "Type" },
-    { accessorKey: "assignedTo", header: "Assigned To" },
+  function handleStatusClick(status: string) {
+    const newStatus = statusFilter === status ? "all" : status
+    setStatusFilter(newStatus)
+    startTransition(async () => {
+      const result = await getStatusTrackingData({
+        from: fromDate || undefined,
+        to: toDate || undefined,
+        clientId: clientId !== "all" ? clientId : undefined,
+        status: newStatus !== "all" ? newStatus : undefined,
+      })
+      setData(result)
+    })
+  }
+
+  const { sampleStatus } = data
+  const totalActive = sampleStatus.registered + sampleStatus.assigned + sampleStatus.testing + sampleStatus.completed + sampleStatus.reported
+
+  const columns: ColumnDef<SampleRow>[] = [
+    {
+      accessorKey: "sampleNumber",
+      header: "Sample #",
+      cell: ({ row }) => (
+        <Link
+          href={`/process/registration/${row.original.id}`}
+          className="text-primary hover:underline font-medium"
+        >
+          {row.original.sampleNumber}
+        </Link>
+      ),
+    },
+    { accessorKey: "client", header: "Customer" },
+    { accessorKey: "sampleType", header: "Sample Type" },
+    {
+      accessorKey: "reference",
+      header: "PO/Reference",
+      cell: ({ row }) => (
+        <span className="text-sm">
+          {row.original.reference || "-"}
+        </span>
+      ),
+    },
+    {
+      accessorKey: "testCount",
+      header: "Tests",
+      cell: ({ row }) => (
+        <span className="font-medium">{row.original.testCount}</span>
+      ),
+    },
+    {
+      accessorKey: "registeredAt",
+      header: "Received",
+      cell: ({ row }) => formatDate(row.original.registeredAt),
+    },
+    {
+      accessorKey: "dueDate",
+      header: "Due Date",
+      cell: ({ row }) => {
+        const due = row.original.dueDate
+        if (!due) return "-"
+        const isOverdue = new Date(due) < new Date() && row.original.status !== "completed" && row.original.status !== "reported"
+        return (
+          <span className={isOverdue ? "text-destructive font-medium" : ""}>
+            {formatDate(due)}
+          </span>
+        )
+      },
+    },
+    {
+      accessorKey: "completionDate",
+      header: "Completed",
+      cell: ({ row }) => formatDate(row.original.completionDate),
+    },
+    {
+      accessorKey: "reportApprovedAt",
+      header: "Approved",
+      cell: ({ row }) => formatDate(row.original.reportApprovedAt),
+    },
     {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
         const s = row.original.status
         return (
-          <Badge variant={s === "registered" ? "outline" : s === "testing" ? "default" : "secondary"}>
-            {s}
+          <Badge className={`text-xs ${statusColors[s] || ""}`} variant="outline">
+            {s.charAt(0).toUpperCase() + s.slice(1)}
           </Badge>
         )
       },
     },
-    { accessorKey: "testCount", header: "Tests" },
-    {
-      accessorKey: "registeredAt",
-      header: "Registered",
-      cell: ({ row }) => new Date(row.original.registeredAt).toLocaleDateString(),
-    },
   ]
-
-  const overdueColumns: ColumnDef<StatusData["overdueTests"][0]>[] = [
-    { accessorKey: "sampleNumber", header: "Sample #" },
-    { accessorKey: "parameter", header: "Parameter" },
-    { accessorKey: "client", header: "Client" },
-    { accessorKey: "sampleType", header: "Type" },
-    {
-      accessorKey: "dueDate",
-      header: "Due Date",
-      cell: ({ row }) => {
-        if (!row.original.dueDate) return "-"
-        const due = new Date(row.original.dueDate)
-        const daysOverdue = Math.ceil((Date.now() - due.getTime()) / (1000 * 60 * 60 * 24))
-        return (
-          <span className="text-destructive font-medium">
-            {due.toLocaleDateString()} ({daysOverdue}d overdue)
-          </span>
-        )
-      },
-    },
-  ]
-
-  const { pipeline, sampleStatus, reportStatus, accountsStatus } = data
 
   return (
     <div className="space-y-4">
       <PageHeader
         title="Status Tracking"
-        description="Track pending items across all workflow stages"
+        description="Track sample registration and processing status"
       />
 
       {/* Filter Bar */}
@@ -127,11 +193,25 @@ export function StatusTrackingClient({ initialData }: { initialData: StatusData 
                 onChange={(e) => setToDate(e.target.value)}
               />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Customer</Label>
+              <Select value={clientId} onValueChange={setClientId}>
+                <SelectTrigger className="h-8 w-48">
+                  <SelectValue placeholder="All Customers" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Customers</SelectItem>
+                  {data.customers.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <Button size="sm" onClick={handleFilter} disabled={isPending}>
               <Filter className="mr-1 h-3.5 w-3.5" />
               {isPending ? "Loading..." : "Filter"}
             </Button>
-            {(fromDate || toDate) && (
+            {(fromDate || toDate || clientId !== "all" || statusFilter !== "all") && (
               <Button size="sm" variant="ghost" onClick={handleReset} disabled={isPending}>
                 <RotateCcw className="mr-1 h-3.5 w-3.5" />
                 Reset
@@ -141,210 +221,89 @@ export function StatusTrackingClient({ initialData }: { initialData: StatusData 
         </CardContent>
       </Card>
 
-      {/* Pipeline Summary */}
-      <div className="flex flex-wrap gap-2">
-        <PipelineBadge icon={TestTube} label="Testing" count={pipeline.testingPending} color="bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300" />
-        <PipelineBadge icon={ShieldCheck} label="Authentication" count={pipeline.authenticationPending} color="bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300" />
-        <PipelineBadge icon={FlaskConical} label="Revision" count={pipeline.revisionPending} color="bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300" />
-        <PipelineBadge icon={Receipt} label="Invoice" count={pipeline.invoicePending} color="bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300" />
-        <PipelineBadge icon={Receipt} label="Receipt" count={pipeline.receiptPending} color="bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300" />
-        <PipelineBadge icon={AlertTriangle} label="Overdue" count={pipeline.overdueTests} color="bg-destructive/10 text-destructive" />
-        {pipeline.outstandingAmount > 0 && (
-          <div className="inline-flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm font-medium bg-destructive/5 text-destructive">
-            Outstanding: AED {pipeline.outstandingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-          </div>
-        )}
+      {/* Status Counts */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
+        <StatusCard
+          label="All"
+          count={totalActive}
+          active={statusFilter === "all"}
+          onClick={() => handleStatusClick("all")}
+        />
+        <StatusCard
+          label="Registered"
+          count={sampleStatus.registered}
+          color="bg-blue-500"
+          active={statusFilter === "registered"}
+          onClick={() => handleStatusClick("registered")}
+        />
+        <StatusCard
+          label="Assigned"
+          count={sampleStatus.assigned}
+          color="bg-yellow-500"
+          active={statusFilter === "assigned"}
+          onClick={() => handleStatusClick("assigned")}
+        />
+        <StatusCard
+          label="Testing"
+          count={sampleStatus.testing}
+          color="bg-orange-500"
+          active={statusFilter === "testing"}
+          onClick={() => handleStatusClick("testing")}
+        />
+        <StatusCard
+          label="Completed"
+          count={sampleStatus.completed}
+          color="bg-green-500"
+          active={statusFilter === "completed"}
+          onClick={() => handleStatusClick("completed")}
+        />
+        <StatusCard
+          label="Reported"
+          count={sampleStatus.reported}
+          color="bg-purple-500"
+          active={statusFilter === "reported"}
+          onClick={() => handleStatusClick("reported")}
+        />
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="samples" className="space-y-3">
-        <TabsList>
-          <TabsTrigger value="samples">
-            Samples
-            <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-[10px]">
-              {sampleStatus.registered + sampleStatus.assigned + sampleStatus.testing}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="workflow">
-            Workflow
-            <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-[10px]">
-              {reportStatus.draft + reportStatus.review + reportStatus.revision}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="accounts">
-            Accounts
-            <Badge variant="secondary" className="ml-1.5 h-5 px-1.5 text-[10px]">
-              {accountsStatus.draft + accountsStatus.sent + accountsStatus.overdue}
-            </Badge>
-          </TabsTrigger>
-          <TabsTrigger value="overdue">
-            Overdue
-            {data.overdueTests.length > 0 && (
-              <Badge variant="destructive" className="ml-1.5 h-5 px-1.5 text-[10px]">
-                {data.overdueTests.length}
-              </Badge>
-            )}
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Samples Tab */}
-        <TabsContent value="samples" className="space-y-3">
-          <div className="grid grid-cols-5 gap-2">
-            <MiniStat label="Registered" count={sampleStatus.registered} />
-            <MiniStat label="Assigned" count={sampleStatus.assigned} />
-            <MiniStat label="Testing" count={sampleStatus.testing} />
-            <MiniStat label="Completed" count={sampleStatus.completed} />
-            <MiniStat label="Reported" count={sampleStatus.reported} />
-          </div>
-
-          <Card>
-            <CardHeader className="py-3">
-              <CardTitle className="text-sm">Pending Samples</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              <DataTable
-                columns={pendingSampleColumns}
-                data={data.pendingSamples}
-                searchPlaceholder="Search by sample number, client..."
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Workflow Tab */}
-        <TabsContent value="workflow" className="space-y-3">
-          <div className="grid grid-cols-5 gap-2">
-            <MiniStat label="Auth Pending" count={reportStatus.draft} />
-            <MiniStat label="Under Review" count={reportStatus.review} />
-            <MiniStat label="Revision" count={reportStatus.revision} />
-            <MiniStat label="Authenticated" count={reportStatus.approved} />
-            <MiniStat label="Published" count={reportStatus.published} />
-          </div>
-
-          <Card>
-            <CardContent className="py-4">
-              <div className="grid grid-cols-3 divide-x">
-                <div className="px-4 space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Testing Pipeline</p>
-                  <StatRow label="Awaiting assignment" count={sampleStatus.registered} />
-                  <StatRow label="Assigned / in progress" count={sampleStatus.assigned + sampleStatus.testing} />
-                  <StatRow label="Results completed" count={sampleStatus.completed} />
-                </div>
-                <div className="px-4 space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Approval Pipeline</p>
-                  <StatRow label="Awaiting authentication" count={reportStatus.draft} />
-                  <StatRow label="Under review" count={reportStatus.review} />
-                  <StatRow label="Revision required" count={reportStatus.revision} />
-                </div>
-                <div className="px-4 space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Post-Approval</p>
-                  <StatRow label="Authenticated" count={reportStatus.approved} />
-                  <StatRow label="Published" count={reportStatus.published} />
-                  <StatRow label="Pending invoicing" count={accountsStatus.draft} />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Accounts Tab */}
-        <TabsContent value="accounts" className="space-y-3">
-          <div className="grid grid-cols-4 gap-2">
-            <MiniStat label="Draft" count={accountsStatus.draft} />
-            <MiniStat label="Sent" count={accountsStatus.sent} />
-            <MiniStat label="Overdue" count={accountsStatus.overdue} />
-            <MiniStat label="Paid" count={accountsStatus.paid} />
-          </div>
-
-          <Card>
-            <CardContent className="py-4">
-              <div className="grid grid-cols-2 divide-x">
-                <div className="px-4 space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Invoices</p>
-                  <StatRow label="Draft invoices" count={accountsStatus.draft} />
-                  <StatRow label="Sent / awaiting payment" count={accountsStatus.sent} />
-                  <StatRow label="Overdue" count={accountsStatus.overdue} />
-                  <StatRow label="Fully paid" count={accountsStatus.paid} />
-                </div>
-                <div className="px-4 space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Outstanding</p>
-                  <div className="pt-1">
-                    <p className="text-2xl font-bold text-destructive">
-                      AED {pipeline.outstandingAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">Total unpaid amount</p>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Overdue Tab */}
-        <TabsContent value="overdue" className="space-y-3">
-          {data.overdueTests.length === 0 ? (
-            <Card>
-              <CardContent className="py-8 text-center text-muted-foreground text-sm">
-                No overdue test results found.
-              </CardContent>
-            </Card>
-          ) : (
-            <Card>
-              <CardHeader className="py-3">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-destructive" />
-                  Overdue Test Results ({data.overdueTests.length})
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <DataTable
-                  columns={overdueColumns}
-                  data={data.overdueTests}
-                  searchPlaceholder="Search overdue tests..."
-                />
-              </CardContent>
-            </Card>
-          )}
-        </TabsContent>
-      </Tabs>
+      {/* Samples Table */}
+      <DataTable
+        columns={columns}
+        data={data.samples}
+        searchPlaceholder="Search by sample number, customer, reference..."
+        searchKey="sampleNumber"
+      />
     </div>
   )
 }
 
-function PipelineBadge({
-  icon: Icon,
+function StatusCard({
   label,
   count,
   color,
+  active,
+  onClick,
 }: {
-  icon: any
   label: string
   count: number
-  color: string
+  color?: string
+  active?: boolean
+  onClick?: () => void
 }) {
   return (
-    <div className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium ${color}`}>
-      <Icon className="h-3.5 w-3.5" />
-      <span>{label}:</span>
-      <span className="font-bold">{count}</span>
-    </div>
-  )
-}
-
-function MiniStat({ label, count }: { label: string; count: number }) {
-  return (
-    <div className="flex items-center justify-between rounded-md border px-3 py-2">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-bold">{count}</span>
-    </div>
-  )
-}
-
-function StatRow({ label, count }: { label: string; count: number }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className="font-semibold text-sm">{count}</span>
-    </div>
+    <button
+      onClick={onClick}
+      className={`flex items-center justify-between rounded-lg border px-3 py-2.5 transition-colors cursor-pointer ${
+        active
+          ? "border-primary bg-primary/5 ring-1 ring-primary"
+          : "hover:bg-muted/50"
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        {color && <div className={`h-2.5 w-2.5 rounded-full ${color}`} />}
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      </div>
+      <span className="text-lg font-bold">{count}</span>
+    </button>
   )
 }

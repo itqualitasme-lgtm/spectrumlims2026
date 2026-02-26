@@ -15,6 +15,18 @@ export async function getReportTemplates() {
   })
 }
 
+export async function getReportTemplate(id: string) {
+  const session = await requirePermission("admin", "view")
+  const user = session.user as any
+
+  const template = await db.reportTemplate.findFirst({
+    where: { id, labId: user.labId },
+  })
+
+  if (!template) throw new Error("Template not found")
+  return template
+}
+
 export async function getReportTemplatesForSelect() {
   const session = await requirePermission("process", "view")
   const user = session.user as any
