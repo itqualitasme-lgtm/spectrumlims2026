@@ -25,7 +25,7 @@ import {
   CardContent,
 } from "@/components/ui/card"
 
-import { createSample, searchCustomers, getCustomerById } from "@/actions/registrations"
+import { createSample, searchCustomers, getCustomerById, getCustomerAddress } from "@/actions/registrations"
 
 type SampleTypeOption = {
   id: string
@@ -60,7 +60,6 @@ type SampleRow = {
   bottleQty: string
   samplePoint: string
   description: string
-  documentRef: string
   remarks: string
   selectedTests: Set<number>
   expanded: boolean
@@ -75,7 +74,6 @@ function createEmptyRow(): SampleRow {
     bottleQty: "1 Ltr",
     samplePoint: "",
     description: "",
-    documentRef: "",
     remarks: "",
     selectedTests: new Set(),
     expanded: false,
@@ -121,6 +119,14 @@ export function NewRegistrationClient({
     (id: string) => getCustomerById(id),
     []
   )
+
+  const handleClientChange = async (id: string) => {
+    setClientId(id)
+    if (id) {
+      const address = await getCustomerAddress(id)
+      if (address) setCollectionLocation(address)
+    }
+  }
 
   const sampleTypeOptions = useMemo(
     () => sampleTypes.map((st) => ({ value: st.id, label: st.name })),
@@ -223,6 +229,10 @@ export function NewRegistrationClient({
       toast.error("Please select a customer")
       return
     }
+    if (!collectedById) {
+      toast.error("Please select a sampler or Reception")
+      return
+    }
     const validSamples = samples.filter((s) => s.sampleTypeId)
     if (validSamples.length === 0) {
       toast.error("Please add at least one sample with a sample type")
@@ -253,7 +263,7 @@ export function NewRegistrationClient({
           sampleTypeId: s.sampleTypeId,
           jobType,
           priority,
-          reference: s.documentRef || reference || undefined,
+          reference: reference || undefined,
           description: s.description || undefined,
           collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
           samplePoint: s.samplePoint || undefined,
@@ -378,12 +388,12 @@ export function NewRegistrationClient({
       <Card>
         <CardContent className="py-2 px-3">
           <div className="grid grid-cols-2 md:grid-cols-[1fr_110px_110px_auto] gap-x-3 gap-y-1.5">
-            {/* Row 1 */}
+            {/* Row 1: Customer, Job Type, Priority, Date/Time */}
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Customer *</Label>
               <AsyncSearchableSelect
                 value={clientId}
-                onValueChange={setClientId}
+                onValueChange={handleClientChange}
                 searchFn={handleSearchCustomers}
                 getByIdFn={handleGetCustomerById}
                 placeholder="Search customer..."
@@ -423,22 +433,24 @@ export function NewRegistrationClient({
                 <Input className="h-9 w-[150px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
               </div>
             </div>
-            {/* Row 2 */}
-            <div className="grid gap-0.5">
-              <Label className="text-xs text-muted-foreground">Reference / PO</Label>
-              <Input className="h-9" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number" />
-            </div>
-            <div className="grid gap-0.5">
-              <Label className="text-xs text-muted-foreground">Location</Label>
-              <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="Ajman Port" />
+            {/* Row 2: Reference/PO (small), Location (large), Sampler */}
+            <div className="grid grid-cols-[160px_1fr] gap-x-3 col-span-2">
+              <div className="grid gap-0.5">
+                <Label className="text-xs text-muted-foreground">Reference / PO</Label>
+                <Input className="h-9" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number" />
+              </div>
+              <div className="grid gap-0.5">
+                <Label className="text-xs text-muted-foreground">Location</Label>
+                <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="Auto-filled from customer address" />
+              </div>
             </div>
             <div className="col-span-2 grid gap-0.5">
-              <Label className="text-xs text-muted-foreground">Sampler</Label>
+              <Label className="text-xs text-muted-foreground">Sampler / Reception *</Label>
               <SearchableSelect
                 options={samplerOptions}
                 value={collectedById}
                 onValueChange={setCollectedById}
-                placeholder="Select sampler..."
+                placeholder="Select sampler or reception..."
                 searchPlaceholder="Search..."
               />
             </div>
@@ -450,13 +462,12 @@ export function NewRegistrationClient({
       <Card>
         <CardContent className="py-2 px-3">
           {/* Column headers */}
-          <div className="grid grid-cols-[28px_1fr_100px_1fr_1fr_1fr_1fr_80px_28px] gap-x-2 items-center px-1 pb-1 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+          <div className="grid grid-cols-[28px_1fr_100px_1fr_1fr_1fr_80px_28px] gap-x-2 items-center px-1 pb-1 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
             <span>#</span>
             <span>Sample Type *</span>
             <span>Bottle</span>
             <span>Sample Point</span>
             <span>Description</span>
-            <span>Doc. Reference</span>
             <span>Remarks</span>
             <span>Tests</span>
             <span></span>
@@ -467,7 +478,7 @@ export function NewRegistrationClient({
               return (
                 <div key={row.id}>
                   {/* Main row */}
-                  <div className="grid grid-cols-[28px_1fr_100px_1fr_1fr_1fr_1fr_80px_28px] gap-x-2 items-center py-1.5 px-1">
+                  <div className="grid grid-cols-[28px_1fr_100px_1fr_1fr_1fr_80px_28px] gap-x-2 items-center py-1.5 px-1">
                     <span className="text-xs font-mono text-muted-foreground">{idx + 1}</span>
                     <SearchableSelect
                       options={sampleTypeOptions}
@@ -487,7 +498,6 @@ export function NewRegistrationClient({
                     </Select>
                     <Input className="h-8 text-xs" value={row.samplePoint} onChange={(e) => updateRow(row.id, { samplePoint: e.target.value })} placeholder="Tank No-4" />
                     <Input className="h-8 text-xs" value={row.description} onChange={(e) => updateRow(row.id, { description: e.target.value })} placeholder="e.g. MHC Oil" />
-                    <Input className="h-8 text-xs" value={row.documentRef} onChange={(e) => updateRow(row.id, { documentRef: e.target.value })} placeholder="QTN/Contract #" />
                     <Input className="h-8 text-xs" value={row.remarks} onChange={(e) => updateRow(row.id, { remarks: e.target.value })} placeholder="Notes..." />
                     {tests.length > 0 ? (
                       <Button variant="ghost" size="sm" className="h-7 text-xs px-2 justify-start" onClick={() => toggleExpanded(row.id)}>

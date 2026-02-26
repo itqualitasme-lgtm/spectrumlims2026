@@ -8,20 +8,17 @@ import {
   ShieldCheck,
   RotateCcw,
   Globe,
-  Trash2,
   FileText,
   Loader2,
   Printer,
+  Eye,
 } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { DataTable } from "@/components/shared/data-table"
-import { SearchableSelect } from "@/components/shared/searchable-select"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -33,17 +30,34 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 import {
-  createReport,
   submitReport,
   approveReport,
   requestRevision,
   publishReport,
-  deleteReport,
-  getCompletedSamplesForSelect,
-  getReportTemplatesForSelect,
 } from "@/actions/reports"
+
+type TestResultInfo = {
+  id: string
+  parameter: string
+  testMethod: string | null
+  unit: string | null
+  resultValue: string | null
+  specMin: string | null
+  specMax: string | null
+  status: string
+  enteredById: string | null
+  enteredBy: { id: string; name: string } | null
+}
 
 type Report = {
   id: string
@@ -59,7 +73,7 @@ type Report = {
     client: { id: string; name: string; company: string | null }
     sampleType: { id: string; name: string }
     assignedTo: { id: string; name: string } | null
-    testResults: { enteredById: string | null; enteredBy: { id: string; name: string } | null }[]
+    testResults: TestResultInfo[]
   }
   createdBy: { id: string; name: string }
   reviewedBy: { id: string; name: string } | null
@@ -82,11 +96,25 @@ const statusBadge = (status: string) => {
   }
 }
 
+function getPassFail(
+  value: string | null,
+  specMin: string | null,
+  specMax: string | null
+): "pass" | "fail" | null {
+  if (!value?.trim()) return null
+  const num = parseFloat(value)
+  if (isNaN(num)) return null
+  const min = specMin ? parseFloat(specMin) : null
+  const max = specMax ? parseFloat(specMax) : null
+  if (min === null && max === null) return null
+  if (min !== null && !isNaN(min) && num < min) return "fail"
+  if (max !== null && !isNaN(max) && num > max) return "fail"
+  return "pass"
+}
+
 function getChemistName(report: Report): string {
-  // First check test results for who entered them
-  const enteredBy = report.sample.testResults?.[0]?.enteredBy
+  const enteredBy = report.sample.testResults?.find((tr) => tr.enteredBy)?.enteredBy
   if (enteredBy) return enteredBy.name
-  // Fallback to assigned chemist
   if (report.sample.assignedTo) return report.sample.assignedTo.name
   return "-"
 }
@@ -98,9 +126,8 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   // Dialog states
-  const [createOpen, setCreateOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
   const [revisionOpen, setRevisionOpen] = useState(false)
+  const [viewResultsOpen, setViewResultsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
   // Selected report for actions
@@ -140,71 +167,6 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
     window.open(`/api/reports/batch-coa?ids=${printableIds.join(",")}`, "_blank")
   }
 
-  // Create form
-  const [sampleId, setSampleId] = useState("")
-  const [title, setTitle] = useState("")
-  const [summary, setSummary] = useState("")
-  const [templateId, setTemplateId] = useState("")
-  const [completedSamples, setCompletedSamples] = useState<
-    { value: string; label: string }[]
-  >([])
-  const [templates, setTemplates] = useState<
-    { value: string; label: string }[]
-  >([])
-
-  const handleOpenCreate = async () => {
-    try {
-      const [samples, tpls] = await Promise.all([
-        getCompletedSamplesForSelect(),
-        getReportTemplatesForSelect(),
-      ])
-      setCompletedSamples(
-        samples.map((s) => ({
-          value: s.id,
-          label: `${s.sampleNumber} - ${s.clientName} - ${s.typeName}`,
-        }))
-      )
-      setTemplates(
-        tpls.map((t) => ({
-          value: t.id,
-          label: t.isDefault ? `${t.name} (Default)` : t.name,
-        }))
-      )
-      const defaultTpl = tpls.find((t) => t.isDefault)
-      setSampleId("")
-      setTitle("")
-      setSummary("")
-      setTemplateId(defaultTpl?.id || "")
-      setCreateOpen(true)
-    } catch {
-      toast.error("Failed to load data")
-    }
-  }
-
-  const handleCreate = async () => {
-    if (!sampleId || !title.trim()) {
-      toast.error("Please select a sample and enter a title")
-      return
-    }
-
-    setLoading(true)
-    try {
-      const report = await createReport({
-        sampleId,
-        title: title.trim(),
-        summary: summary.trim() || undefined,
-        templateId: templateId || undefined,
-      })
-      toast.success(`Report ${report.reportNumber} created successfully`)
-      setCreateOpen(false)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create report")
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleSubmit = async (report: Report) => {
     try {
       await submitReport(report.id)
@@ -223,6 +185,17 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
     } catch (error: any) {
       toast.error(error.message || "Failed to authenticate report")
     }
+  }
+
+  const handleOpenViewResults = (report: Report) => {
+    setSelectedReport(report)
+    setViewResultsOpen(true)
+  }
+
+  const handleOpenRevision = (report: Report) => {
+    setSelectedReport(report)
+    setRevisionReason("")
+    setRevisionOpen(true)
   }
 
   const handleRevision = async () => {
@@ -252,22 +225,6 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to publish report")
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!selectedReport) return
-
-    setLoading(true)
-    try {
-      await deleteReport(selectedReport.id)
-      toast.success(`Report ${selectedReport.reportNumber} deleted`)
-      setDeleteOpen(false)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete report")
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -358,17 +315,41 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
         const report = row.original
         return (
           <div className="flex items-center gap-1">
-            {/* Draft → Submit for authentication */}
-            {report.status === "draft" && (
+            {/* View Results — available for draft and review */}
+            {(report.status === "draft" || report.status === "review") && (
               <Button
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0"
-                onClick={() => handleSubmit(report)}
-                title="Submit for Authentication"
+                onClick={() => handleOpenViewResults(report)}
+                title="View Results"
               >
-                <Send className="h-4 w-4" />
+                <Eye className="h-4 w-4" />
               </Button>
+            )}
+
+            {/* Draft → Submit for authentication */}
+            {report.status === "draft" && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => handleSubmit(report)}
+                  title="Submit for Authentication"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
+                  onClick={() => handleOpenRevision(report)}
+                  title="Revert to Chemist"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </>
             )}
 
             {/* Under Review → Authenticate or Request Revision */}
@@ -387,12 +368,8 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
                   variant="ghost"
                   size="sm"
                   className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
-                  onClick={() => {
-                    setSelectedReport(report)
-                    setRevisionReason("")
-                    setRevisionOpen(true)
-                  }}
-                  title="Request Revision"
+                  onClick={() => handleOpenRevision(report)}
+                  title="Revert to Chemist"
                 >
                   <RotateCcw className="h-4 w-4" />
                 </Button>
@@ -425,22 +402,6 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
               </Button>
             )}
 
-            {/* Delete only drafts */}
-            {report.status === "draft" && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-                onClick={() => {
-                  setSelectedReport(report)
-                  setDeleteOpen(true)
-                }}
-                title="Delete"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-
             {/* Revision: show the reason */}
             {report.status === "revision" && report.summary && (
               <span className="text-xs text-red-600 max-w-[150px] truncate" title={report.summary}>
@@ -454,12 +415,10 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
   ]
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <PageHeader
         title="Reports & Authentication"
         description="View reports, authenticate completed test results, and publish COA certificates"
-        actionLabel="Create Report"
-        onAction={handleOpenCreate}
       />
 
       {/* Batch actions bar */}
@@ -495,76 +454,115 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
         searchKey="reportNumber"
       />
 
-      {/* Create Report Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+      {/* View Results Dialog */}
+      <Dialog open={viewResultsOpen} onOpenChange={setViewResultsOpen}>
+        <DialogContent className="sm:max-w-[700px]">
           <DialogHeader>
-            <DialogTitle>Create Report</DialogTitle>
+            <DialogTitle>
+              Test Results — {selectedReport?.sample.sampleNumber}
+            </DialogTitle>
             <DialogDescription>
-              Create a new report for a completed sample.
+              {selectedReport?.sample.client.company || selectedReport?.sample.client.name} — {selectedReport?.sample.sampleType.name}
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Sample *</Label>
-              <SearchableSelect
-                options={completedSamples}
-                value={sampleId}
-                onValueChange={setSampleId}
-                placeholder="Select a completed sample..."
-                searchPlaceholder="Search samples..."
-                emptyMessage="No completed samples available."
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Title *</Label>
-              <Input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Report title..."
-              />
-            </div>
-            {templates.length > 0 && (
-              <div className="grid gap-2">
-                <Label>Report Template</Label>
-                <SearchableSelect
-                  options={templates}
-                  value={templateId}
-                  onValueChange={setTemplateId}
-                  placeholder="Select template..."
-                  searchPlaceholder="Search templates..."
-                  emptyMessage="No templates available."
-                />
+          <div className="py-2">
+            {selectedReport && selectedReport.sample.testResults.length > 0 ? (
+              <div className="rounded-md border max-h-[400px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs w-[28px]">#</TableHead>
+                      <TableHead className="text-xs">Parameter</TableHead>
+                      <TableHead className="text-xs">Method</TableHead>
+                      <TableHead className="text-xs">Unit</TableHead>
+                      <TableHead className="text-xs">Result</TableHead>
+                      <TableHead className="text-xs">Spec Min</TableHead>
+                      <TableHead className="text-xs">Spec Max</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedReport.sample.testResults.map((tr, idx) => {
+                      const passFail = getPassFail(tr.resultValue, tr.specMin, tr.specMax)
+                      return (
+                        <TableRow key={tr.id}>
+                          <TableCell className="text-xs text-muted-foreground py-1.5">{idx + 1}</TableCell>
+                          <TableCell className="text-xs font-medium py-1.5">{tr.parameter}</TableCell>
+                          <TableCell className="text-xs py-1.5">{tr.testMethod || "-"}</TableCell>
+                          <TableCell className="text-xs py-1.5">{tr.unit || "-"}</TableCell>
+                          <TableCell className="py-1.5">
+                            <div className="flex items-center gap-1">
+                              <span className={`text-xs font-medium ${
+                                passFail === "fail" ? "text-red-600" :
+                                passFail === "pass" ? "text-green-600" : ""
+                              }`}>
+                                {tr.resultValue || "-"}
+                              </span>
+                              {passFail === "pass" && (
+                                <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[9px] px-1 py-0">P</Badge>
+                              )}
+                              {passFail === "fail" && (
+                                <Badge className="bg-red-100 text-red-800 hover:bg-red-100 text-[9px] px-1 py-0">F</Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs py-1.5">{tr.specMin || "-"}</TableCell>
+                          <TableCell className="text-xs py-1.5">{tr.specMax || "-"}</TableCell>
+                          <TableCell className="py-1.5">
+                            {tr.status === "completed" ? (
+                              <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px]">Done</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-[10px]">Pending</Badge>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
               </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No test results found for this sample.
+              </p>
             )}
-            <div className="grid gap-2">
-              <Label>Remarks</Label>
-              <Textarea
-                value={summary}
-                onChange={(e) => setSummary(e.target.value)}
-                placeholder="Report remarks..."
-                rows={3}
-              />
-            </div>
           </div>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCreateOpen(false)}
-              disabled={loading}
-            >
-              Cancel
+            <Button variant="outline" onClick={() => setViewResultsOpen(false)}>
+              Close
             </Button>
-            <Button onClick={handleCreate} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create Report"
-              )}
-            </Button>
+            {selectedReport && (selectedReport.status === "draft" || selectedReport.status === "review") && (
+              <>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setViewResultsOpen(false)
+                    handleOpenRevision(selectedReport)
+                  }}
+                >
+                  <RotateCcw className="mr-1 h-4 w-4" />
+                  Revert to Chemist
+                </Button>
+                {selectedReport.status === "draft" && (
+                  <Button onClick={() => {
+                    setViewResultsOpen(false)
+                    handleSubmit(selectedReport)
+                  }}>
+                    <Send className="mr-1 h-4 w-4" />
+                    Submit for Auth
+                  </Button>
+                )}
+                {selectedReport.status === "review" && (
+                  <Button onClick={() => {
+                    setViewResultsOpen(false)
+                    handleAuthenticate(selectedReport)
+                  }}>
+                    <ShieldCheck className="mr-1 h-4 w-4" />
+                    Authenticate
+                  </Button>
+                )}
+              </>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -573,7 +571,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
       <Dialog open={revisionOpen} onOpenChange={setRevisionOpen}>
         <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <DialogTitle>Request Revision</DialogTitle>
+            <DialogTitle>Revert to Chemist</DialogTitle>
             <DialogDescription>
               Send report {selectedReport?.reportNumber} back to the chemist for corrections.
               The test results will be reset to pending status.
@@ -581,7 +579,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>Reason for Revision *</Label>
+              <Label>Remarks / Reason for Revert *</Label>
               <Textarea
                 value={revisionReason}
                 onChange={(e) => setRevisionReason(e.target.value)}
@@ -616,17 +614,6 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirm Dialog */}
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Delete Report"
-        description={`Are you sure you want to delete report ${selectedReport?.reportNumber}? This action cannot be undone.`}
-        onConfirm={handleDelete}
-        confirmLabel="Delete"
-        destructive
-        loading={loading}
-      />
     </div>
   )
 }

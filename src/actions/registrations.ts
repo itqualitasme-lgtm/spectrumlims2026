@@ -118,6 +118,18 @@ export async function getCustomerById(id: string) {
   }
 }
 
+export async function getCustomerAddress(id: string) {
+  const session = await getSession()
+  const user = session.user as any
+
+  const customer = await db.customer.findFirst({
+    where: { id, labId: user.labId },
+    select: { address: true },
+  })
+
+  return customer?.address || null
+}
+
 export async function getSampleTypesForSelect() {
   const session = await getSession()
   const user = session.user as any

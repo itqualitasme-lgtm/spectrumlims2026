@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
-import { Eye, Pencil, UserPlus, Trash2, Loader2, QrCode, Printer } from "lucide-react"
+import { Eye, Pencil, UserPlus, Trash2, Loader2, QrCode, Printer, Search } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -13,6 +13,7 @@ import { SearchableSelect } from "@/components/shared/searchable-select"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
@@ -101,6 +102,7 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
 
   // Filter state
   const [statusFilter, setStatusFilter] = useState("all")
+  const [searchQuery, setSearchQuery] = useState("")
 
   // Selection state
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -122,9 +124,22 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
   const [batchAssignToId, setBatchAssignToId] = useState("")
 
   const filteredSamples = useMemo(() => {
-    if (statusFilter === "all") return samples
-    return samples.filter((s) => s.status === statusFilter)
-  }, [samples, statusFilter])
+    let result = samples
+    if (statusFilter !== "all") {
+      result = result.filter((s) => s.status === statusFilter)
+    }
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase()
+      result = result.filter((s) =>
+        s.sampleNumber.toLowerCase().includes(q) ||
+        s.client.name.toLowerCase().includes(q) ||
+        (s.client.company && s.client.company.toLowerCase().includes(q)) ||
+        s.sampleType.name.toLowerCase().includes(q) ||
+        (s.collectionLocation && s.collectionLocation.toLowerCase().includes(q))
+      )
+    }
+    return result
+  }, [samples, statusFilter, searchQuery])
 
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) => {
@@ -396,7 +411,7 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 w-[160px] text-xs">
+            <SelectTrigger className="h-8 w-[140px] text-xs">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -407,7 +422,13 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
               ))}
             </SelectContent>
           </Select>
-          {statusFilter !== "all" && (
+          <Input
+            placeholder="Search samples..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="h-8 w-[240px] text-xs"
+          />
+          {(statusFilter !== "all" || searchQuery.trim()) && (
             <Badge variant="secondary" className="text-xs">
               {filteredSamples.length} sample{filteredSamples.length !== 1 ? "s" : ""}
             </Badge>
@@ -454,8 +475,7 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
       <DataTable
         columns={columns}
         data={filteredSamples}
-        searchPlaceholder="Search samples..."
-        searchKey="sampleNumber"
+        hideSearch
       />
 
       {/* Single Assign Dialog */}

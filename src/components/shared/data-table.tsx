@@ -29,6 +29,7 @@ interface DataTableProps<TData, TValue> {
   data: TData[]
   searchPlaceholder?: string
   searchKey?: string
+  hideSearch?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -36,6 +37,7 @@ export function DataTable<TData, TValue>({
   data,
   searchPlaceholder = "Search...",
   searchKey,
+  hideSearch,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -69,24 +71,26 @@ export function DataTable<TData, TValue>({
   return (
     <div className="space-y-4">
       {/* Search */}
-      <div className="flex items-center">
-        <Input
-          placeholder={searchPlaceholder}
-          value={
-            searchKey
-              ? (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
-              : globalFilter
-          }
-          onChange={(e) => {
-            if (searchKey) {
-              table.getColumn(searchKey)?.setFilterValue(e.target.value)
-            } else {
-              setGlobalFilter(e.target.value)
+      {!hideSearch && (
+        <div className="flex items-center">
+          <Input
+            placeholder={searchPlaceholder}
+            value={
+              searchKey
+                ? (table.getColumn(searchKey)?.getFilterValue() as string) ?? ""
+                : globalFilter
             }
-          }}
-          className="max-w-sm"
-        />
-      </div>
+            onChange={(e) => {
+              if (searchKey) {
+                table.getColumn(searchKey)?.setFilterValue(e.target.value)
+              } else {
+                setGlobalFilter(e.target.value)
+              }
+            }}
+            className="max-w-sm"
+          />
+        </div>
+      )}
 
       {/* Table */}
       <div className="rounded-md border">
