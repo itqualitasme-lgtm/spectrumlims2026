@@ -321,6 +321,10 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => statusBadge(row.original.status),
+      sortingFn: (rowA, rowB) => {
+        const order = ["registered", "assigned", "testing", "completed", "reported"]
+        return order.indexOf(rowA.original.status) - order.indexOf(rowB.original.status)
+      },
     },
     {
       accessorKey: "createdAt",

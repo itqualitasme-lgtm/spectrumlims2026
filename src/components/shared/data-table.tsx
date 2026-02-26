@@ -30,6 +30,7 @@ interface DataTableProps<TData, TValue> {
   searchPlaceholder?: string
   searchKey?: string
   hideSearch?: boolean
+  pageSize?: number
 }
 
 export function DataTable<TData, TValue>({
@@ -38,6 +39,7 @@ export function DataTable<TData, TValue>({
   searchPlaceholder = "Search...",
   searchKey,
   hideSearch,
+  pageSize = 10,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -60,7 +62,7 @@ export function DataTable<TData, TValue>({
     getFilteredRowModel: getFilteredRowModel(),
     initialState: {
       pagination: {
-        pageSize: 10,
+        pageSize,
       },
     },
   })
@@ -158,6 +160,9 @@ export function DataTable<TData, TValue>({
           Showing {pageRows} of {totalRows} rows
         </p>
         <div className="flex items-center gap-2">
+          <span className="text-sm text-muted-foreground">
+            Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+          </span>
           <Button
             variant="outline"
             size="sm"

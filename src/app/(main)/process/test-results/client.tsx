@@ -13,7 +13,6 @@ import {
 import { toast } from "sonner"
 import { format } from "date-fns"
 
-import { PageHeader } from "@/components/shared/page-header"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -345,11 +344,6 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
 
   return (
     <div className="space-y-2">
-      <PageHeader
-        title="Test Results"
-        description="Select a sample to enter test results"
-      />
-
       {/* Split panel layout */}
       <div className="flex gap-3" style={{ height: "calc(100vh - 120px)" }}>
         {/* LEFT PANEL — Sample List */}
