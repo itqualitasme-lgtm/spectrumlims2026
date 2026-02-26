@@ -19,14 +19,28 @@ export async function GET(request: NextRequest) {
 
     const user = session.user as any
     const ids = request.nextUrl.searchParams.get("ids")
+    const registrationId = request.nextUrl.searchParams.get("registrationId")
 
-    if (!ids) {
-      return NextResponse.json({ error: "Missing ids parameter" }, { status: 400 })
+    let reportIds: string[] = []
+
+    if (registrationId) {
+      // Fetch all reports for samples under this registration
+      const regReports = await db.report.findMany({
+        where: {
+          labId: user.labId,
+          status: { in: ["approved", "published"] },
+          sample: { registrationId, deletedAt: null },
+        },
+        select: { id: true },
+        orderBy: { sample: { subSampleNumber: "asc" } },
+      })
+      reportIds = regReports.map((r) => r.id)
+    } else if (ids) {
+      reportIds = ids.split(",").filter(Boolean)
     }
 
-    const reportIds = ids.split(",").filter(Boolean)
     if (reportIds.length === 0) {
-      return NextResponse.json({ error: "No report IDs provided" }, { status: 400 })
+      return NextResponse.json({ error: "No report IDs provided or no approved reports found" }, { status: 400 })
     }
 
     // Fetch all reports with full data

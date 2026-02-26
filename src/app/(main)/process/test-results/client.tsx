@@ -75,6 +75,7 @@ type TestParam = {
 type Sample = {
   id: string
   sampleNumber: string
+  subSampleNumber: number | null
   status: string
   samplePoint: string | null
   description: string | null
@@ -86,6 +87,7 @@ type Sample = {
   client: { id: string; name: string; company: string | null }
   sampleType: { id: string; name: string; defaultTests: string }
   assignedTo: { name: string } | null
+  registration: { id: string; registrationNumber: string } | null
   notes: string | null
   testResults: TestResult[]
   reports: { summary: string | null; status: string; reviewedBy: { name: string } | null }[]
@@ -409,7 +411,11 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                       </div>
                       <div className="flex items-center justify-between gap-2 mt-0.5">
                         <span className="text-[11px] text-muted-foreground truncate">
-                          {sample.client.company || sample.client.name}
+                          {sample.registration ? (
+                            <span className="font-mono">{sample.registration.registrationNumber}</span>
+                          ) : (
+                            sample.client.company || sample.client.name
+                          )}
                         </span>
                         <span className="text-[10px] text-muted-foreground shrink-0">
                           {format(new Date(sample.registeredAt || sample.createdAt), "dd MMM")}
@@ -464,6 +470,11 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                   <span className="text-xs text-muted-foreground truncate">
                     {selectedSample.sampleType.name}
                   </span>
+                  {selectedSample.registration && (
+                    <span className="text-[10px] text-muted-foreground">
+                      ({selectedSample.registration.registrationNumber})
+                    </span>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Button

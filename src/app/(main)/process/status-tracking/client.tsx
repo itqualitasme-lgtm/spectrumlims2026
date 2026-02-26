@@ -19,6 +19,7 @@ import Link from "next/link"
 type SampleRow = {
   id: string
   sampleNumber: string
+  registrationNumber: string | null
   client: string
   sampleType: string
   reference: string | null
@@ -141,6 +142,15 @@ export function StatusTrackingClient() {
         >
           {row.original.sampleNumber}
         </Link>
+      ),
+    },
+    {
+      accessorKey: "registrationNumber",
+      header: "Reg #",
+      cell: ({ row }) => (
+        <span className="text-xs text-muted-foreground font-mono">
+          {row.original.registrationNumber || "-"}
+        </span>
       ),
     },
     {

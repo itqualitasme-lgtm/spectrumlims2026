@@ -69,6 +69,7 @@ type Report = {
     client: { id: string; name: string; company: string | null }
     sampleType: { id: string; name: string }
     assignedTo: { id: string; name: string } | null
+    registration: { id: string; registrationNumber: string } | null
     testResults: TestResultInfo[]
   }
   createdBy: { id: string; name: string }
@@ -147,6 +148,18 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
       return
     }
     window.open(`/api/reports/batch-coa?ids=${Array.from(selectedIds).join(",")}`, "_blank")
+  }
+
+  // Check if selected reports all belong to one registration
+  const selectedRegistrationId = useMemo(() => {
+    if (selectedIds.size === 0) return null
+    const selectedReports = reports.filter((r) => selectedIds.has(r.id))
+    const regIds = new Set(selectedReports.map((r) => r.sample.registration?.id).filter(Boolean))
+    return regIds.size === 1 ? Array.from(regIds)[0] : null
+  }, [selectedIds, reports])
+
+  const handlePrintRegistrationCOA = (registrationId: string) => {
+    window.open(`/api/reports/batch-coa?registrationId=${registrationId}`, "_blank")
   }
 
   const handleOpenViewResults = (report: Report) => {
@@ -340,6 +353,17 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
             <Printer className="mr-1 h-3 w-3" />
             Print COA ({selectedIds.size})
           </Button>
+          {selectedRegistrationId && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 text-xs"
+              onClick={() => handlePrintRegistrationCOA(selectedRegistrationId)}
+            >
+              <FileText className="mr-1 h-3 w-3" />
+              Print Registration COA
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"

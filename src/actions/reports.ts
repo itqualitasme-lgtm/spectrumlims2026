@@ -19,6 +19,7 @@ export async function getReports() {
           client: true,
           sampleType: true,
           assignedTo: { select: { id: true, name: true } },
+          registration: { select: { id: true, registrationNumber: true } },
           testResults: {
             select: {
               id: true,

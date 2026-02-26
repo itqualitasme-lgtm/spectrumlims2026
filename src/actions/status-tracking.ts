@@ -65,6 +65,7 @@ export async function getStatusTrackingData(filters: {
     include: {
       client: { select: { name: true, company: true } },
       sampleType: { select: { name: true } },
+      registration: { select: { registrationNumber: true } },
       _count: { select: { testResults: true } },
       reports: {
         select: { status: true, reviewedAt: true },
@@ -100,6 +101,7 @@ export async function getStatusTrackingData(filters: {
       return {
         id: s.id,
         sampleNumber: s.sampleNumber,
+        registrationNumber: s.registration?.registrationNumber || null,
         client: s.client.company || s.client.name,
         sampleType: s.sampleType.name,
         reference: s.reference || null,

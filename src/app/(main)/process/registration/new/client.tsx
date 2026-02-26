@@ -25,7 +25,7 @@ import {
   CardContent,
 } from "@/components/ui/card"
 
-import { createSample, searchCustomers, getCustomerById, getCustomerAddress } from "@/actions/registrations"
+import { createRegistration, searchCustomers, getCustomerById, getCustomerAddress } from "@/actions/registrations"
 
 type SampleTypeOption = {
   id: string
@@ -57,6 +57,7 @@ const BOTTLE_SIZES = [
 type SampleRow = {
   id: number
   sampleTypeId: string
+  qty: number
   bottleQty: string
   samplePoint: string
   description: string
@@ -71,6 +72,7 @@ function createEmptyRow(): SampleRow {
   return {
     id: rowIdCounter++,
     sampleTypeId: "",
+    qty: 1,
     bottleQty: "1 Ltr",
     samplePoint: "",
     description: "",
@@ -94,9 +96,9 @@ export function NewRegistrationClient({
   const [loading, setLoading] = useState(false)
 
   // Success state
-  const [registeredIds, setRegisteredIds] = useState<string[]>([])
-  const [registeredNumbers, setRegisteredNumbers] = useState<string[]>([])
-  const [registeredDetails, setRegisteredDetails] = useState<{ sampleType: string; samplePoint: string; bottleQty: string; description: string }[]>([])
+  const [registrationNumber, setRegistrationNumber] = useState("")
+  const [registrationId, setRegistrationId] = useState("")
+  const [registeredSamples, setRegisteredSamples] = useState<{ id: string; sampleNumber: string; sampleType: string; subSampleNumber: number }[]>([])
 
   // Shared fields
   const [clientId, setClientId] = useState("")
@@ -213,16 +215,21 @@ export function NewRegistrationClient({
     setCollectionLocation("")
     setCollectionDate(new Date().toISOString().slice(0, 10))
     setCollectionTime(new Date().toTimeString().slice(0, 5))
-    setRegisteredIds([])
-    setRegisteredNumbers([])
-    setRegisteredDetails([])
+    setRegistrationNumber("")
+    setRegistrationId("")
+    setRegisteredSamples([])
     rowIdCounter = 1
     setSamples([createEmptyRow()])
   }
 
   const handlePrintLabels = () => {
-    window.open(`/api/samples/labels?ids=${registeredIds.join(",")}`, "_blank")
+    const ids = registeredSamples.map((s) => s.id).join(",")
+    window.open(`/api/samples/labels?ids=${ids}`, "_blank")
   }
+
+  const totalSampleCount = samples
+    .filter((s) => s.sampleTypeId)
+    .reduce((sum, s) => sum + Math.max(1, s.qty), 0)
 
   const handleSubmit = async () => {
     if (!clientId) {
@@ -253,39 +260,28 @@ export function NewRegistrationClient({
 
     setLoading(true)
     try {
-      const resultIds: string[] = []
-      const resultNumbers: string[] = []
-      const resultDetails: { sampleType: string; samplePoint: string; bottleQty: string; description: string }[] = []
-      for (const s of validSamples) {
-        const tests = getTestsForType(s.sampleTypeId)
-        const sample = await createSample({
-          clientId,
+      const result = await createRegistration({
+        clientId,
+        jobType,
+        priority,
+        reference: reference || undefined,
+        collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+        collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
+        collectionDate: `${collectionDate}T${collectionTime}`,
+        rows: validSamples.map((s) => ({
           sampleTypeId: s.sampleTypeId,
-          jobType,
-          priority,
-          reference: reference || undefined,
-          description: s.description || undefined,
-          collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+          qty: Math.max(1, s.qty),
+          bottleQty: s.bottleQty,
           samplePoint: s.samplePoint || undefined,
-          collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
-          quantity: s.bottleQty || undefined,
-          notes: s.remarks || undefined,
-          selectedTests: tests.length > 0 ? Array.from(s.selectedTests) : undefined,
-          collectionDate: `${collectionDate}T${collectionTime}`,
-        })
-        resultIds.push(sample.id)
-        resultNumbers.push(sample.sampleNumber)
-        const stName = sampleTypes.find((st) => st.id === s.sampleTypeId)?.name || ""
-        resultDetails.push({ sampleType: stName, samplePoint: s.samplePoint, bottleQty: s.bottleQty, description: s.description })
-      }
-      setRegisteredIds(resultIds)
-      setRegisteredNumbers(resultNumbers)
-      setRegisteredDetails(resultDetails)
-      toast.success(
-        resultNumbers.length === 1
-          ? `Sample ${resultNumbers[0]} registered`
-          : `${resultNumbers.length} samples registered`
-      )
+          description: s.description || undefined,
+          remarks: s.remarks || undefined,
+          selectedTests: Array.from(s.selectedTests),
+        })),
+      })
+      setRegistrationId(result.registrationId)
+      setRegistrationNumber(result.registrationNumber)
+      setRegisteredSamples(result.samples)
+      toast.success(`Registration ${result.registrationNumber} created with ${result.samples.length} samples`)
     } catch (error: any) {
       toast.error(error.message || "Failed to register samples")
     } finally {
@@ -294,7 +290,7 @@ export function NewRegistrationClient({
   }
 
   // Success screen
-  if (registeredIds.length > 0) {
+  if (registeredSamples.length > 0) {
     return (
       <div className="space-y-2">
         <div className="flex items-center gap-3">
@@ -309,55 +305,47 @@ export function NewRegistrationClient({
           <CardContent className="py-4">
             <div className="flex items-center gap-3 mb-4">
               <CheckCircle2 className="h-6 w-6 text-green-600 shrink-0" />
-              <h3 className="text-base font-semibold">
-                {registeredNumbers.length === 1
-                  ? "1 Sample Registered"
-                  : `${registeredNumbers.length} Samples Registered — Each bottle has its own label`}
-              </h3>
+              <div>
+                <h3 className="text-base font-semibold">
+                  {registrationNumber}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {registeredSamples.length} sample{registeredSamples.length !== 1 ? "s" : ""} registered — each has its own QR label
+                </p>
+              </div>
             </div>
 
-            {/* Individual sample bottles with details */}
+            {/* Sub-samples table */}
             <div className="rounded border text-sm mb-4 overflow-hidden">
-              {/* Table header */}
-              <div className="grid grid-cols-[32px_140px_1fr_90px_100px_1fr_auto] gap-x-3 px-3 py-1.5 bg-muted/50 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
-                <span>#</span>
+              <div className="grid grid-cols-[40px_180px_1fr_auto] gap-x-3 px-3 py-1.5 bg-muted/50 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+                <span>Sub#</span>
                 <span>Sample No.</span>
                 <span>Sample Type</span>
-                <span>Bottle</span>
-                <span>Sample Point</span>
-                <span>Description</span>
                 <span></span>
               </div>
-              {/* Rows */}
               <div className="divide-y">
-                {registeredNumbers.map((num, idx) => {
-                  const detail = registeredDetails[idx]
-                  return (
-                    <div key={num} className="grid grid-cols-[32px_140px_1fr_90px_100px_1fr_auto] gap-x-3 items-center px-3 py-2">
-                      <span className="text-xs text-muted-foreground font-mono">{idx + 1}</span>
-                      <Badge variant="outline" className="font-mono w-fit">{num}</Badge>
-                      <span className="truncate">{detail?.sampleType || "-"}</span>
-                      <span className="text-muted-foreground">{detail?.bottleQty || "-"}</span>
-                      <span className="truncate text-muted-foreground">{detail?.samplePoint || "-"}</span>
-                      <span className="truncate text-muted-foreground">{detail?.description || "-"}</span>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => window.open(`/api/samples/${registeredIds[idx]}/label`, "_blank")}
-                      >
-                        <Printer className="mr-1 h-3 w-3" /> Print
-                      </Button>
-                    </div>
-                  )
-                })}
+                {registeredSamples.map((s) => (
+                  <div key={s.id} className="grid grid-cols-[40px_180px_1fr_auto] gap-x-3 items-center px-3 py-2">
+                    <span className="text-xs text-muted-foreground font-mono">{String(s.subSampleNumber).padStart(2, "0")}</span>
+                    <Badge variant="outline" className="font-mono w-fit">{s.sampleNumber}</Badge>
+                    <span className="truncate">{s.sampleType}</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => window.open(`/api/samples/${s.id}/label`, "_blank")}
+                    >
+                      <Printer className="mr-1 h-3 w-3" /> Print
+                    </Button>
+                  </div>
+                ))}
               </div>
             </div>
 
             {/* Action buttons */}
             <div className="flex items-center gap-3">
               <Button onClick={handlePrintLabels}>
-                <Printer className="mr-2 h-4 w-4" /> Print All Labels ({registeredNumbers.length})
+                <Printer className="mr-2 h-4 w-4" /> Print All Labels ({registeredSamples.length})
               </Button>
               <Button variant="outline" onClick={resetForm}>
                 <Plus className="mr-2 h-4 w-4" /> Register More
@@ -462,9 +450,10 @@ export function NewRegistrationClient({
       <Card>
         <CardContent className="py-2 px-3">
           {/* Column headers */}
-          <div className="grid grid-cols-[28px_1fr_100px_1fr_1fr_1fr_80px_28px] gap-x-2 items-center px-1 pb-1 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
+          <div className="grid grid-cols-[28px_1fr_60px_100px_1fr_1fr_1fr_80px_28px] gap-x-2 items-center px-1 pb-1 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
             <span>#</span>
             <span>Sample Type *</span>
+            <span>Qty</span>
             <span>Bottle</span>
             <span>Sample Point</span>
             <span>Description</span>
@@ -478,7 +467,7 @@ export function NewRegistrationClient({
               return (
                 <div key={row.id}>
                   {/* Main row */}
-                  <div className="grid grid-cols-[28px_1fr_100px_1fr_1fr_1fr_80px_28px] gap-x-2 items-center py-1.5 px-1">
+                  <div className="grid grid-cols-[28px_1fr_60px_100px_1fr_1fr_1fr_80px_28px] gap-x-2 items-center py-1.5 px-1">
                     <span className="text-xs font-mono text-muted-foreground">{idx + 1}</span>
                     <SearchableSelect
                       options={sampleTypeOptions}
@@ -487,6 +476,14 @@ export function NewRegistrationClient({
                       placeholder="Select..."
                       searchPlaceholder="Search..."
                       className="h-8 text-xs"
+                    />
+                    <Input
+                      type="number"
+                      min={1}
+                      max={99}
+                      className="h-8 text-xs text-center"
+                      value={row.qty}
+                      onChange={(e) => updateRow(row.id, { qty: Math.max(1, Math.min(99, parseInt(e.target.value) || 1)) })}
                     />
                     <Select value={row.bottleQty} onValueChange={(v) => updateRow(row.id, { bottleQty: v })}>
                       <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
@@ -563,7 +560,7 @@ export function NewRegistrationClient({
             {loading ? (
               <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> Registering...</>
             ) : (
-              `Register ${samples.filter((s) => s.sampleTypeId).length} Sample(s)`
+              `Register ${totalSampleCount} Sample${totalSampleCount !== 1 ? "s" : ""}`
             )}
           </Button>
         </div>

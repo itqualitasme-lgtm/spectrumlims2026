@@ -59,9 +59,16 @@ type Report = {
   createdAt: string
 }
 
+type RegistrationContext = {
+  id: string
+  registrationNumber: string
+  samples: { id: string; sampleNumber: string; subSampleNumber: number; status: string }[]
+}
+
 type SampleDetail = {
   id: string
   sampleNumber: string
+  subSampleNumber: number | null
   description: string | null
   quantity: string | null
   priority: string
@@ -78,6 +85,7 @@ type SampleDetail = {
   assignedTo: { name: string } | null
   collectedBy: { name: string } | null
   registeredBy: { name: string } | null
+  registration: RegistrationContext | null
   testResults: TestResult[]
   reports: Report[]
 }
@@ -171,7 +179,14 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
             Back
           </Link>
         </Button>
-        <PageHeader title={`Sample ${sample.sampleNumber}`} />
+        <div>
+          <PageHeader title={`Sample ${sample.sampleNumber}`} />
+          {sample.registration && (
+            <p className="text-sm text-muted-foreground -mt-1">
+              Registration {sample.registration.registrationNumber} — Sample {sample.subSampleNumber} of {sample.registration.samples.length}
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Sample Info Card */}
@@ -296,6 +311,48 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Registration Siblings */}
+      {sample.registration && sample.registration.samples.length > 1 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Registration Samples — {sample.registration.registrationNumber}</CardTitle>
+            <CardDescription className="text-xs">
+              {sample.registration.samples.length} sub-samples in this registration
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-12">Sub#</TableHead>
+                    <TableHead>Sample Number</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {sample.registration.samples.map((s) => (
+                    <TableRow key={s.id} className={s.id === sample.id ? "bg-muted/50" : ""}>
+                      <TableCell className="font-mono text-xs">{String(s.subSampleNumber).padStart(2, "0")}</TableCell>
+                      <TableCell>
+                        {s.id === sample.id ? (
+                          <span className="font-medium text-sm">{s.sampleNumber}</span>
+                        ) : (
+                          <Link href={`/process/registration/${s.id}`} className="text-primary hover:underline text-sm">
+                            {s.sampleNumber}
+                          </Link>
+                        )}
+                      </TableCell>
+                      <TableCell>{statusBadge(s.status)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Test Results Section */}
       <Card>

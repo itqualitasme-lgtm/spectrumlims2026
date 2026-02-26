@@ -54,6 +54,7 @@ type Sample = {
   assignedTo: { name: string } | null
   collectedBy: { name: string } | null
   registeredBy: { name: string } | null
+  registration: { id: string; registrationNumber: string } | null
 }
 
 const statusBadge = (status: string) => {
@@ -298,6 +299,18 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
           {row.original.sampleNumber}
         </Link>
       ),
+    },
+    {
+      id: "registrationNumber",
+      header: "Reg #",
+      cell: ({ row }) => {
+        const reg = row.original.registration
+        return reg ? (
+          <span className="text-xs text-muted-foreground font-mono">{reg.registrationNumber}</span>
+        ) : (
+          <span className="text-xs text-muted-foreground">-</span>
+        )
+      },
     },
     {
       accessorKey: "client.company",

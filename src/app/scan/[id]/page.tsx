@@ -20,6 +20,12 @@ export default async function ScanPage({
       assignedTo: { select: { name: true } },
       collectedBy: { select: { name: true } },
       registeredBy: { select: { name: true } },
+      registration: {
+        select: {
+          registrationNumber: true,
+          _count: { select: { samples: true } },
+        },
+      },
       testResults: {
         select: {
           parameter: true,
@@ -64,7 +70,14 @@ export default async function ScanPage({
         <Card>
           <CardContent className="py-4">
             <div className="flex items-center justify-between mb-3">
-              <h2 className="text-xl font-bold font-mono">{sample.sampleNumber}</h2>
+              <div>
+                <h2 className="text-xl font-bold font-mono">{sample.sampleNumber}</h2>
+                {sample.registration && (
+                  <p className="text-xs text-muted-foreground">
+                    {sample.registration.registrationNumber} — Sample {sample.subSampleNumber} of {sample.registration._count.samples}
+                  </p>
+                )}
+              </div>
               <Badge className={statusColor[sample.status] || "bg-gray-100 text-gray-800"}>
                 {sample.status.charAt(0).toUpperCase() + sample.status.slice(1)}
               </Badge>

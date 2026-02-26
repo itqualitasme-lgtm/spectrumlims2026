@@ -6,6 +6,206 @@ import { logAudit } from "@/lib/audit"
 import { generateNextNumber } from "@/lib/auto-number"
 import { revalidatePath } from "next/cache"
 
+// ============= REGISTRATION (PARENT) =============
+
+export async function createRegistration(data: {
+  clientId: string
+  jobType: string
+  priority: string
+  reference?: string
+  collectedById?: string
+  collectionLocation?: string
+  collectionDate?: string
+  notes?: string
+  rows: {
+    sampleTypeId: string
+    qty: number
+    bottleQty: string
+    samplePoint?: string
+    description?: string
+    remarks?: string
+    selectedTests: number[]
+  }[]
+}) {
+  const session = await requirePermission("process", "create")
+  const user = session.user as any
+  const labId = user.labId
+
+  // Block registration for inactive customers
+  const customer = await db.customer.findFirst({
+    where: { id: data.clientId, labId },
+    select: { status: true, name: true },
+  })
+  if (!customer) throw new Error("Customer not found")
+  if (customer.status !== "active") {
+    throw new Error(`Cannot register samples for inactive customer: ${customer.name}`)
+  }
+
+  // Generate registration number: REG-YYMMDD-NNN
+  const { formatted: registrationNumber, sequenceNumber } = await generateNextNumber(labId, "registration", "REG")
+
+  const recordDate = data.collectionDate ? new Date(data.collectionDate) : new Date()
+  const collectedById = data.collectedById || null
+
+  // Create the Registration parent
+  const registration = await db.registration.create({
+    data: {
+      registrationNumber,
+      sequenceNumber,
+      clientId: data.clientId,
+      jobType: data.jobType || "testing",
+      priority: data.priority || "normal",
+      reference: data.reference || null,
+      collectionDate: recordDate,
+      collectionLocation: data.collectionLocation || null,
+      collectedById,
+      registeredById: user.id,
+      registeredAt: recordDate,
+      notes: data.notes || null,
+      labId,
+    },
+  })
+
+  // Create sub-samples: sequential numbering across ALL rows
+  let subCounter = 1
+  const createdSamples: { id: string; sampleNumber: string; sampleType: string; subSampleNumber: number }[] = []
+
+  for (const row of data.rows) {
+    // Get sample type for tests
+    const sampleType = await db.sampleType.findUnique({
+      where: { id: row.sampleTypeId },
+    })
+    if (!sampleType) throw new Error("Sample type not found")
+
+    const tests: Array<{
+      parameter: string
+      method?: string
+      testMethod?: string
+      unit?: string
+      specMin?: string
+      specMax?: string
+      tat?: number
+    }> = []
+    try {
+      const parsed = JSON.parse(sampleType.defaultTests)
+      if (Array.isArray(parsed)) {
+        for (const [i, t] of parsed.entries()) {
+          if (row.selectedTests.includes(i)) tests.push(t)
+        }
+      }
+    } catch {
+      // skip
+    }
+
+    const qty = Math.max(1, Math.min(99, row.qty))
+    for (let b = 0; b < qty; b++) {
+      const subNum = String(subCounter).padStart(2, "0")
+      const sampleNumber = `${registrationNumber}-${subNum}`
+
+      const sample = await db.sample.create({
+        data: {
+          sampleNumber,
+          clientId: data.clientId,
+          sampleTypeId: row.sampleTypeId,
+          description: row.description || null,
+          quantity: row.bottleQty || null,
+          priority: data.priority || "normal",
+          jobType: data.jobType || "testing",
+          reference: data.reference || null,
+          status: "registered",
+          registeredById: user.id,
+          registeredAt: recordDate,
+          collectedById,
+          collectionDate: recordDate,
+          collectionLocation: data.collectionLocation || null,
+          samplePoint: row.samplePoint || null,
+          notes: row.remarks || null,
+          registrationId: registration.id,
+          subSampleNumber: subCounter,
+          labId,
+        },
+      })
+
+      // Create test results for this sub-sample
+      if (tests.length > 0) {
+        await db.testResult.createMany({
+          data: tests.map((test) => {
+            const tatDays = test.tat || null
+            const dueDate = tatDays
+              ? new Date(recordDate.getTime() + tatDays * 24 * 60 * 60 * 1000)
+              : null
+            return {
+              sampleId: sample.id,
+              parameter: test.parameter,
+              testMethod: test.method || test.testMethod || null,
+              unit: test.unit || null,
+              specMin: test.specMin || null,
+              specMax: test.specMax || null,
+              tat: tatDays,
+              dueDate,
+              status: "pending",
+            }
+          }),
+        })
+      }
+
+      createdSamples.push({
+        id: sample.id,
+        sampleNumber: sample.sampleNumber,
+        sampleType: sampleType.name,
+        subSampleNumber: subCounter,
+      })
+      subCounter++
+    }
+  }
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "process",
+    "create",
+    `Registered ${registrationNumber} with ${createdSamples.length} samples`
+  )
+
+  revalidatePath("/process/registration")
+  revalidatePath("/process/sample-collection")
+
+  return {
+    registrationId: registration.id,
+    registrationNumber,
+    samples: createdSamples,
+  }
+}
+
+export async function getRegistration(id: string) {
+  const session = await getSession()
+  const user = session.user as any
+
+  const registration = await db.registration.findFirst({
+    where: { id, labId: user.labId },
+    include: {
+      client: { select: { name: true, company: true } },
+      collectedBy: { select: { name: true } },
+      registeredBy: { select: { name: true } },
+      samples: {
+        where: { deletedAt: null },
+        include: {
+          sampleType: { select: { name: true } },
+          _count: { select: { testResults: true } },
+          testResults: { select: { status: true } },
+          reports: { select: { id: true, status: true }, take: 1 },
+        },
+        orderBy: { subSampleNumber: "asc" },
+      },
+    },
+  })
+
+  return registration
+}
+
+// ============= SAMPLES =============
+
 export async function getSamples() {
   const session = await requirePermission("process", "view")
   const user = session.user as any
@@ -19,6 +219,7 @@ export async function getSamples() {
       assignedTo: { select: { name: true } },
       collectedBy: { select: { name: true } },
       registeredBy: { select: { name: true } },
+      registration: { select: { id: true, registrationNumber: true } },
     },
     orderBy: { createdAt: "desc" },
   })
@@ -38,6 +239,15 @@ export async function getSample(id: string) {
       assignedTo: { select: { name: true } },
       collectedBy: { select: { name: true } },
       registeredBy: { select: { name: true } },
+      registration: {
+        include: {
+          samples: {
+            where: { deletedAt: null },
+            select: { id: true, sampleNumber: true, subSampleNumber: true, status: true },
+            orderBy: { subSampleNumber: "asc" },
+          },
+        },
+      },
       testResults: {
         include: {
           enteredBy: { select: { name: true } },

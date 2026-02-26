@@ -41,6 +41,7 @@ model Lab {
   roles                Role[]
   portalUsers          PortalUser[]
   auditLogs            AuditLog[]
+  registrations        Registration[]
   reportVerifications  ReportVerification[]
   reportTemplates      ReportTemplate[]
 }
@@ -108,8 +109,10 @@ model User {
   reportsCreated     Report[]     @relation("CreatedBy")
   reportsReviewed    Report[]     @relation("ReviewedBy")
   invoicesCreated    Invoice[]    @relation("InvoiceCreatedBy")
-  quotationsCreated  Quotation[]  @relation("QuotationCreatedBy")
-  contractsCreated   Contract[]   @relation("ContractCreatedBy")
+  quotationsCreated       Quotation[]    @relation("QuotationCreatedBy")
+  contractsCreated        Contract[]     @relation("ContractCreatedBy")
+  regsCollected           Registration[] @relation("RegCollectedBy")
+  regsRegistered          Registration[] @relation("RegRegisteredBy")
 }
 
 model PortalUser {
@@ -148,6 +151,7 @@ model Customer {
   lab            Lab             @relation(fields: [labId], references: [id])
   contactPersons ContactPerson[]
   samples        Sample[]
+  registrations  Registration[]
   invoices       Invoice[]
   quotations     Quotation[]
   contracts      Contract[]
@@ -186,6 +190,35 @@ model SampleType {
   @@unique([labId, name])
 }
 
+// ============= REGISTRATIONS =============
+
+model Registration {
+  id                   String    @id @default(cuid())
+  registrationNumber   String    @unique
+  sequenceNumber       Int?
+  clientId             String
+  jobType              String    @default("testing")
+  priority             String    @default("normal")
+  reference            String?
+  collectionDate       DateTime?
+  collectionLocation   String?
+  collectedById        String?
+  registeredById       String?
+  registeredAt         DateTime?
+  notes                String?
+  labId                String
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  client       Customer @relation(fields: [clientId], references: [id])
+  collectedBy  User?    @relation("RegCollectedBy", fields: [collectedById], references: [id])
+  registeredBy User?    @relation("RegRegisteredBy", fields: [registeredById], references: [id])
+  lab          Lab      @relation(fields: [labId], references: [id])
+  samples      Sample[]
+
+  @@index([labId])
+}
+
 // ============= SAMPLES =============
 
 model Sample {
@@ -210,16 +243,19 @@ model Sample {
   notes              String?
   deletedAt          DateTime?
   deletedById        String?
+  registrationId     String?
+  subSampleNumber    Int?
   labId              String
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
-  client       Customer    @relation(fields: [clientId], references: [id])
-  sampleType   SampleType  @relation(fields: [sampleTypeId], references: [id])
-  assignedTo   User?       @relation("AssignedTo", fields: [assignedToId], references: [id])
-  collectedBy  User?       @relation("CollectedBy", fields: [collectedById], references: [id])
-  registeredBy User?       @relation("RegisteredBy", fields: [registeredById], references: [id])
-  lab          Lab         @relation(fields: [labId], references: [id])
+  client        Customer      @relation(fields: [clientId], references: [id])
+  sampleType    SampleType    @relation(fields: [sampleTypeId], references: [id])
+  assignedTo    User?         @relation("AssignedTo", fields: [assignedToId], references: [id])
+  collectedBy   User?         @relation("CollectedBy", fields: [collectedById], references: [id])
+  registeredBy  User?         @relation("RegisteredBy", fields: [registeredById], references: [id])
+  registration  Registration? @relation(fields: [registrationId], references: [id])
+  lab           Lab           @relation(fields: [labId], references: [id])
 
   testResults    TestResult[]
   reports        Report[]
