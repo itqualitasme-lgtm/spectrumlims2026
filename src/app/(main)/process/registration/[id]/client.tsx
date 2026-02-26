@@ -62,7 +62,7 @@ type Report = {
 type RegistrationContext = {
   id: string
   registrationNumber: string
-  samples: { id: string; sampleNumber: string; subSampleNumber: number; status: string }[]
+  samples: { id: string; sampleNumber: string; subSampleNumber: number; status: string; samplePoint: string | null; quantity: string | null; description: string | null }[]
 }
 
 type SampleDetail = {
@@ -328,6 +328,9 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
                   <TableRow>
                     <TableHead className="w-12">Sub#</TableHead>
                     <TableHead>Sample Number</TableHead>
+                    <TableHead>Sample Point</TableHead>
+                    <TableHead>Bottle</TableHead>
+                    <TableHead>Description</TableHead>
                     <TableHead>Status</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -344,6 +347,9 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
                           </Link>
                         )}
                       </TableCell>
+                      <TableCell className="text-sm">{s.samplePoint || "-"}</TableCell>
+                      <TableCell className="text-sm">{s.quantity || "-"}</TableCell>
+                      <TableCell className="text-sm">{s.description || "-"}</TableCell>
                       <TableCell>{statusBadge(s.status)}</TableCell>
                     </TableRow>
                   ))}

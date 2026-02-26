@@ -68,7 +68,7 @@ export async function createRegistration(data: {
 
   // Create sub-samples: sequential numbering across ALL rows
   let subCounter = 1
-  const createdSamples: { id: string; sampleNumber: string; sampleType: string; subSampleNumber: number }[] = []
+  const createdSamples: { id: string; sampleNumber: string; sampleType: string; subSampleNumber: number; samplePoint: string | null; bottleQty: string | null; description: string | null }[] = []
 
   for (const row of data.rows) {
     // Get sample type for tests
@@ -154,6 +154,9 @@ export async function createRegistration(data: {
         sampleNumber: sample.sampleNumber,
         sampleType: sampleType.name,
         subSampleNumber: subCounter,
+        samplePoint: row.samplePoint || null,
+        bottleQty: row.bottleQty || null,
+        description: row.description || null,
       })
       subCounter++
     }
@@ -243,7 +246,7 @@ export async function getSample(id: string) {
         include: {
           samples: {
             where: { deletedAt: null },
-            select: { id: true, sampleNumber: true, subSampleNumber: true, status: true },
+            select: { id: true, sampleNumber: true, subSampleNumber: true, status: true, samplePoint: true, quantity: true, description: true },
             orderBy: { subSampleNumber: "asc" },
           },
         },
