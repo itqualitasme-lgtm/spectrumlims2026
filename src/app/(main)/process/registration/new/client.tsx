@@ -127,10 +127,13 @@ export function NewRegistrationClient({
     [sampleTypes]
   )
 
-  const samplerOptions = useMemo(
-    () => samplers.map((s) => ({ value: s.id, label: s.name })),
-    [samplers]
-  )
+  const samplerOptions = useMemo(() => {
+    const opts = samplers.map((s) => ({ value: s.id, label: s.name }))
+    if (jobType !== "survey") {
+      opts.unshift({ value: "reception", label: "Reception (Walk-in)" })
+    }
+    return opts
+  }, [samplers, jobType])
 
   const getTestsForType = (sampleTypeId: string): TestParam[] => {
     if (!sampleTypeId) return []
@@ -252,9 +255,9 @@ export function NewRegistrationClient({
           priority,
           reference: s.documentRef || reference || undefined,
           description: s.description || undefined,
-          collectedById: collectedById || undefined,
+          collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
           samplePoint: s.samplePoint || undefined,
-          collectionLocation: collectionLocation || undefined,
+          collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
           quantity: s.bottleQty || undefined,
           notes: s.remarks || undefined,
           selectedTests: tests.length > 0 ? Array.from(s.selectedTests) : undefined,
@@ -389,7 +392,12 @@ export function NewRegistrationClient({
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Job Type</Label>
-              <Select value={jobType} onValueChange={setJobType}>
+              <Select value={jobType} onValueChange={(v) => {
+                setJobType(v)
+                if (v === "survey" && collectedById === "reception") {
+                  setCollectedById("")
+                }
+              }}>
                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="testing">Testing</SelectItem>

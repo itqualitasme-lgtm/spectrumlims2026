@@ -169,7 +169,7 @@ export async function getSamplersForSelect() {
       labId,
       isActive: true,
       role: {
-        name: { in: ["Sampler", "Lab Manager", "Admin"] },
+        name: "Sampler",
       },
     },
     select: { id: true, name: true },

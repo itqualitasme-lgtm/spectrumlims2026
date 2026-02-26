@@ -230,10 +230,13 @@ export function EditSampleClient({
     [sampleTypes]
   )
 
-  const samplerOptions = useMemo(
-    () => samplers.map((s) => ({ value: s.id, label: s.name })),
-    [samplers]
-  )
+  const samplerOptions = useMemo(() => {
+    const opts = samplers.map((s) => ({ value: s.id, label: s.name }))
+    if (jobType !== "survey") {
+      opts.unshift({ value: "reception", label: "Reception (Walk-in)" })
+    }
+    return opts
+  }, [samplers, jobType])
 
   const handleSubmit = async () => {
     if (!clientId) {
@@ -254,8 +257,8 @@ export function EditSampleClient({
         priority,
         reference: reference || undefined,
         description: description || undefined,
-        collectedById: collectedById || undefined,
-        collectionLocation: collectionLocation || undefined,
+        collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+        collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
         samplePoint: samplePoint || undefined,
         quantity: quantity || undefined,
         notes: notes || undefined,
@@ -397,7 +400,12 @@ export function EditSampleClient({
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Job Type</Label>
-              <Select value={jobType} onValueChange={setJobType}>
+              <Select value={jobType} onValueChange={(v) => {
+                setJobType(v)
+                if (v === "survey" && collectedById === "reception") {
+                  setCollectedById("")
+                }
+              }}>
                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="testing">Testing</SelectItem>
