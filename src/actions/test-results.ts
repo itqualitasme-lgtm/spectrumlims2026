@@ -40,6 +40,15 @@ export async function getSamplesForTestEntry() {
         },
         orderBy: { parameter: "asc" },
       },
+      reports: {
+        where: { status: "revision" },
+        select: {
+          summary: true,
+          status: true,
+          reviewedBy: { select: { name: true } },
+        },
+        take: 1,
+      },
     },
     orderBy: { createdAt: "desc" },
   })

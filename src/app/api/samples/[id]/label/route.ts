@@ -22,6 +22,7 @@ export async function GET(
       include: {
         client: true,
         sampleType: true,
+        collectedBy: { select: { name: true } },
         lab: { select: { name: true } },
       },
     })
@@ -38,6 +39,7 @@ export async function GET(
     const host = request.headers.get("host") || "localhost:3000"
     const baseUrl = `${proto}://${host}`
 
+    const collDate = sample.collectionDate || sample.createdAt
     const buffer = await generateLabelPDF({
       samples: [
         {
@@ -46,7 +48,9 @@ export async function GET(
           clientName: sample.client.company || sample.client.name,
           sampleTypeName: sample.sampleType.name,
           samplePoint: sample.samplePoint,
-          date: format(sample.createdAt, "dd MMM yyyy"),
+          date: format(collDate, "dd MMM yyyy"),
+          time: format(collDate, "HH:mm"),
+          samplerName: sample.collectedBy?.name || null,
         },
       ],
       labName: sample.lab.name,

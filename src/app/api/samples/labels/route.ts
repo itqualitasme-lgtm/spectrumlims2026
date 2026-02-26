@@ -38,6 +38,7 @@ export async function GET(request: NextRequest) {
       include: {
         client: true,
         sampleType: true,
+        collectedBy: { select: { name: true } },
         lab: { select: { name: true } },
       },
       orderBy: { sampleNumber: "asc" },
@@ -50,14 +51,19 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const labelSamples = samples.map((s) => ({
-      id: s.id,
-      sampleNumber: s.sampleNumber,
-      clientName: s.client.company || s.client.name,
-      sampleTypeName: s.sampleType.name,
-      samplePoint: s.samplePoint,
-      date: format(s.createdAt, "dd MMM yyyy"),
-    }))
+    const labelSamples = samples.map((s) => {
+      const collDate = s.collectionDate || s.createdAt
+      return {
+        id: s.id,
+        sampleNumber: s.sampleNumber,
+        clientName: s.client.company || s.client.name,
+        sampleTypeName: s.sampleType.name,
+        samplePoint: s.samplePoint,
+        date: format(collDate, "dd MMM yyyy"),
+        time: format(collDate, "HH:mm"),
+        samplerName: s.collectedBy?.name || null,
+      }
+    })
 
     // Build base URL from request headers
     const proto = request.headers.get("x-forwarded-proto") || "http"

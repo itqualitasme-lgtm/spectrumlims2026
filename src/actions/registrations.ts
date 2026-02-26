@@ -389,7 +389,7 @@ export async function updateSample(
   return sample
 }
 
-export async function assignSample(sampleId: string, assignedToId: string) {
+export async function assignSample(sampleId: string, assignedToId: string | null) {
   const session = await requirePermission("process", "edit")
   const user = session.user as any
   const labId = user.labId
@@ -401,18 +401,19 @@ export async function assignSample(sampleId: string, assignedToId: string) {
   const sample = await db.sample.update({
     where: { id: sampleId },
     data: {
-      assignedToId,
-      status: "assigned",
+      assignedToId: assignedToId || null,
+      status: assignedToId ? "assigned" : "registered",
     },
   })
 
+  const assignLabel = assignedToId ? "chemist" : "public (all chemists)"
   await logAudit(
     labId,
     user.id,
     user.name,
     "process",
     "edit",
-    `Assigned sample ${sample.sampleNumber} to chemist`
+    `Assigned sample ${sample.sampleNumber} to ${assignLabel}`
   )
 
   revalidatePath("/process/registration")

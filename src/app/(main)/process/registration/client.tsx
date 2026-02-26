@@ -166,9 +166,12 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
   const handleOpenAssign = async (sample: Sample) => {
     try {
       const ch = await getChemistsForSelect()
-      setChemists(ch.map((x) => ({ value: x.id, label: x.name })))
+      setChemists([
+        { value: "public", label: "Public (All Chemists)" },
+        ...ch.map((x) => ({ value: x.id, label: x.name })),
+      ])
       setSelectedSample(sample)
-      setAssignedToId("")
+      setAssignedToId("public")
       setAssignOpen(true)
     } catch {
       toast.error("Failed to load chemists")
@@ -177,14 +180,15 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
 
   const handleAssign = async () => {
     if (!selectedSample || !assignedToId) {
-      toast.error("Please select a chemist")
+      toast.error("Please select an option")
       return
     }
 
     setLoading(true)
     try {
-      await assignSample(selectedSample.id, assignedToId)
-      toast.success(`Sample ${selectedSample.sampleNumber} assigned successfully`)
+      await assignSample(selectedSample.id, assignedToId === "public" ? null : assignedToId)
+      const label = assignedToId === "public" ? "public (all chemists)" : "chemist"
+      toast.success(`Sample ${selectedSample.sampleNumber} assigned to ${label}`)
       setAssignOpen(false)
       router.refresh()
     } catch (error: any) {
@@ -201,8 +205,11 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
     }
     try {
       const ch = await getChemistsForSelect()
-      setChemists(ch.map((x) => ({ value: x.id, label: x.name })))
-      setBatchAssignToId("")
+      setChemists([
+        { value: "public", label: "Public (All Chemists)" },
+        ...ch.map((x) => ({ value: x.id, label: x.name })),
+      ])
+      setBatchAssignToId("public")
       setBatchAssignOpen(true)
     } catch {
       toast.error("Failed to load chemists")
@@ -211,14 +218,14 @@ export function RegistrationClient({ samples }: { samples: Sample[] }) {
 
   const handleBatchAssign = async () => {
     if (!batchAssignToId) {
-      toast.error("Please select a chemist")
+      toast.error("Please select an option")
       return
     }
 
     setLoading(true)
     try {
       for (const s of assignableSamples) {
-        await assignSample(s.id, batchAssignToId)
+        await assignSample(s.id, batchAssignToId === "public" ? null : batchAssignToId)
       }
       toast.success(`${assignableSamples.length} sample(s) assigned successfully`)
       setBatchAssignOpen(false)

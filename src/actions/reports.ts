@@ -12,7 +12,46 @@ export async function getReports() {
   const labId = user.labId
 
   const reports = await db.report.findMany({
-    where: { labId },
+    where: { labId, status: { in: ["approved", "published"] } },
+    include: {
+      sample: {
+        include: {
+          client: true,
+          sampleType: true,
+          assignedTo: { select: { id: true, name: true } },
+          testResults: {
+            select: {
+              id: true,
+              parameter: true,
+              testMethod: true,
+              unit: true,
+              resultValue: true,
+              specMin: true,
+              specMax: true,
+              status: true,
+              enteredById: true,
+              enteredBy: { select: { id: true, name: true } },
+            },
+            orderBy: { parameter: "asc" },
+          },
+        },
+      },
+      createdBy: { select: { id: true, name: true } },
+      reviewedBy: { select: { id: true, name: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  })
+
+  return reports
+}
+
+export async function getReportsForAuthentication() {
+  const session = await requirePermission("process", "view")
+  const user = session.user as any
+  const labId = user.labId
+
+  const reports = await db.report.findMany({
+    where: { labId, status: { in: ["draft", "review", "revision"] } },
     include: {
       sample: {
         include: {
@@ -169,6 +208,7 @@ export async function submitReport(reportId: string) {
   )
 
   revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
 
   return report
 }
@@ -206,6 +246,7 @@ export async function approveReport(reportId: string) {
   )
 
   revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
   revalidatePath("/process/registration")
 
   return report
@@ -224,6 +265,8 @@ export async function requestRevision(reportId: string, reason: string) {
     data: {
       status: "revision",
       summary: reason,
+      reviewedById: null,
+      reviewedAt: null,
     },
   })
 
@@ -249,6 +292,7 @@ export async function requestRevision(reportId: string, reason: string) {
   )
 
   revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
   revalidatePath("/process/test-results")
   revalidatePath("/process/registration")
 
@@ -278,6 +322,7 @@ export async function publishReport(reportId: string) {
   )
 
   revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
   revalidatePath("/process/registration")
 
   return report

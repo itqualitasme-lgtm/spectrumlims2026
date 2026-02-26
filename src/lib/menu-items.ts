@@ -4,6 +4,7 @@ import {
   FlaskConical,
   ClipboardList,
   TestTube,
+  ShieldCheck,
   FileText,
   Receipt,
   FileSpreadsheet,
@@ -13,6 +14,7 @@ import {
   ScrollText,
   FileCheck,
   Trash2,
+  Activity,
   type LucideIcon,
 } from "lucide-react"
 
@@ -55,6 +57,12 @@ export const menuGroups: MenuGroup[] = [
         icon: FlaskConical,
         permission: "masters:view",
       },
+      {
+        title: "Status Tracking",
+        href: "/masters/status-tracking",
+        icon: Activity,
+        permission: "masters:view",
+      },
     ],
   },
   {
@@ -70,6 +78,12 @@ export const menuGroups: MenuGroup[] = [
         title: "Test Results",
         href: "/process/test-results",
         icon: TestTube,
+        permission: "process:view",
+      },
+      {
+        title: "Authentication",
+        href: "/process/authentication",
+        icon: ShieldCheck,
         permission: "process:view",
       },
       {

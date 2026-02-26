@@ -19,6 +19,8 @@ export interface LabelSample {
   sampleTypeName: string
   samplePoint: string | null
   date: string
+  time: string | null
+  samplerName: string | null
 }
 
 export interface LabelPDFProps {
@@ -34,7 +36,7 @@ interface LabelPDFInternalProps extends LabelPDFProps {
 // ============= LAYOUT CONSTANTS =============
 
 const LABELS_PER_ROW = 2
-const LABELS_PER_COL = 10
+const LABELS_PER_COL = 9
 const LABELS_PER_PAGE = LABELS_PER_ROW * LABELS_PER_COL
 
 // ============= STYLES =============
@@ -53,7 +55,7 @@ const styles = StyleSheet.create({
   },
   label: {
     width: 256,
-    height: 70,
+    height: 78,
     flexDirection: "row",
     alignItems: "center",
     padding: 4,
@@ -147,9 +149,13 @@ function LabelPDF({ samples, labName, qrDataUrls }: LabelPDFInternalProps) {
                       </Text>
                       <Text style={styles.infoText}>
                         {item.sample.date}
+                        {item.sample.time ? ` ${item.sample.time}` : ""}
                         {item.sample.samplePoint
                           ? ` | ${item.sample.samplePoint}`
                           : ""}
+                      </Text>
+                      <Text style={styles.infoText}>
+                        {item.sample.samplerName || "Walk-in"}
                       </Text>
                       <Text style={styles.labName}>{labName}</Text>
                     </View>

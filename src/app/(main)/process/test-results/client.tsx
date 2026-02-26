@@ -9,6 +9,7 @@ import {
   Trash2,
   FlaskConical,
   ChevronRight,
+  AlertTriangle,
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -85,7 +86,9 @@ type Sample = {
   client: { id: string; name: string; company: string | null }
   sampleType: { id: string; name: string; defaultTests: string }
   assignedTo: { name: string } | null
+  notes: string | null
   testResults: TestResult[]
+  reports: { summary: string | null; status: string; reviewedBy: { name: string } | null }[]
 }
 
 // ============= HELPERS =============
@@ -148,6 +151,7 @@ function getTestMethod(test: TestParam): string {
 
 const STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All" },
+  { value: "revision", label: "Revision Required" },
   { value: "registered", label: "Registered" },
   { value: "assigned", label: "Assigned" },
   { value: "testing", label: "Testing" },
@@ -189,6 +193,9 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
   // Filtered samples
   const filteredSamples = useMemo(() => {
     if (statusFilter === "all") return samples
+    if (statusFilter === "revision") {
+      return samples.filter((s) => s.reports.length > 0 && s.reports[0].status === "revision")
+    }
     return samples.filter((s) => s.status === statusFilter)
   }, [samples, statusFilter])
 
@@ -380,6 +387,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                   const isSelected = selectedSampleId === sample.id
                   const completedTests = sample.testResults.filter((tr) => tr.status === "completed").length
                   const totalTests = sample.testResults.length
+                  const hasRevision = sample.reports.length > 0 && sample.reports[0].status === "revision"
 
                   return (
                     <button
@@ -387,12 +395,17 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                       type="button"
                       className={`w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors ${
                         isSelected ? "bg-muted border-l-2 border-l-primary" : ""
-                      }`}
+                      } ${hasRevision ? "border-l-2 border-l-amber-500" : ""}`}
                       onClick={() => setSelectedSampleId(sample.id)}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-mono text-xs font-semibold truncate">{sample.sampleNumber}</span>
-                        {sampleStatusBadge(sample.status)}
+                        <div className="flex items-center gap-1">
+                          {hasRevision && (
+                            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1 py-0">Revision</Badge>
+                          )}
+                          {sampleStatusBadge(sample.status)}
+                        </div>
                       </div>
                       <div className="flex items-center justify-between gap-2 mt-0.5">
                         <span className="text-[11px] text-muted-foreground truncate">
@@ -492,7 +505,24 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                 {selectedSample.reference && <span>Ref: {selectedSample.reference}</span>}
                 {selectedSample.quantity && <span>Size: {selectedSample.quantity}</span>}
                 {selectedSample.description && <span>Desc: {selectedSample.description}</span>}
+                {selectedSample.notes && <span>Notes: {selectedSample.notes}</span>}
               </div>
+
+              {/* Revision banner */}
+              {selectedSample.reports.length > 0 && selectedSample.reports[0].status === "revision" && (
+                <div className="px-3 py-2 border-b bg-amber-50 dark:bg-amber-950/30 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="text-xs">
+                    <span className="font-medium text-amber-800 dark:text-amber-400">Revision Required</span>
+                    {selectedSample.reports[0].reviewedBy && (
+                      <span className="text-amber-700 dark:text-amber-500"> by {selectedSample.reports[0].reviewedBy.name}</span>
+                    )}
+                    {selectedSample.reports[0].summary && (
+                      <p className="text-amber-700 dark:text-amber-500 mt-0.5">{selectedSample.reports[0].summary}</p>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {/* Test results table */}
               <ScrollArea className="flex-1">

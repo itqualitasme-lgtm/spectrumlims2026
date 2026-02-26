@@ -4,11 +4,10 @@ import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
+  Send,
+  ShieldCheck,
   RotateCcw,
-  Globe,
-  FileText,
   Loader2,
-  Printer,
   Eye,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -19,7 +18,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogContent,
@@ -36,10 +34,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 import {
+  submitReport,
+  approveReport,
   requestRevision,
-  publishReport,
 } from "@/actions/reports"
 
 type TestResultInfo = {
@@ -77,10 +83,12 @@ type Report = {
 
 const statusBadge = (status: string) => {
   switch (status) {
-    case "approved":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Authenticated</Badge>
-    case "published":
-      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Published</Badge>
+    case "draft":
+      return <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">Pending</Badge>
+    case "review":
+      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Under Review</Badge>
+    case "revision":
+      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Revision Required</Badge>
     default:
       return <Badge variant="secondary">{status}</Badge>
   }
@@ -109,11 +117,16 @@ function getChemistName(report: Report): string {
   return "-"
 }
 
-export function ReportsClient({ reports }: { reports: Report[] }) {
-  const router = useRouter()
+const STATUS_OPTIONS = [
+  { value: "all", label: "All" },
+  { value: "draft", label: "Pending" },
+  { value: "review", label: "Under Review" },
+  { value: "revision", label: "Revision Required" },
+]
 
-  // Selection for batch print
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+export function AuthenticationClient({ reports }: { reports: Report[] }) {
+  const router = useRouter()
+  const [statusFilter, setStatusFilter] = useState("all")
 
   // Dialog states
   const [revisionOpen, setRevisionOpen] = useState(false)
@@ -124,29 +137,29 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
   const [revisionReason, setRevisionReason] = useState("")
 
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }
+  const filteredReports = useMemo(() => {
+    if (statusFilter === "all") return reports
+    return reports.filter((r) => r.status === statusFilter)
+  }, [reports, statusFilter])
 
-  const toggleSelectAll = () => {
-    if (selectedIds.size === reports.length) {
-      setSelectedIds(new Set())
-    } else {
-      setSelectedIds(new Set(reports.map((r) => r.id)))
+  const handleSubmit = async (report: Report) => {
+    try {
+      await submitReport(report.id)
+      toast.success(`Report ${report.reportNumber} submitted for authentication`)
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to submit report")
     }
   }
 
-  const handleBatchPrint = () => {
-    if (selectedIds.size === 0) {
-      toast.error("No reports selected")
-      return
+  const handleAuthenticate = async (report: Report) => {
+    try {
+      await approveReport(report.id)
+      toast.success(`Report ${report.reportNumber} authenticated`)
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to authenticate report")
     }
-    window.open(`/api/reports/batch-coa?ids=${Array.from(selectedIds).join(",")}`, "_blank")
   }
 
   const handleOpenViewResults = (report: Report) => {
@@ -180,35 +193,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
     }
   }
 
-  const handlePublish = async (report: Report) => {
-    try {
-      await publishReport(report.id)
-      toast.success(`Report ${report.reportNumber} published`)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to publish report")
-    }
-  }
-
   const columns: ColumnDef<Report, any>[] = [
-    {
-      id: "select",
-      header: () => (
-        <Checkbox
-          checked={reports.length > 0 && selectedIds.size === reports.length}
-          onCheckedChange={toggleSelectAll}
-          className="h-4 w-4"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={selectedIds.has(row.original.id)}
-          onCheckedChange={() => toggleSelect(row.original.id)}
-          className="h-4 w-4"
-        />
-      ),
-      enableSorting: false,
-    },
     {
       accessorKey: "reportNumber",
       header: "Report #",
@@ -246,15 +231,6 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
       ),
     },
     {
-      id: "authenticatedBy",
-      header: "Authenticated By",
-      cell: ({ row }) => (
-        <span className="text-sm font-medium text-green-700">
-          {row.original.reviewedBy?.name || "-"}
-        </span>
-      ),
-    },
-    {
       accessorKey: "createdAt",
       header: "Date",
       cell: ({ row }) =>
@@ -278,40 +254,60 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
               <Eye className="h-4 w-4" />
             </Button>
 
-            {/* View COA PDF */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => window.open(`/api/reports/${report.id}/coa`, "_blank")}
-              title="View COA"
-            >
-              <FileText className="h-4 w-4" />
-            </Button>
-
-            {/* Authenticated → Publish */}
-            {report.status === "approved" && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 w-8 p-0"
-                onClick={() => handlePublish(report)}
-                title="Publish"
-              >
-                <Globe className="h-4 w-4" />
-              </Button>
+            {/* Draft → Submit for authentication */}
+            {report.status === "draft" && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  onClick={() => handleSubmit(report)}
+                  title="Submit for Authentication"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
+                  onClick={() => handleOpenRevision(report)}
+                  title="Revert to Chemist"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </>
             )}
 
-            {/* Revert — available for both approved and published */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
-              onClick={() => handleOpenRevision(report)}
-              title="Revert to Chemist"
-            >
-              <RotateCcw className="h-4 w-4" />
-            </Button>
+            {/* Under Review → Authenticate or Request Revision */}
+            {report.status === "review" && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-green-600 hover:text-green-700"
+                  onClick={() => handleAuthenticate(report)}
+                  title="Authenticate"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700"
+                  onClick={() => handleOpenRevision(report)}
+                  title="Revert to Chemist"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+
+            {/* Revision: show the reason */}
+            {report.status === "revision" && report.summary && (
+              <span className="text-xs text-red-600 max-w-[150px] truncate" title={report.summary}>
+                {report.summary}
+              </span>
+            )}
           </div>
         )
       },
@@ -321,40 +317,34 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title="Reports"
-        description="View, download, and search authenticated reports"
+        title="Authentication"
+        description="Review and authenticate completed test results"
       />
 
-      {/* Batch actions bar */}
-      {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3">
-          <span className="text-xs text-muted-foreground">
-            {selectedIds.size} selected
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={handleBatchPrint}
-          >
-            <Printer className="mr-1 h-3 w-3" />
-            Print COA ({selectedIds.size})
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={() => setSelectedIds(new Set())}
-          >
-            Clear
-          </Button>
-        </div>
-      )}
+      {/* Status filter */}
+      <div className="flex items-center gap-2">
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[180px] h-8 text-xs">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-muted-foreground">
+          {filteredReports.length} report{filteredReports.length !== 1 ? "s" : ""}
+        </span>
+      </div>
 
       <DataTable
         columns={columns}
-        data={reports}
-        searchPlaceholder="Search by report number, sample, client..."
+        data={filteredReports}
+        searchPlaceholder="Search by report number..."
+        searchKey="reportNumber"
       />
 
       {/* View Results Dialog */}
@@ -381,6 +371,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
                       <TableHead className="text-xs">Result</TableHead>
                       <TableHead className="text-xs">Spec Min</TableHead>
                       <TableHead className="text-xs">Spec Max</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -410,6 +401,13 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
                           </TableCell>
                           <TableCell className="text-xs py-1.5">{tr.specMin || "-"}</TableCell>
                           <TableCell className="text-xs py-1.5">{tr.specMax || "-"}</TableCell>
+                          <TableCell className="py-1.5">
+                            {tr.status === "completed" ? (
+                              <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px]">Done</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-[10px]">Pending</Badge>
+                            )}
+                          </TableCell>
                         </TableRow>
                       )
                     })}
@@ -426,17 +424,37 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
             <Button variant="outline" onClick={() => setViewResultsOpen(false)}>
               Close
             </Button>
-            {selectedReport && (
-              <Button
-                variant="destructive"
-                onClick={() => {
-                  setViewResultsOpen(false)
-                  handleOpenRevision(selectedReport)
-                }}
-              >
-                <RotateCcw className="mr-1 h-4 w-4" />
-                Revert to Chemist
-              </Button>
+            {selectedReport && (selectedReport.status === "draft" || selectedReport.status === "review") && (
+              <>
+                <Button
+                  variant="destructive"
+                  onClick={() => {
+                    setViewResultsOpen(false)
+                    handleOpenRevision(selectedReport)
+                  }}
+                >
+                  <RotateCcw className="mr-1 h-4 w-4" />
+                  Revert to Chemist
+                </Button>
+                {selectedReport.status === "draft" && (
+                  <Button onClick={() => {
+                    setViewResultsOpen(false)
+                    handleSubmit(selectedReport)
+                  }}>
+                    <Send className="mr-1 h-4 w-4" />
+                    Submit for Auth
+                  </Button>
+                )}
+                {selectedReport.status === "review" && (
+                  <Button onClick={() => {
+                    setViewResultsOpen(false)
+                    handleAuthenticate(selectedReport)
+                  }}>
+                    <ShieldCheck className="mr-1 h-4 w-4" />
+                    Authenticate
+                  </Button>
+                )}
+              </>
             )}
           </DialogFooter>
         </DialogContent>
@@ -458,7 +476,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
               <Textarea
                 value={revisionReason}
                 onChange={(e) => setRevisionReason(e.target.value)}
-                placeholder="e.g. Client requested re-testing, flash point value needs correction..."
+                placeholder="e.g. Flash point value seems incorrect, please re-test..."
                 rows={4}
               />
             </div>
