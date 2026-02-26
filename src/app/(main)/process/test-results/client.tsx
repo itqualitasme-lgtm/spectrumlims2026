@@ -385,10 +385,14 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                 <p className="text-xs text-muted-foreground">No samples found</p>
               </div>
             ) : (
-              <div className="divide-y">
+              <div>
                 {(() => {
-                  // Group samples by registration
-                  const groups: { regNumber: string | null; regId: string | null; samples: Sample[] }[] = []
+                  // Group samples: registration → sample type sub-groups
+                  type RegGroup = {
+                    regNumber: string | null
+                    typeGroups: { typeName: string; samples: Sample[] }[]
+                  }
+                  const regGroups: RegGroup[] = []
                   const regMap = new Map<string, Sample[]>()
                   const standalone: Sample[] = []
 
@@ -402,80 +406,116 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                     }
                   }
 
-                  // Add registration groups first
+                  // Build registration groups with type sub-groups
                   for (const [regNumber, samples] of regMap) {
-                    groups.push({ regNumber, regId: samples[0].registration?.id || null, samples })
+                    const typeMap = new Map<string, Sample[]>()
+                    for (const s of samples) {
+                      const typeName = s.sampleType.name
+                      if (!typeMap.has(typeName)) typeMap.set(typeName, [])
+                      typeMap.get(typeName)!.push(s)
+                    }
+                    regGroups.push({
+                      regNumber,
+                      typeGroups: Array.from(typeMap.entries()).map(([typeName, typeSamples]) => ({
+                        typeName,
+                        samples: typeSamples,
+                      })),
+                    })
                   }
-                  // Then standalone samples
+                  // Standalone samples
                   if (standalone.length > 0) {
-                    groups.push({ regNumber: null, regId: null, samples: standalone })
+                    regGroups.push({ regNumber: null, typeGroups: [{ typeName: "", samples: standalone }] })
                   }
 
-                  return groups.map((group) => (
-                    <div key={group.regNumber || "standalone"}>
-                      {/* Group header */}
-                      {group.regNumber && (
-                        <div className="px-3 py-1.5 bg-muted/50 border-b sticky top-0 z-10">
+                  return regGroups.map((reg) => (
+                    <div key={reg.regNumber || "standalone"}>
+                      {/* Registration header */}
+                      {reg.regNumber && (
+                        <div className="px-3 py-1 bg-muted/60 border-b sticky top-0 z-10">
                           <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-mono font-semibold text-muted-foreground">
-                              {group.regNumber}
+                            <span className="text-[10px] font-mono font-bold text-foreground">
+                              {reg.regNumber}
                             </span>
-                            <Badge variant="secondary" className="text-[9px] px-1 py-0">
-                              {group.samples.length} samples
-                            </Badge>
+                            <span className="text-[9px] text-muted-foreground">
+                              {reg.typeGroups.reduce((sum, tg) => sum + tg.samples.length, 0)} samples
+                            </span>
                           </div>
                         </div>
                       )}
-                      {/* Samples in group */}
-                      {group.samples.map((sample) => {
-                        const isSelected = selectedSampleId === sample.id
-                        const completedTests = sample.testResults.filter((tr) => tr.status === "completed").length
-                        const totalTests = sample.testResults.length
-                        const hasRevision = sample.reports.length > 0 && sample.reports[0].status === "revision"
+                      {/* Type sub-groups */}
+                      {reg.typeGroups.map((tg) => (
+                        <div key={`${reg.regNumber}-${tg.typeName}`}>
+                          {/* Type sub-header (only for registration groups with known type) */}
+                          {reg.regNumber && tg.typeName && (
+                            <div className="px-3 py-1 bg-muted/30 border-b flex items-center justify-between">
+                              <span className="text-[10px] font-semibold text-muted-foreground">
+                                {tg.typeName}
+                              </span>
+                              <span className="text-[9px] text-muted-foreground">
+                                {tg.samples.length}
+                              </span>
+                            </div>
+                          )}
+                          {/* Samples */}
+                          {tg.samples.map((sample) => {
+                            const isSelected = selectedSampleId === sample.id
+                            const completedTests = sample.testResults.filter((tr) => tr.status === "completed").length
+                            const totalTests = sample.testResults.length
+                            const hasRevision = sample.reports.length > 0 && sample.reports[0].status === "revision"
+                            // Show short sub-number for registration samples
+                            const shortNum = reg.regNumber
+                              ? sample.sampleNumber.replace(reg.regNumber + "-", "")
+                              : sample.sampleNumber
 
-                        return (
-                          <button
-                            key={sample.id}
-                            type="button"
-                            className={`w-full text-left px-3 py-2 hover:bg-muted/50 transition-colors ${
-                              isSelected ? "bg-muted border-l-2 border-l-primary" : ""
-                            } ${hasRevision ? "border-l-2 border-l-amber-500" : ""}`}
-                            onClick={() => setSelectedSampleId(sample.id)}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              <span className="font-mono text-xs font-semibold truncate">
-                                {group.regNumber ? sample.sampleNumber.replace(group.regNumber + "-", "→ ") : sample.sampleNumber}
-                              </span>
-                              <div className="flex items-center gap-1">
-                                {hasRevision && (
-                                  <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1 py-0">Revision</Badge>
-                                )}
-                                {sampleStatusBadge(sample.status)}
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between gap-2 mt-0.5">
-                              <span className="text-[10px] text-muted-foreground truncate">
-                                {sample.sampleType.name}
-                                {sample.samplePoint ? ` · ${sample.samplePoint}` : ""}
-                                {sample.description ? ` — ${sample.description}` : ""}
-                              </span>
-                              {totalTests > 0 && (
-                                <div className="flex items-center gap-1 shrink-0">
-                                  <div className="w-10 h-1 rounded-full bg-muted">
-                                    <div
-                                      className={`h-1 rounded-full ${
-                                        completedTests === totalTests ? "bg-green-500" : "bg-blue-500"
-                                      }`}
-                                      style={{ width: `${(completedTests / totalTests) * 100}%` }}
-                                    />
+                            return (
+                              <button
+                                key={sample.id}
+                                type="button"
+                                className={`w-full text-left px-3 py-1.5 hover:bg-muted/50 transition-colors border-b ${
+                                  isSelected ? "bg-muted border-l-2 border-l-primary" : ""
+                                } ${hasRevision ? "border-l-2 border-l-amber-500" : ""}`}
+                                onClick={() => setSelectedSampleId(sample.id)}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="font-mono text-xs font-semibold shrink-0">{shortNum}</span>
+                                    {sample.samplePoint && (
+                                      <span className="text-[10px] text-muted-foreground truncate">
+                                        {sample.samplePoint}
+                                      </span>
+                                    )}
                                   </div>
-                                  <span className="text-[9px] text-muted-foreground">{completedTests}/{totalTests}</span>
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {hasRevision && (
+                                      <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1 py-0">Rev</Badge>
+                                    )}
+                                    {sampleStatusBadge(sample.status)}
+                                  </div>
                                 </div>
-                              )}
-                            </div>
-                          </button>
-                        )
-                      })}
+                                <div className="flex items-center justify-between gap-2 mt-0.5">
+                                  <span className="text-[10px] text-muted-foreground truncate">
+                                    {!reg.regNumber && sample.sampleType.name}
+                                    {sample.description || ""}
+                                  </span>
+                                  {totalTests > 0 && (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      <div className="w-10 h-1 rounded-full bg-muted">
+                                        <div
+                                          className={`h-1 rounded-full ${
+                                            completedTests === totalTests ? "bg-green-500" : "bg-blue-500"
+                                          }`}
+                                          style={{ width: `${(completedTests / totalTests) * 100}%` }}
+                                        />
+                                      </div>
+                                      <span className="text-[9px] text-muted-foreground">{completedTests}/{totalTests}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </button>
+                            )
+                          })}
+                        </div>
+                      ))}
                     </div>
                   ))
                 })()}
