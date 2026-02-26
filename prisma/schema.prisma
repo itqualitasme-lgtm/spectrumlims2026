@@ -320,6 +320,7 @@ model ReportTemplate {
   logoUrl         String?
   accreditationLogoUrl String?
   accreditationText    String?
+  isoLogoUrl           String?
   sealUrl              String?
   showLabLogo     Boolean  @default(true)
   isDefault       Boolean  @default(false)

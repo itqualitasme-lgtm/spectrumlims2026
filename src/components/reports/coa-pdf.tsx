@@ -105,6 +105,7 @@ interface TemplateInfo {
   logoUrl?: string | null
   accreditationLogoUrl?: string | null
   accreditationText?: string | null
+  isoLogoUrl?: string | null
   sealUrl?: string | null
   showLabLogo?: boolean
 }
@@ -172,6 +173,11 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
   accreditationLogo: {
+    width: 50,
+    height: 50,
+    objectFit: "contain" as any,
+  },
+  isoLogo: {
     width: 50,
     height: 50,
     objectFit: "contain" as any,
@@ -509,6 +515,7 @@ export function COAPDF({
   const logoUrl = template?.logoUrl || lab.logo || null
   const accreditationLogoUrl = template?.accreditationLogoUrl || null
   const accreditationText = template?.accreditationText || null
+  const isoLogoUrl = template?.isoLogoUrl || null
 
   // Determine title
   const reportTitle = report.title || "CERTIFICATE OF QUALITY"
@@ -552,11 +559,16 @@ export function COAPDF({
                 </Text>
               )}
             </View>
-            {accreditationLogoUrl ? (
-              <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
-            ) : (
-              <View style={{ width: 50 }} />
-            )}
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+              {isoLogoUrl && (
+                <Image style={styles.isoLogo} src={isoLogoUrl} />
+              )}
+              {accreditationLogoUrl ? (
+                <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
+              ) : !isoLogoUrl ? (
+                <View style={{ width: 50 }} />
+              ) : null}
+            </View>
           </View>
         </View>
 
@@ -897,6 +909,7 @@ function COAPageContent(props: COAPDFProps) {
   const logoUrl = template?.logoUrl || lab.logo || null
   const accreditationLogoUrl = template?.accreditationLogoUrl || null
   const accreditationText = template?.accreditationText || null
+  const isoLogoUrl = template?.isoLogoUrl || null
 
   const reportTitle = report.title || "CERTIFICATE OF QUALITY"
   const sampleTypeName = sample.sampleType.name
@@ -951,11 +964,16 @@ function COAPageContent(props: COAPDFProps) {
               </Text>
             )}
           </View>
-          {accreditationLogoUrl ? (
-            <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
-          ) : (
-            <View style={{ width: 50 }} />
-          )}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            {isoLogoUrl && (
+              <Image style={styles.isoLogo} src={isoLogoUrl} />
+            )}
+            {accreditationLogoUrl ? (
+              <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
+            ) : !isoLogoUrl ? (
+              <View style={{ width: 50 }} />
+            ) : null}
+          </View>
         </View>
       </View>
 

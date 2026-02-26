@@ -21,6 +21,7 @@ interface ReportTemplate {
   logoUrl: string | null
   accreditationLogoUrl: string | null
   accreditationText: string | null
+  isoLogoUrl: string | null
   sealUrl: string | null
   showLabLogo: boolean
   isDefault: boolean
@@ -70,6 +71,7 @@ export function ReportTemplatesClient({
         const parts = []
         if (row.original.showLabLogo) parts.push("Lab")
         if (row.original.accreditationLogoUrl) parts.push("Accreditation")
+        if (row.original.isoLogoUrl) parts.push("ISO")
         if (row.original.sealUrl) parts.push("Seal")
         if (row.original.logoUrl) parts.push("Custom")
         return parts.length > 0 ? (

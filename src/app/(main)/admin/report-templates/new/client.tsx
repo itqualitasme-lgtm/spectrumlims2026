@@ -27,6 +27,7 @@ export function NewReportTemplateClient() {
   const [formLogoUrl, setFormLogoUrl] = useState("")
   const [formAccreditationLogoUrl, setFormAccreditationLogoUrl] = useState("")
   const [formAccreditationText, setFormAccreditationText] = useState("")
+  const [formIsoLogoUrl, setFormIsoLogoUrl] = useState("")
   const [formSealUrl, setFormSealUrl] = useState("")
   const [formShowLabLogo, setFormShowLabLogo] = useState(true)
   const [formIsDefault, setFormIsDefault] = useState(false)
@@ -46,6 +47,7 @@ export function NewReportTemplateClient() {
         logoUrl: formLogoUrl || undefined,
         accreditationLogoUrl: formAccreditationLogoUrl || undefined,
         accreditationText: formAccreditationText || undefined,
+        isoLogoUrl: formIsoLogoUrl || undefined,
         sealUrl: formSealUrl || undefined,
         showLabLogo: formShowLabLogo,
         isDefault: formIsDefault,
@@ -148,7 +150,7 @@ export function NewReportTemplateClient() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="grid gap-2">
                 <Label>Lab/Company Logo</Label>
                 <ImageUpload
@@ -165,6 +167,15 @@ export function NewReportTemplateClient() {
                   onChange={setFormAccreditationLogoUrl}
                   folder="logos"
                   placeholder="Upload or paste accreditation logo..."
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>ISO Standard Logo</Label>
+                <ImageUpload
+                  value={formIsoLogoUrl}
+                  onChange={setFormIsoLogoUrl}
+                  folder="logos"
+                  placeholder="Upload or paste ISO logo..."
                 />
               </div>
             </div>

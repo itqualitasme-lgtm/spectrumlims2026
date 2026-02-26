@@ -23,6 +23,7 @@ interface ReportTemplate {
   logoUrl: string | null
   accreditationLogoUrl: string | null
   accreditationText: string | null
+  isoLogoUrl: string | null
   sealUrl: string | null
   showLabLogo: boolean
   isDefault: boolean
@@ -46,6 +47,7 @@ export function EditReportTemplateClient({
   const [formAccreditationText, setFormAccreditationText] = useState(
     template.accreditationText || ""
   )
+  const [formIsoLogoUrl, setFormIsoLogoUrl] = useState(template.isoLogoUrl || "")
   const [formSealUrl, setFormSealUrl] = useState(template.sealUrl || "")
   const [formShowLabLogo, setFormShowLabLogo] = useState(template.showLabLogo)
   const [formIsDefault, setFormIsDefault] = useState(template.isDefault)
@@ -65,6 +67,7 @@ export function EditReportTemplateClient({
         logoUrl: formLogoUrl || undefined,
         accreditationLogoUrl: formAccreditationLogoUrl || undefined,
         accreditationText: formAccreditationText || undefined,
+        isoLogoUrl: formIsoLogoUrl || undefined,
         sealUrl: formSealUrl || undefined,
         showLabLogo: formShowLabLogo,
         isDefault: formIsDefault,
@@ -167,7 +170,7 @@ export function EditReportTemplateClient({
         </CardHeader>
         <CardContent>
           <div className="grid gap-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="grid gap-2">
                 <Label>Lab/Company Logo</Label>
                 <ImageUpload
@@ -184,6 +187,15 @@ export function EditReportTemplateClient({
                   onChange={setFormAccreditationLogoUrl}
                   folder="logos"
                   placeholder="Upload or paste accreditation logo..."
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>ISO Standard Logo</Label>
+                <ImageUpload
+                  value={formIsoLogoUrl}
+                  onChange={setFormIsoLogoUrl}
+                  folder="logos"
+                  placeholder="Upload or paste ISO logo..."
                 />
               </div>
             </div>
