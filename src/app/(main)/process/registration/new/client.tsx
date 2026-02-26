@@ -227,7 +227,12 @@ export function NewRegistrationClient({
     }
     for (const s of validSamples) {
       const tests = getTestsForType(s.sampleTypeId)
-      if (tests.length > 0 && s.selectedTests.size === 0) {
+      if (tests.length === 0) {
+        const stName = sampleTypes.find((st) => st.id === s.sampleTypeId)?.name || "selected type"
+        toast.error(`No tests configured for "${stName}". Please add tests to this sample type first.`)
+        return
+      }
+      if (s.selectedTests.size === 0) {
         toast.error("Each sample must have at least one test selected")
         return
       }
@@ -407,7 +412,7 @@ export function NewRegistrationClient({
               <Label className="text-xs text-muted-foreground">Rec. Date & Time</Label>
               <div className="flex gap-1.5">
                 <Input className="h-9" type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
-                <Input className="h-9 w-[120px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
+                <Input className="h-9 w-[150px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
               </div>
             </div>
             {/* Row 2 */}
