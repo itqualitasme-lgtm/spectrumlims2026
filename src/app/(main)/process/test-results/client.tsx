@@ -9,8 +9,7 @@ import {
   Plus,
   Trash2,
   FlaskConical,
-  ArrowLeft,
-  ClipboardCheck,
+  ChevronDown,
   ChevronRight,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -47,11 +46,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 
 import { Checkbox } from "@/components/ui/checkbox"
 
@@ -89,24 +87,15 @@ type Sample = {
   status: string
   samplePoint: string | null
   description: string | null
+  quantity: string | null
+  reference: string | null
+  collectionLocation: string | null
+  createdAt: string
+  registeredAt: string | null
   client: { id: string; name: string; company: string | null }
   sampleType: { id: string; name: string; defaultTests: string }
   assignedTo: { name: string } | null
   testResults: TestResult[]
-}
-
-type RegistrationGroup = {
-  key: string
-  clientId: string
-  clientName: string
-  reference: string | null
-  registeredAt: string
-  location: string | null
-  sampleCount: number
-  completedCount: number
-  allResultsEntered: boolean
-  status: string
-  samples: Sample[]
 }
 
 // ============= HELPERS =============
@@ -139,10 +128,10 @@ function isDueSoon(dueDate: string | null): "overdue" | "due-today" | "due-soon"
   return null
 }
 
-const groupStatusBadge = (status: string) => {
+const sampleStatusBadge = (status: string) => {
   switch (status) {
-    case "pending":
-      return <Badge variant="outline">Pending</Badge>
+    case "registered":
+      return <Badge variant="outline">Registered</Badge>
     case "assigned":
       return <Badge variant="default">Assigned</Badge>
     case "testing":
@@ -151,21 +140,6 @@ const groupStatusBadge = (status: string) => {
       return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>
     default:
       return <Badge variant="secondary">{status}</Badge>
-  }
-}
-
-const sampleStatusBadge = (status: string) => {
-  switch (status) {
-    case "registered":
-      return <Badge variant="outline" className="text-[10px]">Registered</Badge>
-    case "assigned":
-      return <Badge variant="default" className="text-[10px]">Assigned</Badge>
-    case "testing":
-      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[10px]">Testing</Badge>
-    case "completed":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px]">Completed</Badge>
-    default:
-      return <Badge variant="secondary" className="text-[10px]">{status}</Badge>
   }
 }
 
@@ -184,35 +158,30 @@ function getTestMethod(test: TestParam): string {
 
 const STATUS_FILTER_OPTIONS = [
   { value: "all", label: "All" },
+  { value: "registered", label: "Registered" },
   { value: "assigned", label: "Assigned" },
   { value: "testing", label: "Testing" },
   { value: "completed", label: "Completed" },
-  { value: "pending", label: "Pending" },
 ]
 
 // ============= MAIN COMPONENT =============
 
-export function TestResultsClient({ groups }: { groups: RegistrationGroup[] }) {
+export function TestResultsClient({ samples }: { samples: Sample[] }) {
   const router = useRouter()
-
-  // View state: null = list view, group = entry view
-  const [selectedGroup, setSelectedGroup] = useState<RegistrationGroup | null>(null)
   const [statusFilter, setStatusFilter] = useState("all")
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
 
   // Result entry state
   const [resultValues, setResultValues] = useState<Record<string, string>>(() => {
     const values: Record<string, string> = {}
-    groups.forEach((g) => {
-      g.samples.forEach((s) => {
-        s.testResults.forEach((tr) => {
-          values[tr.id] = tr.resultValue || ""
-        })
+    samples.forEach((s) => {
+      s.testResults.forEach((tr) => {
+        values[tr.id] = tr.resultValue || ""
       })
     })
     return values
   })
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
-  const [releasingAll, setReleasingAll] = useState(false)
 
   // Add test dialog
   const [addTestOpen, setAddTestOpen] = useState(false)
@@ -227,19 +196,28 @@ export function TestResultsClient({ groups }: { groups: RegistrationGroup[] }) {
   const [newTat, setNewTat] = useState("")
   const [addTestLoading, setAddTestLoading] = useState(false)
 
-  // Filtered groups
-  const filteredGroups = useMemo(() => {
-    if (statusFilter === "all") return groups
-    return groups.filter((g) => g.status === statusFilter)
-  }, [groups, statusFilter])
+  // Filtered samples
+  const filteredSamples = useMemo(() => {
+    if (statusFilter === "all") return samples
+    return samples.filter((s) => s.status === statusFilter)
+  }, [samples, statusFilter])
 
   // Stats
-  const totalGroups = groups.length
-  const pendingCount = groups.filter((g) => g.status === "pending" || g.status === "assigned").length
-  const testingCount = groups.filter((g) => g.status === "testing").length
-  const doneCount = groups.filter((g) => g.status === "completed").length
+  const totalSamples = samples.length
+  const pendingCount = samples.filter((s) => s.status === "registered" || s.status === "assigned").length
+  const testingCount = samples.filter((s) => s.status === "testing").length
+  const doneCount = samples.filter((s) => s.status === "completed").length
 
   // ============= HANDLERS =============
+
+  const toggleExpand = (id: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const handleResultChange = (testResultId: string, value: string) => {
     setResultValues((prev) => ({ ...prev, [testResultId]: value }))
@@ -271,35 +249,6 @@ export function TestResultsClient({ groups }: { groups: RegistrationGroup[] }) {
         next.delete(sample.id)
         return next
       })
-    }
-  }
-
-  const handleReleaseAll = async () => {
-    if (!selectedGroup) return
-
-    setReleasingAll(true)
-    try {
-      // Save any unsaved results across all samples in the group
-      for (const sample of selectedGroup.samples) {
-        const unsavedResults = sample.testResults
-          .filter((tr) => tr.status === "pending" && resultValues[tr.id]?.trim())
-          .map((tr) => ({
-            id: tr.id,
-            resultValue: resultValues[tr.id].trim(),
-          }))
-
-        if (unsavedResults.length > 0) {
-          await batchUpdateTestResults(sample.id, unsavedResults)
-        }
-      }
-
-      toast.success("All results saved and released")
-      setSelectedGroup(null)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to release results")
-    } finally {
-      setReleasingAll(false)
     }
   }
 
@@ -403,540 +352,7 @@ export function TestResultsClient({ groups }: { groups: RegistrationGroup[] }) {
     }
   }
 
-  // ============= RENDER: TEST ENTRY VIEW =============
-
-  if (selectedGroup) {
-    const group = selectedGroup
-    // Recalculate from live resultValues
-    const totalTests = group.samples.reduce((sum, s) => sum + s.testResults.length, 0)
-    const completedTests = group.samples.reduce(
-      (sum, s) => sum + s.testResults.filter((tr) => tr.status === "completed" || resultValues[tr.id]?.trim()).length,
-      0
-    )
-    const canRelease = group.samples.every((s) =>
-      s.testResults.length > 0 &&
-      s.testResults.every((tr) => tr.status === "completed" || resultValues[tr.id]?.trim())
-    )
-
-    return (
-      <div className="space-y-4">
-        {/* Header */}
-        <div className="flex items-center gap-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSelectedGroup(null)}
-          >
-            <ArrowLeft className="mr-1 h-4 w-4" />
-            Back
-          </Button>
-          <div className="flex-1">
-            <h2 className="text-lg font-semibold">{group.clientName}</h2>
-            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-              {group.reference && <span>Ref: {group.reference}</span>}
-              {group.location && <span>| {group.location}</span>}
-              <span>| {format(new Date(group.registeredAt), "dd MMM yyyy HH:mm")}</span>
-              <span>| {group.sampleCount} sample{group.sampleCount !== 1 ? "s" : ""}</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <div className="w-24 h-2 rounded-full bg-muted">
-                <div
-                  className={`h-2 rounded-full transition-all ${
-                    completedTests === totalTests ? "bg-green-500" : "bg-blue-500"
-                  }`}
-                  style={{ width: totalTests > 0 ? `${(completedTests / totalTests) * 100}%` : "0%" }}
-                />
-              </div>
-              <span className={`text-sm font-medium ${
-                completedTests === totalTests ? "text-green-600" : "text-muted-foreground"
-              }`}>
-                {completedTests}/{totalTests}
-              </span>
-            </div>
-            {groupStatusBadge(group.status)}
-          </div>
-        </div>
-
-        {/* Tabs for each sample */}
-        <Tabs defaultValue={group.samples[0]?.id} className="space-y-4">
-          <TabsList className="w-full justify-start flex-wrap h-auto gap-1 bg-transparent p-0">
-            {group.samples.map((sample) => {
-              const sCompleted = sample.testResults.filter((tr) => tr.status === "completed").length
-              const sTotal = sample.testResults.length
-              const allDone = sTotal > 0 && sCompleted === sTotal
-              return (
-                <TabsTrigger
-                  key={sample.id}
-                  value={sample.id}
-                  className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground border"
-                >
-                  <span className="font-mono text-xs">{sample.sampleNumber}</span>
-                  <span className="ml-1.5 text-xs opacity-70">{sample.sampleType.name}</span>
-                  {allDone ? (
-                    <Badge className="ml-2 bg-green-100 text-green-800 hover:bg-green-100 text-[9px] px-1">Done</Badge>
-                  ) : sTotal > 0 ? (
-                    <span className="ml-2 text-[10px] opacity-60">{sCompleted}/{sTotal}</span>
-                  ) : null}
-                </TabsTrigger>
-              )
-            })}
-          </TabsList>
-
-          {group.samples.map((sample) => {
-            const isSaving = savingIds.has(sample.id)
-            const hasEnteredValues = sample.testResults.some(
-              (tr) => tr.status === "pending" && resultValues[tr.id]?.trim()
-            )
-
-            return (
-              <TabsContent key={sample.id} value={sample.id} className="space-y-3 mt-0">
-                {/* Sample info */}
-                <Card>
-                  <CardContent className="py-3 px-4">
-                    <div className="flex items-center gap-3 text-sm">
-                      <span className="font-mono font-semibold">{sample.sampleNumber}</span>
-                      {sampleStatusBadge(sample.status)}
-                      <span className="text-muted-foreground">{sample.sampleType.name}</span>
-                      {sample.description && (
-                        <span className="text-muted-foreground">| {sample.description}</span>
-                      )}
-                      {sample.samplePoint && (
-                        <span className="text-muted-foreground">| {sample.samplePoint}</span>
-                      )}
-                      {sample.assignedTo && (
-                        <span className="text-muted-foreground">| {sample.assignedTo.name}</span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Test Results Table */}
-                {sample.testResults.length > 0 ? (
-                  <>
-                    <div className="rounded-md border">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-xs w-[30px]">#</TableHead>
-                            <TableHead className="text-xs">Parameter</TableHead>
-                            <TableHead className="text-xs">Method</TableHead>
-                            <TableHead className="text-xs">Unit</TableHead>
-                            <TableHead className="text-xs w-[160px]">Result</TableHead>
-                            <TableHead className="text-xs">Spec Min</TableHead>
-                            <TableHead className="text-xs">Spec Max</TableHead>
-                            <TableHead className="text-xs">Due</TableHead>
-                            <TableHead className="text-xs">Status</TableHead>
-                            <TableHead className="text-xs w-[28px]"></TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {sample.testResults.map((tr, idx) => {
-                            const currentValue = resultValues[tr.id] || ""
-                            const passFail = getPassFail(currentValue, tr.specMin, tr.specMax)
-                            const dueStatus = isDueSoon(tr.dueDate)
-
-                            return (
-                              <TableRow key={tr.id}>
-                                <TableCell className="text-xs text-muted-foreground py-1.5">
-                                  {idx + 1}
-                                </TableCell>
-                                <TableCell className="font-medium text-xs py-1.5">
-                                  {tr.parameter}
-                                </TableCell>
-                                <TableCell className="text-xs py-1.5">{tr.testMethod || "-"}</TableCell>
-                                <TableCell className="text-xs py-1.5">{tr.unit || "-"}</TableCell>
-                                <TableCell className="py-1.5">
-                                  <div className="flex items-center gap-1.5">
-                                    <Input
-                                      value={currentValue}
-                                      onChange={(e) => handleResultChange(tr.id, e.target.value)}
-                                      placeholder="Enter result..."
-                                      className={`h-7 text-xs ${
-                                        passFail === "fail"
-                                          ? "border-red-400 focus-visible:ring-red-400"
-                                          : passFail === "pass"
-                                            ? "border-green-400 focus-visible:ring-green-400"
-                                            : ""
-                                      }`}
-                                    />
-                                    {passFail === "pass" && (
-                                      <Badge className="bg-green-100 text-green-800 hover:bg-green-100 shrink-0 text-[9px] px-1">P</Badge>
-                                    )}
-                                    {passFail === "fail" && (
-                                      <Badge className="bg-red-100 text-red-800 hover:bg-red-100 shrink-0 text-[9px] px-1">F</Badge>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-xs py-1.5">{tr.specMin || "-"}</TableCell>
-                                <TableCell className="text-xs py-1.5">{tr.specMax || "-"}</TableCell>
-                                <TableCell className="text-xs py-1.5">
-                                  {tr.dueDate ? (
-                                    <span className={
-                                      dueStatus === "overdue" ? "text-red-600 font-medium" :
-                                      dueStatus === "due-today" ? "text-orange-600 font-medium" :
-                                      dueStatus === "due-soon" ? "text-yellow-600" : ""
-                                    }>
-                                      {new Date(tr.dueDate).toLocaleDateString()}
-                                      {dueStatus === "overdue" && " !"}
-                                    </span>
-                                  ) : "-"}
-                                </TableCell>
-                                <TableCell className="py-1.5">
-                                  {tr.status === "pending" ? (
-                                    <Badge variant="secondary" className="text-[10px]">Pending</Badge>
-                                  ) : (
-                                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px]">Done</Badge>
-                                  )}
-                                </TableCell>
-                                <TableCell className="py-1.5">
-                                  {tr.status === "pending" && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                                      onClick={() => handleDeleteTest(tr.id, tr.parameter)}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            )
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-
-                    {/* Action buttons per sample */}
-                    <div className="flex items-center justify-between">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handleOpenAddTest(sample)}
-                      >
-                        <Plus className="mr-1 h-3 w-3" />
-                        Add Test
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handleSaveSample(sample)}
-                        disabled={isSaving || !hasEnteredValues}
-                      >
-                        {isSaving ? (
-                          <>
-                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                            Saving...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-1 h-3 w-3" />
-                            Save Results
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  </>
-                ) : (
-                  <Card>
-                    <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                      <FlaskConical className="h-8 w-8 text-muted-foreground/40 mb-2" />
-                      <p className="text-xs text-muted-foreground mb-3">
-                        No test parameters defined for this sample.
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs"
-                        onClick={() => handleOpenAddTest(sample)}
-                      >
-                        <Plus className="mr-1 h-3 w-3" />
-                        Add Test Parameter
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
-              </TabsContent>
-            )
-          })}
-        </Tabs>
-
-        {/* Release All bar */}
-        <div className="flex items-center justify-end border-t pt-4">
-          <Button
-            onClick={handleReleaseAll}
-            disabled={!canRelease || releasingAll}
-          >
-            {releasingAll ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Releasing...
-              </>
-            ) : (
-              <>
-                <ClipboardCheck className="mr-2 h-4 w-4" />
-                Release All Results
-              </>
-            )}
-          </Button>
-        </div>
-
-        {/* Add Test Dialog */}
-        <Dialog open={addTestOpen} onOpenChange={setAddTestOpen}>
-          <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader>
-              <DialogTitle>Add Test Parameters</DialogTitle>
-              <DialogDescription>
-                Add tests to {addTestSample?.sampleNumber} ({addTestSample?.sampleType.name})
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-3 py-2">
-              {/* Template tests checklist */}
-              {availableTests.length > 0 ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium">Available Tests</Label>
-                    <button
-                      type="button"
-                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                      onClick={toggleAllTests}
-                    >
-                      <Checkbox checked={selectedTestIndices.size === availableTests.length && availableTests.length > 0} />
-                      <span>Select All</span>
-                    </button>
-                  </div>
-                  <div className="rounded-md border max-h-[250px] overflow-y-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[32px]"></TableHead>
-                          <TableHead className="text-xs">Parameter</TableHead>
-                          <TableHead className="text-xs">Method</TableHead>
-                          <TableHead className="text-xs">Unit</TableHead>
-                          <TableHead className="text-xs">TAT</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {availableTests.map((test, idx) => (
-                          <TableRow
-                            key={idx}
-                            className="cursor-pointer"
-                            onClick={() => toggleTestIndex(idx)}
-                          >
-                            <TableCell className="py-1.5">
-                              <Checkbox checked={selectedTestIndices.has(idx)} />
-                            </TableCell>
-                            <TableCell className="text-xs font-medium py-1.5">{test.parameter}</TableCell>
-                            <TableCell className="text-xs py-1.5">{getTestMethod(test) || "-"}</TableCell>
-                            <TableCell className="text-xs py-1.5">{test.unit || "-"}</TableCell>
-                            <TableCell className="text-xs py-1.5">{test.tat ? `${test.tat}d` : "-"}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  {selectedTestIndices.size > 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      {selectedTestIndices.size} test{selectedTestIndices.size !== 1 ? "s" : ""} selected
-                    </p>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-muted-foreground py-2">
-                  {addTestSample?.testResults.length
-                    ? "All available tests from the template are already added."
-                    : "No template tests defined for this sample type."}
-                </p>
-              )}
-
-              {/* Custom test toggle */}
-              {!showCustomForm ? (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs w-full"
-                  onClick={() => setShowCustomForm(true)}
-                >
-                  <Plus className="mr-1 h-3 w-3" />
-                  Add Custom Parameter
-                </Button>
-              ) : (
-                <div className="space-y-2 border rounded-md p-3">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-medium">Custom Parameter</Label>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-5 text-xs px-1"
-                      onClick={() => setShowCustomForm(false)}
-                    >
-                      Remove
-                    </Button>
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="grid gap-1">
-                      <Label className="text-[10px] text-muted-foreground">Parameter Name *</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        value={newParam}
-                        onChange={(e) => setNewParam(e.target.value)}
-                        placeholder="e.g. Viscosity"
-                      />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="text-[10px] text-muted-foreground">Test Method</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        value={newMethod}
-                        onChange={(e) => setNewMethod(e.target.value)}
-                        placeholder="e.g. ASTM D445"
-                      />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    <div className="grid gap-1">
-                      <Label className="text-[10px] text-muted-foreground">Unit</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        value={newUnit}
-                        onChange={(e) => setNewUnit(e.target.value)}
-                        placeholder="cSt"
-                      />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="text-[10px] text-muted-foreground">Spec Min</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        value={newSpecMin}
-                        onChange={(e) => setNewSpecMin(e.target.value)}
-                        placeholder="min"
-                      />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="text-[10px] text-muted-foreground">Spec Max</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        value={newSpecMax}
-                        onChange={(e) => setNewSpecMax(e.target.value)}
-                        placeholder="max"
-                      />
-                    </div>
-                    <div className="grid gap-1">
-                      <Label className="text-[10px] text-muted-foreground">TAT (days)</Label>
-                      <Input
-                        className="h-8 text-xs"
-                        type="number"
-                        min="1"
-                        max="30"
-                        value={newTat}
-                        onChange={(e) => setNewTat(e.target.value)}
-                        placeholder="3"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setAddTestOpen(false)} disabled={addTestLoading}>
-                Cancel
-              </Button>
-              <Button onClick={handleAddTest} disabled={addTestLoading}>
-                {addTestLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Adding...
-                  </>
-                ) : (
-                  `Add ${selectedTestIndices.size + (showCustomForm && newParam.trim() ? 1 : 0)} Parameter${
-                    selectedTestIndices.size + (showCustomForm && newParam.trim() ? 1 : 0) !== 1 ? "s" : ""
-                  }`
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      </div>
-    )
-  }
-
-  // ============= RENDER: REGISTRATION LIST VIEW =============
-
-  const columns: ColumnDef<RegistrationGroup, any>[] = [
-    {
-      accessorKey: "clientName",
-      header: "Client",
-      cell: ({ row }) => (
-        <span className="font-medium">{row.original.clientName}</span>
-      ),
-    },
-    {
-      accessorKey: "reference",
-      header: "Reference",
-      cell: ({ row }) => row.original.reference || "-",
-    },
-    {
-      id: "samples",
-      header: "Samples",
-      cell: ({ row }) => (
-        <span className="text-sm">
-          {row.original.sampleCount} sample{row.original.sampleCount !== 1 ? "s" : ""}
-        </span>
-      ),
-    },
-    {
-      id: "progress",
-      header: "Progress",
-      cell: ({ row }) => {
-        const g = row.original
-        return (
-          <div className="flex items-center gap-2">
-            <div className="w-20 h-1.5 rounded-full bg-muted">
-              <div
-                className={`h-1.5 rounded-full transition-all ${
-                  g.completedCount === g.sampleCount ? "bg-green-500" : "bg-blue-500"
-                }`}
-                style={{ width: g.sampleCount > 0 ? `${(g.completedCount / g.sampleCount) * 100}%` : "0%" }}
-              />
-            </div>
-            <span className={`text-xs font-medium ${
-              g.completedCount === g.sampleCount ? "text-green-600" : "text-muted-foreground"
-            }`}>
-              {g.completedCount}/{g.sampleCount}
-            </span>
-          </div>
-        )
-      },
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => groupStatusBadge(row.original.status),
-    },
-    {
-      accessorKey: "registeredAt",
-      header: "Date",
-      cell: ({ row }) => format(new Date(row.original.registeredAt), "dd MMM yyyy"),
-    },
-    {
-      id: "actions",
-      header: "",
-      enableSorting: false,
-      cell: ({ row }) => (
-        <Button
-          size="sm"
-          className="h-7 text-xs"
-          onClick={() => setSelectedGroup(row.original)}
-        >
-          Enter Results
-          <ChevronRight className="ml-1 h-3 w-3" />
-        </Button>
-      ),
-    },
-  ]
+  // ============= RENDER =============
 
   return (
     <div className="space-y-4">
@@ -949,8 +365,8 @@ export function TestResultsClient({ groups }: { groups: RegistrationGroup[] }) {
       <div className="grid grid-cols-4 gap-3">
         <Card className="cursor-pointer hover:border-primary/50" onClick={() => setStatusFilter("all")}>
           <CardContent className="py-3 px-4">
-            <p className="text-xs text-muted-foreground">Total Registrations</p>
-            <p className="text-2xl font-bold">{totalGroups}</p>
+            <p className="text-xs text-muted-foreground">Total Samples</p>
+            <p className="text-2xl font-bold">{totalSamples}</p>
           </CardContent>
         </Card>
         <Card className="cursor-pointer hover:border-primary/50" onClick={() => setStatusFilter("assigned")}>
@@ -989,18 +405,18 @@ export function TestResultsClient({ groups }: { groups: RegistrationGroup[] }) {
         </Select>
         {statusFilter !== "all" && (
           <Badge variant="secondary" className="text-xs">
-            {filteredGroups.length} registration{filteredGroups.length !== 1 ? "s" : ""}
+            {filteredSamples.length} sample{filteredSamples.length !== 1 ? "s" : ""}
           </Badge>
         )}
       </div>
 
-      {/* Registration Groups Table */}
-      {filteredGroups.length === 0 ? (
+      {/* Samples List */}
+      {filteredSamples.length === 0 ? (
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-20 text-center">
             <FlaskConical className="h-12 w-12 text-muted-foreground/30 mb-4" />
             <p className="text-sm font-medium text-muted-foreground mb-1">
-              No registrations found
+              No samples found
             </p>
             <p className="text-xs text-muted-foreground">
               Samples assigned to you will appear here for test result entry.
@@ -1008,13 +424,406 @@ export function TestResultsClient({ groups }: { groups: RegistrationGroup[] }) {
           </CardContent>
         </Card>
       ) : (
-        <DataTable
-          columns={columns}
-          data={filteredGroups}
-          searchPlaceholder="Search by client..."
-          searchKey="clientName"
-        />
+        <div className="space-y-2">
+          {filteredSamples.map((sample) => {
+            const isExpanded = expandedIds.has(sample.id)
+            const isSaving = savingIds.has(sample.id)
+            const completedTests = sample.testResults.filter((tr) => tr.status === "completed").length
+            const totalTests = sample.testResults.length
+            const hasEnteredValues = sample.testResults.some(
+              (tr) => tr.status === "pending" && resultValues[tr.id]?.trim()
+            )
+
+            return (
+              <Collapsible key={sample.id} open={isExpanded} onOpenChange={() => toggleExpand(sample.id)}>
+                <Card>
+                  <CollapsibleTrigger asChild>
+                    <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50 transition-colors">
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                      )}
+                      <div className="flex-1 flex items-center gap-3 min-w-0">
+                        <span className="font-mono text-sm font-semibold">{sample.sampleNumber}</span>
+                        {sampleStatusBadge(sample.status)}
+                        <span className="text-sm text-muted-foreground truncate">
+                          {sample.client.company || sample.client.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {sample.sampleType.name}
+                        </span>
+                        {sample.description && (
+                          <span className="text-xs text-muted-foreground truncate">
+                            — {sample.description}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        {totalTests > 0 && (
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1.5 rounded-full bg-muted">
+                              <div
+                                className={`h-1.5 rounded-full transition-all ${
+                                  completedTests === totalTests ? "bg-green-500" : "bg-blue-500"
+                                }`}
+                                style={{ width: `${(completedTests / totalTests) * 100}%` }}
+                              />
+                            </div>
+                            <span className={`text-xs font-medium ${
+                              completedTests === totalTests ? "text-green-600" : "text-muted-foreground"
+                            }`}>
+                              {completedTests}/{totalTests}
+                            </span>
+                          </div>
+                        )}
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(sample.registeredAt || sample.createdAt), "dd MMM yyyy")}
+                        </span>
+                      </div>
+                    </div>
+                  </CollapsibleTrigger>
+
+                  <CollapsibleContent>
+                    <div className="px-4 pb-3 space-y-3 border-t">
+                      {/* Sample info */}
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground pt-3">
+                        {sample.samplePoint && <span>Point: {sample.samplePoint}</span>}
+                        {sample.collectionLocation && <span>Location: {sample.collectionLocation}</span>}
+                        {sample.assignedTo && <span>Assigned: {sample.assignedTo.name}</span>}
+                        {sample.reference && <span>Ref: {sample.reference}</span>}
+                        {sample.quantity && <span>Size: {sample.quantity}</span>}
+                      </div>
+
+                      {/* Test Results Table */}
+                      {sample.testResults.length > 0 ? (
+                        <>
+                          <div className="rounded-md border">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="text-xs w-[30px]">#</TableHead>
+                                  <TableHead className="text-xs">Parameter</TableHead>
+                                  <TableHead className="text-xs">Method</TableHead>
+                                  <TableHead className="text-xs">Unit</TableHead>
+                                  <TableHead className="text-xs w-[160px]">Result</TableHead>
+                                  <TableHead className="text-xs">Spec Min</TableHead>
+                                  <TableHead className="text-xs">Spec Max</TableHead>
+                                  <TableHead className="text-xs">Due</TableHead>
+                                  <TableHead className="text-xs">Status</TableHead>
+                                  <TableHead className="text-xs w-[28px]"></TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {sample.testResults.map((tr, idx) => {
+                                  const currentValue = resultValues[tr.id] || ""
+                                  const passFail = getPassFail(currentValue, tr.specMin, tr.specMax)
+                                  const dueStatus = isDueSoon(tr.dueDate)
+
+                                  return (
+                                    <TableRow key={tr.id}>
+                                      <TableCell className="text-xs text-muted-foreground py-1.5">
+                                        {idx + 1}
+                                      </TableCell>
+                                      <TableCell className="font-medium text-xs py-1.5">
+                                        {tr.parameter}
+                                      </TableCell>
+                                      <TableCell className="text-xs py-1.5">{tr.testMethod || "-"}</TableCell>
+                                      <TableCell className="text-xs py-1.5">{tr.unit || "-"}</TableCell>
+                                      <TableCell className="py-1.5">
+                                        <div className="flex items-center gap-1.5">
+                                          <Input
+                                            value={currentValue}
+                                            onChange={(e) => handleResultChange(tr.id, e.target.value)}
+                                            placeholder="Enter result..."
+                                            className={`h-7 text-xs ${
+                                              passFail === "fail"
+                                                ? "border-red-400 focus-visible:ring-red-400"
+                                                : passFail === "pass"
+                                                  ? "border-green-400 focus-visible:ring-green-400"
+                                                  : ""
+                                            }`}
+                                          />
+                                          {passFail === "pass" && (
+                                            <Badge className="bg-green-100 text-green-800 hover:bg-green-100 shrink-0 text-[9px] px-1">P</Badge>
+                                          )}
+                                          {passFail === "fail" && (
+                                            <Badge className="bg-red-100 text-red-800 hover:bg-red-100 shrink-0 text-[9px] px-1">F</Badge>
+                                          )}
+                                        </div>
+                                      </TableCell>
+                                      <TableCell className="text-xs py-1.5">{tr.specMin || "-"}</TableCell>
+                                      <TableCell className="text-xs py-1.5">{tr.specMax || "-"}</TableCell>
+                                      <TableCell className="text-xs py-1.5">
+                                        {tr.dueDate ? (
+                                          <span className={
+                                            dueStatus === "overdue" ? "text-red-600 font-medium" :
+                                            dueStatus === "due-today" ? "text-orange-600 font-medium" :
+                                            dueStatus === "due-soon" ? "text-yellow-600" : ""
+                                          }>
+                                            {new Date(tr.dueDate).toLocaleDateString()}
+                                            {dueStatus === "overdue" && " !"}
+                                          </span>
+                                        ) : "-"}
+                                      </TableCell>
+                                      <TableCell className="py-1.5">
+                                        {tr.status === "pending" ? (
+                                          <Badge variant="secondary" className="text-[10px]">Pending</Badge>
+                                        ) : (
+                                          <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px]">Done</Badge>
+                                        )}
+                                      </TableCell>
+                                      <TableCell className="py-1.5">
+                                        {tr.status === "pending" && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                                            onClick={() => handleDeleteTest(tr.id, tr.parameter)}
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        )}
+                                      </TableCell>
+                                    </TableRow>
+                                  )
+                                })}
+                              </TableBody>
+                            </Table>
+                          </div>
+
+                          {/* Action buttons */}
+                          <div className="flex items-center justify-between">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => handleOpenAddTest(sample)}
+                            >
+                              <Plus className="mr-1 h-3 w-3" />
+                              Add Test
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7 text-xs"
+                              onClick={() => handleSaveSample(sample)}
+                              disabled={isSaving || !hasEnteredValues}
+                            >
+                              {isSaving ? (
+                                <>
+                                  <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <Save className="mr-1 h-3 w-3" />
+                                  Save Results
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </>
+                      ) : (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <FlaskConical className="h-8 w-8 text-muted-foreground/40 mb-2" />
+                          <p className="text-xs text-muted-foreground mb-3">
+                            No test parameters defined for this sample.
+                          </p>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => handleOpenAddTest(sample)}
+                          >
+                            <Plus className="mr-1 h-3 w-3" />
+                            Add Test Parameter
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CollapsibleContent>
+                </Card>
+              </Collapsible>
+            )
+          })}
+        </div>
       )}
+
+      {/* Add Test Dialog */}
+      <Dialog open={addTestOpen} onOpenChange={setAddTestOpen}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Add Test Parameters</DialogTitle>
+            <DialogDescription>
+              Add tests to {addTestSample?.sampleNumber} ({addTestSample?.sampleType.name})
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            {/* Template tests checklist */}
+            {availableTests.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Available Tests</Label>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={toggleAllTests}
+                  >
+                    <Checkbox checked={selectedTestIndices.size === availableTests.length && availableTests.length > 0} />
+                    <span>Select All</span>
+                  </button>
+                </div>
+                <div className="rounded-md border max-h-[250px] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[32px]"></TableHead>
+                        <TableHead className="text-xs">Parameter</TableHead>
+                        <TableHead className="text-xs">Method</TableHead>
+                        <TableHead className="text-xs">Unit</TableHead>
+                        <TableHead className="text-xs">TAT</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {availableTests.map((test, idx) => (
+                        <TableRow
+                          key={idx}
+                          className="cursor-pointer"
+                          onClick={() => toggleTestIndex(idx)}
+                        >
+                          <TableCell className="py-1.5">
+                            <Checkbox checked={selectedTestIndices.has(idx)} />
+                          </TableCell>
+                          <TableCell className="text-xs font-medium py-1.5">{test.parameter}</TableCell>
+                          <TableCell className="text-xs py-1.5">{getTestMethod(test) || "-"}</TableCell>
+                          <TableCell className="text-xs py-1.5">{test.unit || "-"}</TableCell>
+                          <TableCell className="text-xs py-1.5">{test.tat ? `${test.tat}d` : "-"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {selectedTestIndices.size > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedTestIndices.size} test{selectedTestIndices.size !== 1 ? "s" : ""} selected
+                  </p>
+                )}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground py-2">
+                {addTestSample?.testResults.length
+                  ? "All available tests from the template are already added."
+                  : "No template tests defined for this sample type."}
+              </p>
+            )}
+
+            {/* Custom test toggle */}
+            {!showCustomForm ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs w-full"
+                onClick={() => setShowCustomForm(true)}
+              >
+                <Plus className="mr-1 h-3 w-3" />
+                Add Custom Parameter
+              </Button>
+            ) : (
+              <div className="space-y-2 border rounded-md p-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Custom Parameter</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 text-xs px-1"
+                    onClick={() => setShowCustomForm(false)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">Parameter Name *</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      value={newParam}
+                      onChange={(e) => setNewParam(e.target.value)}
+                      placeholder="e.g. Viscosity"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">Test Method</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      value={newMethod}
+                      onChange={(e) => setNewMethod(e.target.value)}
+                      placeholder="e.g. ASTM D445"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">Unit</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      value={newUnit}
+                      onChange={(e) => setNewUnit(e.target.value)}
+                      placeholder="cSt"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">Spec Min</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      value={newSpecMin}
+                      onChange={(e) => setNewSpecMin(e.target.value)}
+                      placeholder="min"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">Spec Max</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      value={newSpecMax}
+                      onChange={(e) => setNewSpecMax(e.target.value)}
+                      placeholder="max"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">TAT (days)</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={newTat}
+                      onChange={(e) => setNewTat(e.target.value)}
+                      placeholder="3"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddTestOpen(false)} disabled={addTestLoading}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddTest} disabled={addTestLoading}>
+              {addTestLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Adding...
+                </>
+              ) : (
+                `Add ${selectedTestIndices.size + (showCustomForm && newParam.trim() ? 1 : 0)} Parameter${
+                  selectedTestIndices.size + (showCustomForm && newParam.trim() ? 1 : 0) !== 1 ? "s" : ""
+                }`
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

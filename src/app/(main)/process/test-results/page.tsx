@@ -1,7 +1,7 @@
-import { getRegistrationGroups } from "@/actions/test-results"
+import { getSamplesForTestEntry } from "@/actions/test-results"
 import { TestResultsClient } from "./client"
 
 export default async function TestResultsPage() {
-  const groups = await getRegistrationGroups()
-  return <TestResultsClient groups={JSON.parse(JSON.stringify(groups))} />
+  const samples = await getSamplesForTestEntry()
+  return <TestResultsClient samples={JSON.parse(JSON.stringify(samples))} />
 }
