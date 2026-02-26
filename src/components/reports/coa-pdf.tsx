@@ -157,8 +157,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   headerLogo: {
-    width: 60,
-    height: 60,
+    width: 90,
+    height: 90,
     objectFit: "contain" as any,
   },
   headerCenter: {
@@ -173,13 +173,13 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
   accreditationLogo: {
-    width: 50,
-    height: 50,
+    width: 35,
+    height: 35,
     objectFit: "contain" as any,
   },
   isoLogo: {
-    width: 50,
-    height: 50,
+    width: 38,
+    height: 38,
     objectFit: "contain" as any,
   },
   labName: {
@@ -551,7 +551,7 @@ export function COAPDF({
             {showLabLogo && logoUrl ? (
               <Image style={styles.headerLogo} src={logoUrl} />
             ) : (
-              <View style={{ width: 60 }} />
+              <View style={{ width: 90 }} />
             )}
             <View style={styles.headerCenter}>
               {headerSubLines.length > 0 && (
@@ -569,14 +569,14 @@ export function COAPDF({
                 </Text>
               )}
             </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
               {isoLogoUrl && (
                 <Image style={styles.isoLogo} src={isoLogoUrl} />
               )}
               {accreditationLogoUrl ? (
                 <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
               ) : !isoLogoUrl ? (
-                <View style={{ width: 50 }} />
+                <View style={{ width: 38 }} />
               ) : null}
             </View>
           </View>
@@ -956,7 +956,7 @@ function COAPageContent(props: COAPDFProps) {
           {showLabLogo && logoUrl ? (
             <Image style={styles.headerLogo} src={logoUrl} />
           ) : (
-            <View style={{ width: 60 }} />
+            <View style={{ width: 90 }} />
           )}
           <View style={styles.headerCenter}>
             {headerSubLines.length > 0 && (
@@ -974,14 +974,14 @@ function COAPageContent(props: COAPDFProps) {
               </Text>
             )}
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
             {isoLogoUrl && (
               <Image style={styles.isoLogo} src={isoLogoUrl} />
             )}
             {accreditationLogoUrl ? (
               <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
             ) : !isoLogoUrl ? (
-              <View style={{ width: 50 }} />
+              <View style={{ width: 38 }} />
             ) : null}
           </View>
         </View>
