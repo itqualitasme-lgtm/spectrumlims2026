@@ -268,24 +268,6 @@ export function NewRegistrationClient({
     updateRow(id, { expanded: !samples.find((s) => s.id === id)?.expanded })
   }
 
-  // Propagate bottle size changes to all rows in group
-  const updateGroupBottle = (rowId: number, value: string) => {
-    setSamples((prev) => {
-      const row = prev.find((s) => s.id === rowId)
-      if (!row) return prev
-      return prev.map((s) => s.groupId === row.groupId ? { ...s, bottleQty: value } : s)
-    })
-  }
-
-  // Propagate remarks changes to all rows in group
-  const updateGroupRemarks = (rowId: number, value: string) => {
-    setSamples((prev) => {
-      const row = prev.find((s) => s.id === rowId)
-      if (!row) return prev
-      return prev.map((s) => s.groupId === row.groupId ? { ...s, remarks: value } : s)
-    })
-  }
-
   const resetForm = () => {
     setClientId("")
     setJobType("testing")
@@ -575,7 +557,7 @@ export function NewRegistrationClient({
                           value={groupRows.length}
                           onChange={(e) => handleQtyChange(row.id, Math.max(1, Math.min(25, parseInt(e.target.value) || 1)))}
                         />
-                        <Select value={row.bottleQty} onValueChange={(v) => updateGroupBottle(row.id, v)}>
+                        <Select value={row.bottleQty} onValueChange={(v) => updateRow(row.id, { bottleQty: v })}>
                           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                           <SelectContent>
                             {BOTTLE_SIZES.map((s) => (
@@ -588,16 +570,23 @@ export function NewRegistrationClient({
                       <>
                         <span className="text-xs text-muted-foreground italic pl-1">↳ {sampleTypes.find((st) => st.id === row.sampleTypeId)?.name || ""}</span>
                         <span />
-                        <span />
+                        <Select value={row.bottleQty} onValueChange={(v) => updateRow(row.id, { bottleQty: v })}>
+                          <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            {BOTTLE_SIZES.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </>
                     )}
 
                     <Input className="h-8 text-xs" value={row.samplePoint} onChange={(e) => updateRow(row.id, { samplePoint: e.target.value })} placeholder="Tank No-4" />
                     <Input className="h-8 text-xs" value={row.description} onChange={(e) => updateRow(row.id, { description: e.target.value })} placeholder="e.g. MHC Oil" />
+                    <Input className="h-8 text-xs" value={row.remarks} onChange={(e) => updateRow(row.id, { remarks: e.target.value })} placeholder="Notes..." />
 
                     {isFirstInGroup ? (
                       <>
-                        <Input className="h-8 text-xs" value={row.remarks} onChange={(e) => updateGroupRemarks(row.id, e.target.value)} placeholder="Notes..." />
                         {tests.length > 0 ? (
                           <Button variant="ghost" size="sm" className="h-7 text-xs px-2 justify-start" onClick={() => toggleExpanded(row.id)}>
                             <Badge variant="secondary" className="text-[10px] px-1 py-0 mr-1">{row.selectedTests.size}/{tests.length}</Badge>
@@ -613,7 +602,6 @@ export function NewRegistrationClient({
                       </>
                     ) : (
                       <>
-                        <span />
                         <span />
                         <span />
                       </>
