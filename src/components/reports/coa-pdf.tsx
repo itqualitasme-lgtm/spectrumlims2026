@@ -157,8 +157,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   headerLogo: {
-    width: 110,
-    height: 70,
+    width: 150,
+    height: 90,
     objectFit: "contain" as any,
   },
   headerCenter: {
@@ -173,8 +173,8 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
   accreditationLogo: {
-    width: 55,
-    height: 55,
+    width: 75,
+    height: 75,
     objectFit: "contain" as any,
   },
   isoLogo: {
@@ -551,7 +551,7 @@ export function COAPDF({
             {showLabLogo && logoUrl ? (
               <Image style={styles.headerLogo} src={logoUrl} />
             ) : (
-              <View style={{ width: 110 }} />
+              <View style={{ width: 150 }} />
             )}
             <View style={styles.headerCenter}>
               {headerSubLines.length > 0 && (
@@ -576,7 +576,7 @@ export function COAPDF({
               {accreditationLogoUrl ? (
                 <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
               ) : !isoLogoUrl ? (
-                <View style={{ width: 55 }} />
+                <View style={{ width: 75 }} />
               ) : null}
             </View>
           </View>
@@ -791,7 +791,7 @@ export function COAPDF({
             <View style={styles.signatureBlock}>
               {template?.sealUrl && (
                 <Image
-                  style={{ width: 80, height: 80, objectFit: "contain" as any }}
+                  style={{ width: 110, height: 110, objectFit: "contain" as any }}
                   src={template.sealUrl}
                 />
               )}
@@ -956,7 +956,7 @@ function COAPageContent(props: COAPDFProps) {
           {showLabLogo && logoUrl ? (
             <Image style={styles.headerLogo} src={logoUrl} />
           ) : (
-            <View style={{ width: 110 }} />
+            <View style={{ width: 150 }} />
           )}
           <View style={styles.headerCenter}>
             {headerSubLines.length > 0 && (
@@ -981,7 +981,7 @@ function COAPageContent(props: COAPDFProps) {
             {accreditationLogoUrl ? (
               <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
             ) : !isoLogoUrl ? (
-              <View style={{ width: 55 }} />
+              <View style={{ width: 75 }} />
             ) : null}
           </View>
         </View>
@@ -1138,6 +1138,16 @@ function COAPageContent(props: COAPDFProps) {
             <Text style={styles.signatureName}>{report.createdBy.name}</Text>
             {report.createdBy.designation && (
               <Text style={styles.signatureDesignation}>{report.createdBy.designation}</Text>
+            )}
+          </View>
+
+          {/* Company Seal */}
+          <View style={styles.signatureBlock}>
+            {template?.sealUrl && (
+              <Image
+                style={{ width: 110, height: 110, objectFit: "contain" as any }}
+                src={template.sealUrl}
+              />
             )}
           </View>
 
