@@ -16,9 +16,11 @@ async function main() {
   // ============================================================
   await prisma.$transaction([
     prisma.auditLog.deleteMany(),
+    prisma.reportVerification.deleteMany(),
     prisma.invoiceItem.deleteMany(),
     prisma.invoice.deleteMany(),
     prisma.report.deleteMany(),
+    prisma.reportTemplate.deleteMany(),
     prisma.testResult.deleteMany(),
     prisma.sample.deleteMany(),
     prisma.formatID.deleteMany(),
@@ -373,7 +375,22 @@ async function main() {
   console.log('Created 10 sample types.');
 
   // ============================================================
-  // 8. FormatID records (3)
+  // 8. Default Report Template
+  // ============================================================
+  await prisma.reportTemplate.create({
+    data: {
+      name: 'Standard COA',
+      headerText: 'An ISO/IEC 17025:2017 Accredited Laboratory\nEmirates National Accreditation System (ENAS)',
+      footerText: 'The test Report shall not be reproduced (except in full) without the written approval of SPECTRUM. When analysis is witnessed by us or carried out by sub contract labs, our responsibility is solely to ensure that the analysis is conducted to standard test methods in accordance with industry accepted practice. We are not responsible for apparatus, instrumentation and measuring devices, their calibration or working order, reagents and solutions are accepted as prepared.',
+      showLabLogo: true,
+      isDefault: true,
+      labId: lab.id,
+    },
+  });
+  console.log('Created default report template.');
+
+  // ============================================================
+  // 9. FormatID records (3)
   // ============================================================
   const formatSample = await prisma.formatID.create({
     data: { module: 'sample', prefix: 'SPL', lastNumber: 4, labId: lab.id },
