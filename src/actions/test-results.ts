@@ -19,9 +19,13 @@ export async function getSamplesForTestEntry() {
     status: { in: ["registered", "assigned", "testing", "completed"] },
   }
 
-  // Chemists see only their assigned samples; Admin/Lab Manager see all
+  // Chemists see unassigned (public) samples + their own assigned samples
+  // Admin/Lab Manager see all
   if (roleName === "Chemist") {
-    whereClause.assignedToId = user.id
+    whereClause.OR = [
+      { assignedToId: null },
+      { assignedToId: user.id },
+    ]
   }
 
   const samples = await db.sample.findMany({
@@ -146,6 +150,14 @@ export async function batchUpdateTestResults(
   // Verify sample belongs to this lab
   const sampleCheck = await db.sample.findFirst({ where: { id: sampleId, labId } })
   if (!sampleCheck) throw new Error("Sample not found")
+
+  // Auto-assign to current chemist if sample is unassigned
+  if (!sampleCheck.assignedToId) {
+    await db.sample.update({
+      where: { id: sampleId },
+      data: { assignedToId: user.id, status: "testing" },
+    })
+  }
 
   // Update each test result
   for (const result of results) {
