@@ -430,7 +430,7 @@ export function NewRegistrationClient({
               <Label className="text-xs text-muted-foreground">Rec. Date & Time</Label>
               <div className="flex gap-1.5">
                 <Input className="h-9" type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
-                <Input className="h-9 w-[150px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
+                <Input className="h-9 w-[180px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
               </div>
             </div>
             {/* Row 2: Reference/PO (small), Location (large), Sampler */}
