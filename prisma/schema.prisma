@@ -245,6 +245,7 @@ model Sample {
   deletedById        String?
   registrationId     String?
   subSampleNumber    Int?
+  sampleGroup        String?   // Group letter within registration (A, B, C...)
   labId              String
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt

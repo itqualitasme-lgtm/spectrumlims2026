@@ -100,7 +100,7 @@ export function NewRegistrationClient({
   // Success state
   const [registrationNumber, setRegistrationNumber] = useState("")
   const [registrationId, setRegistrationId] = useState("")
-  const [registeredSamples, setRegisteredSamples] = useState<{ id: string; sampleNumber: string; sampleType: string; subSampleNumber: number; samplePoint: string | null; bottleQty: string | null; description: string | null }[]>([])
+  const [registeredSamples, setRegisteredSamples] = useState<{ id: string; sampleNumber: string; sampleType: string; subSampleNumber: number; sampleGroup: string | null; samplePoint: string | null; bottleQty: string | null; description: string | null }[]>([])
 
   // Shared fields
   const [clientId, setClientId] = useState("")
@@ -381,20 +381,28 @@ export function NewRegistrationClient({
             </div>
 
             {/* Sub-samples table */}
+            {(() => {
+              const hasGroups = registeredSamples.some((s) => s.sampleGroup)
+              const cols = hasGroups
+                ? "grid-cols-[40px_40px_180px_1fr_1fr_80px_1fr_auto]"
+                : "grid-cols-[40px_180px_1fr_1fr_80px_1fr_auto]"
+              return (
             <div className="rounded border text-sm mb-4 overflow-x-auto">
-              <div className="grid grid-cols-[40px_170px_1fr_1fr_80px_1fr_auto] gap-x-3 px-3 py-1.5 bg-muted/50 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide min-w-[700px]">
+              <div className={`grid ${cols} gap-x-3 px-3 py-1.5 bg-muted/50 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide min-w-[700px]`}>
                 <span>Sub#</span>
+                {hasGroups && <span>Group</span>}
                 <span>Sample No.</span>
                 <span>Sample Type</span>
-                <span>Sample Point *</span>
+                <span>Sample Point</span>
                 <span>Bottle</span>
                 <span>Description</span>
                 <span></span>
               </div>
               <div className="divide-y min-w-[700px]">
                 {registeredSamples.map((s) => (
-                  <div key={s.id} className="grid grid-cols-[40px_170px_1fr_1fr_80px_1fr_auto] gap-x-3 items-center px-3 py-2">
+                  <div key={s.id} className={`grid ${cols} gap-x-3 items-center px-3 py-2`}>
                     <span className="text-xs text-muted-foreground font-mono">{String(s.subSampleNumber).padStart(2, "0")}</span>
+                    {hasGroups && <Badge variant="secondary" className="text-[10px] px-1.5 py-0 w-fit">{s.sampleGroup}</Badge>}
                     <Badge variant="outline" className="font-mono w-fit">{s.sampleNumber}</Badge>
                     <span className="truncate text-xs">{s.sampleType}</span>
                     <span className="truncate text-xs">{s.samplePoint || "-"}</span>
@@ -412,6 +420,8 @@ export function NewRegistrationClient({
                 ))}
               </div>
             </div>
+              )
+            })()}
 
             {/* Action buttons */}
             <div className="flex items-center gap-3">

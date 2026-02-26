@@ -1,7 +1,7 @@
-import { getSamples } from "@/actions/registrations"
+import { getRegistrations } from "@/actions/registrations"
 import { RegistrationClient } from "./client"
 
 export default async function RegistrationPage() {
-  const samples = await getSamples()
-  return <RegistrationClient samples={JSON.parse(JSON.stringify(samples))} />
+  const registrations = await getRegistrations()
+  return <RegistrationClient registrations={JSON.parse(JSON.stringify(registrations))} />
 }

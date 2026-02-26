@@ -16,12 +16,12 @@ import {
 } from "@/actions/status-tracking"
 import Link from "next/link"
 
-type SampleRow = {
+type RegistrationRow = {
   id: string
-  sampleNumber: string
-  registrationNumber: string | null
+  registrationNumber: string
   client: string
-  sampleType: string
+  sampleTypes: string
+  sampleCount: number
   reference: string | null
   status: string
   testCount: number
@@ -39,6 +39,7 @@ const statusColors: Record<string, string> = {
   testing: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
   completed: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
   reported: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+  mixed: "bg-gray-100 text-gray-700 dark:bg-gray-950 dark:text-gray-300",
 }
 
 function formatDate(iso: string | null) {
@@ -51,7 +52,7 @@ function formatDate(iso: string | null) {
 }
 
 export function StatusTrackingClient() {
-  const [samples, setSamples] = useState<SampleRow[]>([])
+  const [registrations, setRegistrations] = useState<RegistrationRow[]>([])
   const [hasSearched, setHasSearched] = useState(false)
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
@@ -115,7 +116,7 @@ export function StatusTrackingClient() {
         from: fromDate || undefined,
         to: toDate || undefined,
       })
-      setSamples(result.samples)
+      setRegistrations(result.registrations)
       setHasSearched(true)
     })
   }
@@ -127,29 +128,17 @@ export function StatusTrackingClient() {
     setCustomerQuery("")
     setSelectedCustomer(null)
     setCustomerOptions([])
-    setSamples([])
+    setRegistrations([])
     setHasSearched(false)
   }
 
-  const columns: ColumnDef<SampleRow>[] = [
-    {
-      accessorKey: "sampleNumber",
-      header: "Sample #",
-      cell: ({ row }) => (
-        <Link
-          href={`/process/registration/${row.original.id}`}
-          className="text-primary hover:underline font-medium text-xs"
-        >
-          {row.original.sampleNumber}
-        </Link>
-      ),
-    },
+  const columns: ColumnDef<RegistrationRow>[] = [
     {
       accessorKey: "registrationNumber",
       header: "Reg #",
       cell: ({ row }) => (
-        <span className="text-xs text-muted-foreground font-mono">
-          {row.original.registrationNumber || "-"}
+        <span className="text-xs font-medium font-mono">
+          {row.original.registrationNumber}
         </span>
       ),
     },
@@ -161,10 +150,19 @@ export function StatusTrackingClient() {
       ),
     },
     {
-      accessorKey: "sampleType",
+      accessorKey: "sampleTypes",
       header: "Type",
       cell: ({ row }) => (
-        <span className="text-xs">{row.original.sampleType}</span>
+        <span className="text-xs">{row.original.sampleTypes}</span>
+      ),
+    },
+    {
+      accessorKey: "sampleCount",
+      header: "Qty",
+      cell: ({ row }) => (
+        <Badge variant="secondary" className="text-xs">
+          {row.original.sampleCount}
+        </Badge>
       ),
     },
     {
@@ -267,12 +265,12 @@ export function StatusTrackingClient() {
               )}
             </div>
 
-            {/* Sample Number */}
+            {/* Registration/Sample Number */}
             <div className="space-y-1">
               <Label className="text-xs">Reg. No</Label>
               <Input
                 className="h-8 w-40"
-                placeholder="SPL-260226..."
+                placeholder="REG-260226..."
                 value={sampleNumber}
                 onChange={(e) => setSampleNumber(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter") handleSearch() }}
@@ -320,7 +318,7 @@ export function StatusTrackingClient() {
             Select a customer, enter a registration number, or choose a date range to search.
           </CardContent>
         </Card>
-      ) : samples.length === 0 ? (
+      ) : registrations.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground text-sm">
             No registrations found for the selected criteria.
@@ -329,9 +327,9 @@ export function StatusTrackingClient() {
       ) : (
         <DataTable
           columns={columns}
-          data={samples}
+          data={registrations}
           searchPlaceholder="Filter results..."
-          searchKey="sampleNumber"
+          searchKey="registrationNumber"
           pageSize={20}
           hideSearch
         />

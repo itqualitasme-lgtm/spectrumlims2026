@@ -66,9 +66,25 @@ export async function createRegistration(data: {
     },
   })
 
-  // Create sub-samples: sequential numbering across ALL rows
-  let subCounter = 1
-  const createdSamples: { id: string; sampleNumber: string; sampleType: string; subSampleNumber: number; samplePoint: string | null; bottleQty: string | null; description: string | null }[] = []
+  // Assign group letters: each unique sampleTypeId (in row order) gets A, B, C...
+  const groupLetterMap = new Map<string, string>()
+  let letterIdx = 0
+  for (const row of data.rows) {
+    if (!groupLetterMap.has(row.sampleTypeId)) {
+      groupLetterMap.set(row.sampleTypeId, String.fromCharCode(65 + letterIdx)) // A, B, C...
+      letterIdx++
+    }
+  }
+  const hasMultipleGroups = groupLetterMap.size > 1
+
+  // Track per-group sub-counter
+  const groupCounters = new Map<string, number>()
+  for (const letter of groupLetterMap.values()) {
+    groupCounters.set(letter, 1)
+  }
+
+  let globalSubCounter = 1
+  const createdSamples: { id: string; sampleNumber: string; sampleType: string; subSampleNumber: number; sampleGroup: string | null; samplePoint: string | null; bottleQty: string | null; description: string | null }[] = []
 
   for (const row of data.rows) {
     // Get sample type for tests
@@ -97,9 +113,16 @@ export async function createRegistration(data: {
       // skip
     }
 
+    const groupLetter = groupLetterMap.get(row.sampleTypeId)!
     const qty = Math.max(1, Math.min(99, row.qty))
     for (let b = 0; b < qty; b++) {
-      const subNum = String(subCounter).padStart(2, "0")
+      const groupNum = groupCounters.get(groupLetter)!
+      groupCounters.set(groupLetter, groupNum + 1)
+
+      // Format: REG-260226-001-A01 (multi-group) or REG-260226-001-01 (single group)
+      const subNum = hasMultipleGroups
+        ? `${groupLetter}${String(groupNum).padStart(2, "0")}`
+        : String(globalSubCounter).padStart(2, "0")
       const sampleNumber = `${registrationNumber}-${subNum}`
 
       const sample = await db.sample.create({
@@ -121,7 +144,8 @@ export async function createRegistration(data: {
           samplePoint: row.samplePoint || null,
           notes: row.remarks || null,
           registrationId: registration.id,
-          subSampleNumber: subCounter,
+          subSampleNumber: globalSubCounter,
+          sampleGroup: hasMultipleGroups ? groupLetter : null,
           labId,
         },
       })
@@ -153,12 +177,13 @@ export async function createRegistration(data: {
         id: sample.id,
         sampleNumber: sample.sampleNumber,
         sampleType: sampleType.name,
-        subSampleNumber: subCounter,
+        subSampleNumber: globalSubCounter,
+        sampleGroup: hasMultipleGroups ? groupLetter : null,
         samplePoint: row.samplePoint || null,
         bottleQty: row.bottleQty || null,
         description: row.description || null,
       })
-      subCounter++
+      globalSubCounter++
     }
   }
 
@@ -207,6 +232,71 @@ export async function getRegistration(id: string) {
   return registration
 }
 
+// ============= REGISTRATIONS LIST =============
+
+export async function getRegistrations() {
+  const session = await requirePermission("process", "view")
+  const user = session.user as any
+  const labId = user.labId
+
+  const registrations = await db.registration.findMany({
+    where: { labId },
+    include: {
+      client: { select: { id: true, name: true, company: true } },
+      collectedBy: { select: { name: true } },
+      registeredBy: { select: { name: true } },
+      samples: {
+        where: { deletedAt: null },
+        include: {
+          sampleType: { select: { name: true } },
+          assignedTo: { select: { name: true } },
+        },
+        orderBy: { subSampleNumber: "asc" },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  })
+
+  return registrations.map((reg) => {
+    // Aggregate sample types with counts
+    const typeMap = new Map<string, number>()
+    for (const s of reg.samples) {
+      const name = s.sampleType.name
+      typeMap.set(name, (typeMap.get(name) || 0) + 1)
+    }
+    const sampleTypes = Array.from(typeMap.entries()).map(([name, count]) =>
+      typeMap.size > 1 ? `${name} (${count})` : name
+    ).join(", ")
+
+    // Aggregate statuses
+    const statuses = reg.samples.map((s) => s.status)
+    const allSame = statuses.length > 0 && statuses.every((s) => s === statuses[0])
+    const overallStatus = allSame ? statuses[0] : "mixed"
+
+    // Check if any sample is assigned
+    const assignedNames = [...new Set(reg.samples.filter((s) => s.assignedTo).map((s) => s.assignedTo!.name))]
+
+    return {
+      id: reg.id,
+      registrationNumber: reg.registrationNumber,
+      client: { id: reg.client.id, name: reg.client.name, company: reg.client.company },
+      sampleTypes,
+      sampleCount: reg.samples.length,
+      priority: reg.priority,
+      jobType: reg.jobType,
+      collectionLocation: reg.collectionLocation,
+      assignedTo: assignedNames.length > 0 ? assignedNames.join(", ") : null,
+      status: overallStatus,
+      createdAt: reg.createdAt.toISOString(),
+      samples: reg.samples.map((s) => ({
+        id: s.id,
+        sampleNumber: s.sampleNumber,
+        status: s.status,
+      })),
+    }
+  })
+}
+
 // ============= SAMPLES =============
 
 export async function getSamples() {
@@ -246,7 +336,7 @@ export async function getSample(id: string) {
         include: {
           samples: {
             where: { deletedAt: null },
-            select: { id: true, sampleNumber: true, subSampleNumber: true, status: true, samplePoint: true, quantity: true, description: true },
+            select: { id: true, sampleNumber: true, subSampleNumber: true, status: true, samplePoint: true, quantity: true, description: true, sampleGroup: true },
             orderBy: { subSampleNumber: "asc" },
           },
         },
