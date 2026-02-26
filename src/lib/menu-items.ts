@@ -57,17 +57,17 @@ export const menuGroups: MenuGroup[] = [
         icon: FlaskConical,
         permission: "masters:view",
       },
-      {
-        title: "Status Tracking",
-        href: "/masters/status-tracking",
-        icon: Activity,
-        permission: "masters:view",
-      },
     ],
   },
   {
     title: "Process",
     items: [
+      {
+        title: "Status Tracking",
+        href: "/process/status-tracking",
+        icon: Activity,
+        permission: "process:view",
+      },
       {
         title: "Sample Registration",
         href: "/process/registration",

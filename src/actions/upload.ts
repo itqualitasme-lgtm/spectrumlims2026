@@ -28,7 +28,13 @@ export async function uploadImage(formData: FormData) {
   const path = `${labId}/${folder}/${timestamp}.${ext}`
 
   const buffer = Buffer.from(await file.arrayBuffer())
-  await uploadFile(path, buffer, file.type)
+
+  try {
+    await uploadFile(path, buffer, file.type)
+  } catch (err: any) {
+    console.error("Upload action error:", err)
+    throw new Error(err.message || "Upload failed")
+  }
 
   const publicUrl = getPublicUrl(path)
   return { url: publicUrl, path }

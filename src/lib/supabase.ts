@@ -8,6 +8,20 @@ export const supabase = createClient(supabaseUrl, supabaseServiceKey)
 // Storage bucket name
 export const STORAGE_BUCKET = "spectrum-lims"
 
+let bucketEnsured = false
+
+async function ensureBucket() {
+  if (bucketEnsured) return
+  const { data } = await supabase.storage.getBucket(STORAGE_BUCKET)
+  if (!data) {
+    await supabase.storage.createBucket(STORAGE_BUCKET, {
+      public: true,
+      fileSizeLimit: 5 * 1024 * 1024, // 5MB
+    })
+  }
+  bucketEnsured = true
+}
+
 /**
  * Upload a file to Supabase Storage
  */
@@ -16,6 +30,8 @@ export async function uploadFile(
   file: Buffer | Uint8Array,
   contentType: string
 ) {
+  await ensureBucket()
+
   const { data, error } = await supabase.storage
     .from(STORAGE_BUCKET)
     .upload(path, file, {
@@ -23,7 +39,10 @@ export async function uploadFile(
       upsert: true,
     })
 
-  if (error) throw new Error(`Upload failed: ${error.message}`)
+  if (error) {
+    console.error("Supabase upload error:", error)
+    throw new Error(`Upload failed: ${error.message}`)
+  }
   return data.path
 }
 
