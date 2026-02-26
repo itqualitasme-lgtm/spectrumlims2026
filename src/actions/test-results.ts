@@ -43,6 +43,79 @@ export async function getSamplesForTestEntry() {
   return samples
 }
 
+export async function getRegistrationGroups() {
+  const session = await getSession()
+  const user = session.user as any
+  const labId = user.labId
+  const roleName = user.roleName
+
+  const whereClause: any = {
+    labId,
+    deletedAt: null,
+    status: { in: ["registered", "assigned", "testing", "completed"] },
+  }
+
+  if (roleName === "Chemist") {
+    whereClause.assignedToId = user.id
+  }
+
+  const samples = await db.sample.findMany({
+    where: whereClause,
+    include: {
+      sampleType: true,
+      client: true,
+      assignedTo: { select: { name: true } },
+      testResults: {
+        include: {
+          enteredBy: { select: { name: true } },
+        },
+        orderBy: { parameter: "asc" },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  })
+
+  // Group by clientId + registeredAt (same registration session)
+  const groupMap = new Map<string, typeof samples>()
+  for (const sample of samples) {
+    const regAt = sample.registeredAt?.toISOString() || sample.createdAt.toISOString()
+    const key = `${sample.clientId}::${regAt}`
+    if (!groupMap.has(key)) groupMap.set(key, [])
+    groupMap.get(key)!.push(sample)
+  }
+
+  const groups = Array.from(groupMap.entries()).map(([key, groupSamples]) => {
+    const first = groupSamples[0]
+    const sampleCount = groupSamples.length
+    const completedCount = groupSamples.filter((s) => s.status === "completed").length
+    const allResultsEntered = groupSamples.every((s) =>
+      s.testResults.length > 0 && s.testResults.every((tr) => tr.status === "completed")
+    )
+
+    // Group status
+    let status = "pending"
+    if (completedCount === sampleCount) status = "completed"
+    else if (groupSamples.some((s) => s.status === "testing")) status = "testing"
+    else if (groupSamples.some((s) => s.status === "assigned")) status = "assigned"
+
+    return {
+      key,
+      clientId: first.clientId,
+      clientName: first.client.company || first.client.name,
+      reference: first.reference,
+      registeredAt: first.registeredAt?.toISOString() || first.createdAt.toISOString(),
+      location: first.collectionLocation,
+      sampleCount,
+      completedCount,
+      allResultsEntered,
+      status,
+      samples: groupSamples,
+    }
+  })
+
+  return groups
+}
+
 export async function getTestResults(sampleId: string) {
   const session = await getSession()
   const user = session.user as any
