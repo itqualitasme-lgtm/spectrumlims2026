@@ -1,27 +1,36 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useRef, useEffect } from "react"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { DataTable } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header"
-import { Filter, RotateCcw } from "lucide-react"
-import { getStatusTrackingData } from "@/actions/status-tracking"
+import { Search, RotateCcw, Loader2 } from "lucide-react"
+import {
+  getStatusTrackingData,
+  searchCustomersForTracking,
+} from "@/actions/status-tracking"
 import Link from "next/link"
 
-type StatusData = Awaited<ReturnType<typeof getStatusTrackingData>>
-type SampleRow = StatusData["samples"][0]
+type SampleRow = {
+  id: string
+  sampleNumber: string
+  client: string
+  sampleType: string
+  reference: string | null
+  status: string
+  testCount: number
+  registeredAt: string
+  dueDate: string | null
+  completionDate: string | null
+  reportApprovedAt: string | null
+}
+
+type CustomerOption = { id: string; name: string }
 
 const statusColors: Record<string, string> = {
   registered: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
@@ -40,53 +49,86 @@ function formatDate(iso: string | null) {
   })
 }
 
-export function StatusTrackingClient({ initialData }: { initialData: StatusData }) {
-  const [data, setData] = useState(initialData)
+export function StatusTrackingClient() {
+  const [samples, setSamples] = useState<SampleRow[]>([])
+  const [hasSearched, setHasSearched] = useState(false)
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
-  const [clientId, setClientId] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [sampleNumber, setSampleNumber] = useState("")
   const [isPending, startTransition] = useTransition()
 
-  function handleFilter() {
+  // Customer search
+  const [customerQuery, setCustomerQuery] = useState("")
+  const [customerOptions, setCustomerOptions] = useState<CustomerOption[]>([])
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerOption | null>(null)
+  const [showDropdown, setShowDropdown] = useState(false)
+  const [searchingCustomers, setSearchingCustomers] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const searchTimeout = useRef<ReturnType<typeof setTimeout>>(undefined)
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [])
+
+  function handleCustomerSearch(query: string) {
+    setCustomerQuery(query)
+    if (selectedCustomer) setSelectedCustomer(null)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    if (query.length < 2) {
+      setCustomerOptions([])
+      setShowDropdown(false)
+      return
+    }
+    searchTimeout.current = setTimeout(async () => {
+      setSearchingCustomers(true)
+      try {
+        const results = await searchCustomersForTracking(query)
+        setCustomerOptions(results)
+        setShowDropdown(true)
+      } finally {
+        setSearchingCustomers(false)
+      }
+    }, 300)
+  }
+
+  function selectCustomer(c: CustomerOption) {
+    setSelectedCustomer(c)
+    setCustomerQuery(c.name)
+    setShowDropdown(false)
+  }
+
+  function handleSearch() {
+    if (!selectedCustomer && !sampleNumber.trim() && !fromDate && !toDate) return
+
     startTransition(async () => {
       const result = await getStatusTrackingData({
+        clientId: selectedCustomer?.id,
+        sampleNumber: sampleNumber.trim() || undefined,
         from: fromDate || undefined,
         to: toDate || undefined,
-        clientId: clientId !== "all" ? clientId : undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
       })
-      setData(result)
+      setSamples(result.samples)
+      setHasSearched(true)
     })
   }
 
   function handleReset() {
     setFromDate("")
     setToDate("")
-    setClientId("all")
-    setStatusFilter("all")
-    startTransition(async () => {
-      const result = await getStatusTrackingData()
-      setData(result)
-    })
+    setSampleNumber("")
+    setCustomerQuery("")
+    setSelectedCustomer(null)
+    setCustomerOptions([])
+    setSamples([])
+    setHasSearched(false)
   }
-
-  function handleStatusClick(status: string) {
-    const newStatus = statusFilter === status ? "all" : status
-    setStatusFilter(newStatus)
-    startTransition(async () => {
-      const result = await getStatusTrackingData({
-        from: fromDate || undefined,
-        to: toDate || undefined,
-        clientId: clientId !== "all" ? clientId : undefined,
-        status: newStatus !== "all" ? newStatus : undefined,
-      })
-      setData(result)
-    })
-  }
-
-  const { sampleStatus } = data
-  const totalActive = sampleStatus.registered + sampleStatus.assigned + sampleStatus.testing + sampleStatus.completed + sampleStatus.reported
 
   const columns: ColumnDef<SampleRow>[] = [
     {
@@ -95,44 +137,54 @@ export function StatusTrackingClient({ initialData }: { initialData: StatusData 
       cell: ({ row }) => (
         <Link
           href={`/process/registration/${row.original.id}`}
-          className="text-primary hover:underline font-medium"
+          className="text-primary hover:underline font-medium text-xs"
         >
           {row.original.sampleNumber}
         </Link>
       ),
     },
-    { accessorKey: "client", header: "Customer" },
-    { accessorKey: "sampleType", header: "Sample Type" },
+    {
+      accessorKey: "client",
+      header: "Customer",
+      cell: ({ row }) => (
+        <span className="text-xs">{row.original.client}</span>
+      ),
+    },
+    {
+      accessorKey: "sampleType",
+      header: "Type",
+      cell: ({ row }) => (
+        <span className="text-xs">{row.original.sampleType}</span>
+      ),
+    },
     {
       accessorKey: "reference",
-      header: "PO/Reference",
+      header: "PO/Ref",
       cell: ({ row }) => (
-        <span className="text-sm">
-          {row.original.reference || "-"}
-        </span>
+        <span className="text-xs">{row.original.reference || "-"}</span>
       ),
     },
     {
       accessorKey: "testCount",
       header: "Tests",
       cell: ({ row }) => (
-        <span className="font-medium">{row.original.testCount}</span>
+        <span className="text-xs font-medium">{row.original.testCount}</span>
       ),
     },
     {
       accessorKey: "registeredAt",
       header: "Received",
-      cell: ({ row }) => formatDate(row.original.registeredAt),
+      cell: ({ row }) => <span className="text-xs">{formatDate(row.original.registeredAt)}</span>,
     },
     {
       accessorKey: "dueDate",
-      header: "Due Date",
+      header: "Due",
       cell: ({ row }) => {
         const due = row.original.dueDate
-        if (!due) return "-"
+        if (!due) return <span className="text-xs">-</span>
         const isOverdue = new Date(due) < new Date() && row.original.status !== "completed" && row.original.status !== "reported"
         return (
-          <span className={isOverdue ? "text-destructive font-medium" : ""}>
+          <span className={`text-xs ${isOverdue ? "text-destructive font-medium" : ""}`}>
             {formatDate(due)}
           </span>
         )
@@ -141,12 +193,12 @@ export function StatusTrackingClient({ initialData }: { initialData: StatusData 
     {
       accessorKey: "completionDate",
       header: "Completed",
-      cell: ({ row }) => formatDate(row.original.completionDate),
+      cell: ({ row }) => <span className="text-xs">{formatDate(row.original.completionDate)}</span>,
     },
     {
       accessorKey: "reportApprovedAt",
       header: "Approved",
-      cell: ({ row }) => formatDate(row.original.reportApprovedAt),
+      cell: ({ row }) => <span className="text-xs">{formatDate(row.original.reportApprovedAt)}</span>,
     },
     {
       accessorKey: "status",
@@ -154,7 +206,7 @@ export function StatusTrackingClient({ initialData }: { initialData: StatusData 
       cell: ({ row }) => {
         const s = row.original.status
         return (
-          <Badge className={`text-xs ${statusColors[s] || ""}`} variant="outline">
+          <Badge className={`text-[10px] px-1.5 py-0 ${statusColors[s] || ""}`} variant="outline">
             {s.charAt(0).toUpperCase() + s.slice(1)}
           </Badge>
         )
@@ -162,148 +214,118 @@ export function StatusTrackingClient({ initialData }: { initialData: StatusData 
     },
   ]
 
+  const hasFilters = !!selectedCustomer || !!sampleNumber.trim() || !!fromDate || !!toDate
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       <PageHeader
         title="Status Tracking"
-        description="Track sample registration and processing status"
+        description="Search by customer, registration number, or date range"
       />
 
-      {/* Filter Bar */}
+      {/* Search Bar */}
       <Card>
         <CardContent className="py-3">
-          <div className="flex items-end gap-3 flex-wrap">
+          <div className="flex items-end gap-2 flex-wrap">
+            {/* Customer Search */}
+            <div className="space-y-1 relative" ref={dropdownRef}>
+              <Label className="text-xs">Customer</Label>
+              <div className="relative">
+                <Input
+                  className="h-8 w-56"
+                  placeholder="Type customer name..."
+                  value={customerQuery}
+                  onChange={(e) => handleCustomerSearch(e.target.value)}
+                  onFocus={() => { if (customerOptions.length > 0) setShowDropdown(true) }}
+                />
+                {searchingCustomers && (
+                  <Loader2 className="absolute right-2 top-1.5 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              {showDropdown && customerOptions.length > 0 && (
+                <div className="absolute z-50 top-full mt-1 w-56 bg-popover border rounded-md shadow-md max-h-48 overflow-y-auto">
+                  {customerOptions.map((c) => (
+                    <button
+                      key={c.id}
+                      className="w-full text-left px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+                      onClick={() => selectCustomer(c)}
+                    >
+                      {c.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Sample Number */}
             <div className="space-y-1">
-              <Label htmlFor="from" className="text-xs">From</Label>
+              <Label className="text-xs">Reg. No</Label>
               <Input
-                id="from"
+                className="h-8 w-40"
+                placeholder="SPL-260226..."
+                value={sampleNumber}
+                onChange={(e) => setSampleNumber(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleSearch() }}
+              />
+            </div>
+
+            {/* Date Range */}
+            <div className="space-y-1">
+              <Label className="text-xs">From</Label>
+              <Input
                 type="date"
-                className="h-8 w-36"
+                className="h-8 w-32"
                 value={fromDate}
                 onChange={(e) => setFromDate(e.target.value)}
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="to" className="text-xs">To</Label>
+              <Label className="text-xs">To</Label>
               <Input
-                id="to"
                 type="date"
-                className="h-8 w-36"
+                className="h-8 w-32"
                 value={toDate}
                 onChange={(e) => setToDate(e.target.value)}
               />
             </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Customer</Label>
-              <Select value={clientId} onValueChange={setClientId}>
-                <SelectTrigger className="h-8 w-48">
-                  <SelectValue placeholder="All Customers" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Customers</SelectItem>
-                  {data.customers.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button size="sm" onClick={handleFilter} disabled={isPending}>
-              <Filter className="mr-1 h-3.5 w-3.5" />
-              {isPending ? "Loading..." : "Filter"}
+
+            <Button size="sm" onClick={handleSearch} disabled={isPending || !hasFilters}>
+              <Search className="mr-1 h-3.5 w-3.5" />
+              {isPending ? "Searching..." : "Search"}
             </Button>
-            {(fromDate || toDate || clientId !== "all" || statusFilter !== "all") && (
-              <Button size="sm" variant="ghost" onClick={handleReset} disabled={isPending}>
+            {hasSearched && (
+              <Button size="sm" variant="ghost" onClick={handleReset}>
                 <RotateCcw className="mr-1 h-3.5 w-3.5" />
-                Reset
+                Clear
               </Button>
             )}
           </div>
         </CardContent>
       </Card>
 
-      {/* Status Counts */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2">
-        <StatusCard
-          label="All"
-          count={totalActive}
-          active={statusFilter === "all"}
-          onClick={() => handleStatusClick("all")}
+      {/* Results */}
+      {!hasSearched ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground text-sm">
+            Select a customer, enter a registration number, or choose a date range to search.
+          </CardContent>
+        </Card>
+      ) : samples.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground text-sm">
+            No registrations found for the selected criteria.
+          </CardContent>
+        </Card>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={samples}
+          searchPlaceholder="Filter results..."
+          searchKey="sampleNumber"
+          pageSize={20}
+          hideSearch
         />
-        <StatusCard
-          label="Registered"
-          count={sampleStatus.registered}
-          color="bg-blue-500"
-          active={statusFilter === "registered"}
-          onClick={() => handleStatusClick("registered")}
-        />
-        <StatusCard
-          label="Assigned"
-          count={sampleStatus.assigned}
-          color="bg-yellow-500"
-          active={statusFilter === "assigned"}
-          onClick={() => handleStatusClick("assigned")}
-        />
-        <StatusCard
-          label="Testing"
-          count={sampleStatus.testing}
-          color="bg-orange-500"
-          active={statusFilter === "testing"}
-          onClick={() => handleStatusClick("testing")}
-        />
-        <StatusCard
-          label="Completed"
-          count={sampleStatus.completed}
-          color="bg-green-500"
-          active={statusFilter === "completed"}
-          onClick={() => handleStatusClick("completed")}
-        />
-        <StatusCard
-          label="Reported"
-          count={sampleStatus.reported}
-          color="bg-purple-500"
-          active={statusFilter === "reported"}
-          onClick={() => handleStatusClick("reported")}
-        />
-      </div>
-
-      {/* Samples Table */}
-      <DataTable
-        columns={columns}
-        data={data.samples}
-        searchPlaceholder="Search by sample number, customer, reference..."
-        searchKey="sampleNumber"
-      />
+      )}
     </div>
-  )
-}
-
-function StatusCard({
-  label,
-  count,
-  color,
-  active,
-  onClick,
-}: {
-  label: string
-  count: number
-  color?: string
-  active?: boolean
-  onClick?: () => void
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex items-center justify-between rounded-lg border px-3 py-2.5 transition-colors cursor-pointer ${
-        active
-          ? "border-primary bg-primary/5 ring-1 ring-primary"
-          : "hover:bg-muted/50"
-      }`}
-    >
-      <div className="flex items-center gap-2">
-        {color && <div className={`h-2.5 w-2.5 rounded-full ${color}`} />}
-        <span className="text-xs font-medium text-muted-foreground">{label}</span>
-      </div>
-      <span className="text-lg font-bold">{count}</span>
-    </button>
   )
 }
