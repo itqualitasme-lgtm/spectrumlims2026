@@ -39,8 +39,33 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
+import { Checkbox } from "@/components/ui/checkbox"
+
 import { updateSample, searchCustomers, getCustomerById } from "@/actions/registrations"
 import { addTestsToSample, deleteTestResult } from "@/actions/test-results"
+
+type TestParam = {
+  parameter: string
+  method?: string
+  testMethod?: string
+  unit?: string
+  specMin?: string
+  specMax?: string
+  tat?: number
+}
+
+function parseDefaultTests(defaultTests: string): TestParam[] {
+  try {
+    const parsed = JSON.parse(defaultTests)
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+function getTestMethodStr(test: TestParam): string {
+  return test.method || test.testMethod || ""
+}
 
 type SampleTypeOption = {
   id: string
@@ -142,12 +167,40 @@ export function EditSampleClient({
 
   // Add test dialog
   const [addTestOpen, setAddTestOpen] = useState(false)
+  const [selectedTestIndices, setSelectedTestIndices] = useState<Set<number>>(new Set())
+  const [showCustomForm, setShowCustomForm] = useState(false)
   const [newParam, setNewParam] = useState("")
   const [newMethod, setNewMethod] = useState("")
   const [newUnit, setNewUnit] = useState("")
   const [newSpecMin, setNewSpecMin] = useState("")
   const [newSpecMax, setNewSpecMax] = useState("")
   const [newTat, setNewTat] = useState("")
+
+  // Available tests from template (excluding already added)
+  const availableTests = useMemo(() => {
+    const st = sampleTypes.find((s) => s.id === sampleTypeId)
+    if (!st) return []
+    const allTests = parseDefaultTests(st.defaultTests)
+    const existingParams = new Set(sample.testResults.map((tr) => tr.parameter.toLowerCase()))
+    return allTests.filter((t) => !existingParams.has(t.parameter.toLowerCase()))
+  }, [sampleTypeId, sampleTypes, sample.testResults])
+
+  const toggleTestIndex = (idx: number) => {
+    setSelectedTestIndices((prev) => {
+      const next = new Set(prev)
+      if (next.has(idx)) next.delete(idx)
+      else next.add(idx)
+      return next
+    })
+  }
+
+  const toggleAllTests = () => {
+    if (selectedTestIndices.size === availableTests.length) {
+      setSelectedTestIndices(new Set())
+    } else {
+      setSelectedTestIndices(new Set(availableTests.map((_, i) => i)))
+    }
+  }
 
   // Parse existing date/time
   const existingDate = sample.registeredAt || sample.collectionDate
@@ -218,30 +271,58 @@ export function EditSampleClient({
     }
   }
 
-  const handleAddTest = async () => {
-    if (!newParam.trim()) {
-      toast.error("Parameter name is required")
-      return
-    }
+  const handleOpenAddTest = () => {
+    setSelectedTestIndices(new Set())
+    setShowCustomForm(false)
+    setNewParam("")
+    setNewMethod("")
+    setNewUnit("")
+    setNewSpecMin("")
+    setNewSpecMax("")
+    setNewTat("")
+    setAddTestOpen(true)
+  }
 
-    setLoading(true)
-    try {
-      await addTestsToSample(sample.id, [{
+  const handleAddTest = async () => {
+    const testsToAdd: { parameter: string; testMethod?: string; unit?: string; specMin?: string; specMax?: string; tat?: number }[] = []
+
+    // Add selected template tests
+    selectedTestIndices.forEach((idx) => {
+      const t = availableTests[idx]
+      if (t) {
+        testsToAdd.push({
+          parameter: t.parameter,
+          testMethod: getTestMethodStr(t) || undefined,
+          unit: t.unit || undefined,
+          specMin: t.specMin || undefined,
+          specMax: t.specMax || undefined,
+          tat: t.tat || undefined,
+        })
+      }
+    })
+
+    // Add custom test if filled
+    if (showCustomForm && newParam.trim()) {
+      testsToAdd.push({
         parameter: newParam.trim(),
         testMethod: newMethod.trim() || undefined,
         unit: newUnit.trim() || undefined,
         specMin: newSpecMin.trim() || undefined,
         specMax: newSpecMax.trim() || undefined,
         tat: newTat ? parseInt(newTat) : undefined,
-      }])
-      toast.success(`Added parameter "${newParam.trim()}"`)
+      })
+    }
+
+    if (testsToAdd.length === 0) {
+      toast.error("Select at least one test or fill in the custom parameter")
+      return
+    }
+
+    setLoading(true)
+    try {
+      await addTestsToSample(sample.id, testsToAdd)
+      toast.success(`Added ${testsToAdd.length} parameter(s)`)
       setAddTestOpen(false)
-      setNewParam("")
-      setNewMethod("")
-      setNewUnit("")
-      setNewSpecMin("")
-      setNewSpecMax("")
-      setNewTat("")
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to add test parameter")
@@ -417,7 +498,7 @@ export function EditSampleClient({
               variant="outline"
               size="sm"
               className="h-7 text-xs"
-              onClick={() => setAddTestOpen(true)}
+              onClick={handleOpenAddTest}
             >
               <Plus className="mr-1 h-3 w-3" /> Add Parameter
             </Button>
@@ -492,7 +573,7 @@ export function EditSampleClient({
                 variant="link"
                 size="sm"
                 className="ml-1 text-sm p-0 h-auto"
-                onClick={() => setAddTestOpen(true)}
+                onClick={handleOpenAddTest}
               >
                 Add one now
               </Button>
@@ -517,69 +598,159 @@ export function EditSampleClient({
 
       {/* Add Test Dialog */}
       <Dialog open={addTestOpen} onOpenChange={setAddTestOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[550px]">
           <DialogHeader>
-            <DialogTitle>Add Test Parameter</DialogTitle>
+            <DialogTitle>Add Test Parameters</DialogTitle>
             <DialogDescription>
-              Add a new test parameter to {sample.sampleNumber}
+              Add tests to {sample.sampleNumber} ({sampleTypes.find((s) => s.id === sampleTypeId)?.name})
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3 py-2">
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1">
-                <Label className="text-xs">Parameter Name *</Label>
-                <Input
-                  value={newParam}
-                  onChange={(e) => setNewParam(e.target.value)}
-                  placeholder="e.g. Viscosity"
-                />
+          <div className="space-y-3 py-2">
+            {/* Template tests checklist */}
+            {availableTests.length > 0 ? (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Available Tests</Label>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={toggleAllTests}
+                  >
+                    <Checkbox checked={selectedTestIndices.size === availableTests.length && availableTests.length > 0} />
+                    <span>Select All</span>
+                  </button>
+                </div>
+                <div className="rounded-md border max-h-[250px] overflow-y-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[32px]"></TableHead>
+                        <TableHead className="text-xs">Parameter</TableHead>
+                        <TableHead className="text-xs">Method</TableHead>
+                        <TableHead className="text-xs">Unit</TableHead>
+                        <TableHead className="text-xs">TAT</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {availableTests.map((test, idx) => (
+                        <TableRow
+                          key={idx}
+                          className="cursor-pointer"
+                          onClick={() => toggleTestIndex(idx)}
+                        >
+                          <TableCell className="py-1.5">
+                            <Checkbox checked={selectedTestIndices.has(idx)} />
+                          </TableCell>
+                          <TableCell className="text-xs font-medium py-1.5">{test.parameter}</TableCell>
+                          <TableCell className="text-xs py-1.5">{getTestMethodStr(test) || "-"}</TableCell>
+                          <TableCell className="text-xs py-1.5">{test.unit || "-"}</TableCell>
+                          <TableCell className="text-xs py-1.5">{test.tat ? `${test.tat}d` : "-"}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                {selectedTestIndices.size > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {selectedTestIndices.size} test{selectedTestIndices.size !== 1 ? "s" : ""} selected
+                  </p>
+                )}
               </div>
-              <div className="grid gap-1">
-                <Label className="text-xs">Test Method</Label>
-                <Input
-                  value={newMethod}
-                  onChange={(e) => setNewMethod(e.target.value)}
-                  placeholder="e.g. ASTM D445"
-                />
+            ) : (
+              <p className="text-xs text-muted-foreground py-2">
+                {sample.testResults.length
+                  ? "All available tests from the template are already added."
+                  : "No template tests defined for this sample type."}
+              </p>
+            )}
+
+            {/* Custom test toggle */}
+            {!showCustomForm ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-7 text-xs w-full"
+                onClick={() => setShowCustomForm(true)}
+              >
+                <Plus className="mr-1 h-3 w-3" />
+                Add Custom Parameter
+              </Button>
+            ) : (
+              <div className="space-y-2 border rounded-md p-3">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-medium">Custom Parameter</Label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-5 text-xs px-1"
+                    onClick={() => setShowCustomForm(false)}
+                  >
+                    Remove
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">Parameter Name *</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      value={newParam}
+                      onChange={(e) => setNewParam(e.target.value)}
+                      placeholder="e.g. Viscosity"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">Test Method</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      value={newMethod}
+                      onChange={(e) => setNewMethod(e.target.value)}
+                      placeholder="e.g. ASTM D445"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-4 gap-2">
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">Unit</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      value={newUnit}
+                      onChange={(e) => setNewUnit(e.target.value)}
+                      placeholder="cSt"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">Spec Min</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      value={newSpecMin}
+                      onChange={(e) => setNewSpecMin(e.target.value)}
+                      placeholder="min"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">Spec Max</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      value={newSpecMax}
+                      onChange={(e) => setNewSpecMax(e.target.value)}
+                      placeholder="max"
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <Label className="text-[10px] text-muted-foreground">TAT (days)</Label>
+                    <Input
+                      className="h-8 text-xs"
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={newTat}
+                      onChange={(e) => setNewTat(e.target.value)}
+                      placeholder="3"
+                    />
+                  </div>
+                </div>
               </div>
-            </div>
-            <div className="grid grid-cols-4 gap-3">
-              <div className="grid gap-1">
-                <Label className="text-xs">Unit</Label>
-                <Input
-                  value={newUnit}
-                  onChange={(e) => setNewUnit(e.target.value)}
-                  placeholder="cSt"
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label className="text-xs">Spec Min</Label>
-                <Input
-                  value={newSpecMin}
-                  onChange={(e) => setNewSpecMin(e.target.value)}
-                  placeholder="min"
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label className="text-xs">Spec Max</Label>
-                <Input
-                  value={newSpecMax}
-                  onChange={(e) => setNewSpecMax(e.target.value)}
-                  placeholder="max"
-                />
-              </div>
-              <div className="grid gap-1">
-                <Label className="text-xs">TAT (days)</Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="30"
-                  value={newTat}
-                  onChange={(e) => setNewTat(e.target.value)}
-                  placeholder="3"
-                />
-              </div>
-            </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddTestOpen(false)} disabled={loading}>
@@ -592,7 +763,9 @@ export function EditSampleClient({
                   Adding...
                 </>
               ) : (
-                "Add Parameter"
+                `Add ${selectedTestIndices.size + (showCustomForm && newParam.trim() ? 1 : 0)} Parameter${
+                  selectedTestIndices.size + (showCustomForm && newParam.trim() ? 1 : 0) !== 1 ? "s" : ""
+                }`
               )}
             </Button>
           </DialogFooter>
