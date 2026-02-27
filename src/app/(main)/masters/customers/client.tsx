@@ -16,6 +16,13 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Pencil, Trash2, Ban, CheckCircle2, RefreshCw, Loader2 } from "lucide-react"
 import { ColumnDef } from "@tanstack/react-table"
 import { toast } from "sonner"
@@ -63,6 +70,7 @@ export function CustomersClient({
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [deletingName, setDeletingName] = useState("")
   const [syncing, setSyncing] = useState(false)
+  const [paymentTerm, setPaymentTerm] = useState("")
 
   async function handleZohoSync() {
     setSyncing(true)
@@ -156,6 +164,7 @@ export function CustomersClient({
             className="h-8 w-8 p-0"
             onClick={() => {
               setEditingItem(row.original)
+              setPaymentTerm(row.original.paymentTerm || "")
               setDialogOpen(true)
             }}
           >
@@ -202,6 +211,10 @@ export function CustomersClient({
       toast.error("Customer name is required")
       return
     }
+    if (!paymentTerm) {
+      toast.error("Payment term is required")
+      return
+    }
 
     setLoading(true)
     try {
@@ -214,7 +227,7 @@ export function CustomersClient({
           address: (formData.get("address") as string) || undefined,
           contactPerson: (formData.get("contactPerson") as string) || undefined,
           trn: (formData.get("trn") as string) || undefined,
-          paymentTerm: (formData.get("paymentTerm") as string) || undefined,
+          paymentTerm,
         })
         toast.success("Customer updated successfully")
       } else {
@@ -226,7 +239,7 @@ export function CustomersClient({
           address: (formData.get("address") as string) || undefined,
           contactPerson: (formData.get("contactPerson") as string) || undefined,
           trn: (formData.get("trn") as string) || undefined,
-          paymentTerm: (formData.get("paymentTerm") as string) || undefined,
+          paymentTerm,
         })
         toast.success("Customer created successfully")
       }
@@ -265,6 +278,7 @@ export function CustomersClient({
         actionLabel="Add Customer"
         onAction={() => {
           setEditingItem(null)
+          setPaymentTerm("")
           setDialogOpen(true)
         }}
       >
@@ -362,12 +376,19 @@ export function CustomersClient({
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Payment Term</Label>
-                <Input
-                  name="paymentTerm"
-                  defaultValue={editingItem?.paymentTerm || ""}
-                  placeholder="e.g. Net 30, Due on Receipt"
-                />
+                <Label>Payment Term *</Label>
+                <Select value={paymentTerm} onValueChange={setPaymentTerm}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select payment term" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="COD">COD</SelectItem>
+                    <SelectItem value="30 Days">30 Days</SelectItem>
+                    <SelectItem value="60 Days">60 Days</SelectItem>
+                    <SelectItem value="Advance 50%">Advance 50%</SelectItem>
+                    <SelectItem value="Advance Payment">Advance Payment</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="flex justify-end gap-2">
