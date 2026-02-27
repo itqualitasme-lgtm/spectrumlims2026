@@ -24,6 +24,7 @@ interface Sample {
   status: string
   priority: string
   deletedAt: string
+  deletedByName: string | null
   createdAt: string
 }
 
@@ -101,6 +102,11 @@ export function DeletedRegistrationsClient({ samples }: { samples: Sample[] }) {
           "outline"
         return <Badge variant={variant}>{p.charAt(0).toUpperCase() + p.slice(1)}</Badge>
       },
+    },
+    {
+      accessorKey: "deletedByName",
+      header: "Deleted By",
+      cell: ({ row }) => row.original.deletedByName || "-",
     },
     {
       accessorKey: "deletedAt",

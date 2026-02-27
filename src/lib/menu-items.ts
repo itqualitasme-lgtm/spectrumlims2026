@@ -92,6 +92,12 @@ export const menuGroups: MenuGroup[] = [
         icon: Trash2,
         permission: "process:delete",
       },
+      {
+        title: "Deleted Reports",
+        href: "/process/trash/reports",
+        icon: Trash2,
+        permission: "process:delete",
+      },
     ],
   },
   {

@@ -300,6 +300,8 @@ model Report {
   reviewedById String?
   reviewedAt   DateTime?
   status       String    @default("draft")
+  deletedAt    DateTime?
+  deletedById  String?
   labId        String
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt

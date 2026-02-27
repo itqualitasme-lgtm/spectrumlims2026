@@ -12,7 +12,7 @@ export async function getReports() {
   const labId = user.labId
 
   const reports = await db.report.findMany({
-    where: { labId, status: { in: ["approved", "published"] } },
+    where: { labId, deletedAt: null, status: { in: ["approved", "published"] } },
     include: {
       sample: {
         include: {
@@ -52,7 +52,7 @@ export async function getReportsForAuthentication() {
   const labId = user.labId
 
   const reports = await db.report.findMany({
-    where: { labId, status: { in: ["draft", "review", "revision"] } },
+    where: { labId, deletedAt: null, status: { in: ["draft", "review", "revision"] } },
     include: {
       sample: {
         include: {
@@ -337,10 +337,11 @@ export async function deleteReport(reportId: string) {
   const report = await db.report.findFirst({ where: { id: reportId, labId } })
   if (!report) throw new Error("Report not found")
 
-  // Delete related report verifications first
-  await db.reportVerification.deleteMany({ where: { reportId } })
-
-  await db.report.delete({ where: { id: reportId } })
+  // Soft delete
+  await db.report.update({
+    where: { id: reportId },
+    data: { deletedAt: new Date(), deletedById: user.id },
+  })
 
   await logAudit(
     labId,
@@ -352,6 +353,7 @@ export async function deleteReport(reportId: string) {
   )
 
   revalidatePath("/process/reports")
+  revalidatePath("/process/trash/reports")
 
   return { success: true }
 }

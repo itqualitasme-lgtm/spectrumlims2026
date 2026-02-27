@@ -14,23 +14,24 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-import { restoreInvoice, permanentDeleteInvoice } from "@/actions/trash"
+import { restoreReport, permanentDeleteReport } from "@/actions/trash"
 
-interface Invoice {
+interface Report {
   id: string
-  invoiceNumber: string
-  invoiceType: string
-  client: { name: string; company: string | null }
-  createdBy: { name: string }
-  subtotal: number
-  total: number
+  reportNumber: string
   status: string
+  sample: {
+    sampleNumber: string
+    client: { name: string; company: string | null }
+    sampleType: { name: string }
+  }
+  createdBy: { name: string }
   deletedAt: string
   deletedByName: string | null
   createdAt: string
 }
 
-export function DeletedInvoicesClient({ invoices }: { invoices: Invoice[] }) {
+export function DeletedReportsClient({ reports }: { reports: Report[] }) {
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
@@ -38,8 +39,8 @@ export function DeletedInvoicesClient({ invoices }: { invoices: Invoice[] }) {
   async function handleRestore(id: string) {
     setLoading(id)
     try {
-      await restoreInvoice(id)
-      toast.success("Invoice restored successfully")
+      await restoreReport(id)
+      toast.success("Report restored successfully")
       router.refresh()
     } catch (e: any) {
       toast.error(e.message)
@@ -52,8 +53,8 @@ export function DeletedInvoicesClient({ invoices }: { invoices: Invoice[] }) {
     if (!deleteId) return
     setLoading(deleteId)
     try {
-      await permanentDeleteInvoice(deleteId)
-      toast.success("Invoice permanently deleted")
+      await permanentDeleteReport(deleteId)
+      toast.success("Report permanently deleted")
       setDeleteId(null)
       router.refresh()
     } catch (e: any) {
@@ -63,29 +64,31 @@ export function DeletedInvoicesClient({ invoices }: { invoices: Invoice[] }) {
     }
   }
 
-  const columns: ColumnDef<Invoice>[] = [
+  const columns: ColumnDef<Report>[] = [
     {
-      accessorKey: "invoiceNumber",
-      header: "Invoice #",
+      accessorKey: "reportNumber",
+      header: "Report #",
       cell: ({ row }) => (
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-sm">{row.original.invoiceNumber}</span>
-          {row.original.invoiceType === "proforma" && (
-            <Badge variant="outline" className="text-xs">Proforma</Badge>
-          )}
-        </div>
+        <span className="font-mono text-sm">{row.original.reportNumber}</span>
       ),
     },
     {
-      accessorKey: "client.name",
-      header: "Client",
-      cell: ({ row }) =>
-        row.original.client.company || row.original.client.name,
+      accessorKey: "sample.sampleNumber",
+      header: "Sample #",
+      cell: ({ row }) => (
+        <span className="font-mono text-xs">{row.original.sample.sampleNumber}</span>
+      ),
     },
     {
-      accessorKey: "total",
-      header: "Total",
-      cell: ({ row }) => `AED ${row.original.total.toFixed(2)}`,
+      id: "client",
+      header: "Client",
+      cell: ({ row }) =>
+        row.original.sample.client.company || row.original.sample.client.name,
+    },
+    {
+      id: "sampleType",
+      header: "Sample Type",
+      cell: ({ row }) => row.original.sample.sampleType.name,
     },
     {
       accessorKey: "status",
@@ -93,11 +96,15 @@ export function DeletedInvoicesClient({ invoices }: { invoices: Invoice[] }) {
       cell: ({ row }) => {
         const s = row.original.status
         const variant =
-          s === "paid" ? "default" :
-          s === "sent" ? "secondary" :
+          s === "published" ? "default" :
+          s === "approved" ? "secondary" :
           "outline"
         return <Badge variant={variant}>{s.charAt(0).toUpperCase() + s.slice(1)}</Badge>
       },
+    },
+    {
+      accessorKey: "createdBy.name",
+      header: "Created By",
     },
     {
       accessorKey: "deletedByName",
@@ -158,17 +165,17 @@ export function DeletedInvoicesClient({ invoices }: { invoices: Invoice[] }) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Deleted Invoices"
-        description="Restore or permanently delete invoices from the trash."
+        title="Deleted Reports"
+        description="Restore or permanently delete reports from the trash."
       />
 
-      <DataTable columns={columns} data={invoices} searchKey="invoiceNumber" />
+      <DataTable columns={columns} data={reports} searchKey="reportNumber" />
 
       <ConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
-        title="Permanently Delete Invoice"
-        description="This action cannot be undone. The invoice and all its items will be permanently removed from the database."
+        title="Permanently Delete Report"
+        description="This action cannot be undone. The report and its verifications will be permanently removed from the database."
         onConfirm={handlePermanentDelete}
         loading={!!loading}
         destructive
