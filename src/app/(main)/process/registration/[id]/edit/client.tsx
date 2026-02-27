@@ -70,6 +70,7 @@ function getTestMethodStr(test: TestParam): string {
 type SampleTypeOption = {
   id: string
   name: string
+  specificationStandard?: string | null
   defaultTests: string
 }
 
@@ -226,7 +227,10 @@ export function EditSampleClient({
   )
 
   const sampleTypeOptions = useMemo(
-    () => sampleTypes.map((st) => ({ value: st.id, label: st.name })),
+    () => sampleTypes.map((st) => ({
+      value: st.id,
+      label: st.specificationStandard ? `${st.name} — ${st.specificationStandard}` : st.name,
+    })),
     [sampleTypes]
   )
 

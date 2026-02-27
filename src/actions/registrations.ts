@@ -440,13 +440,14 @@ export async function getSampleTypesForSelect() {
 
   const sampleTypes = await db.sampleType.findMany({
     where: { labId, status: "active" },
-    select: { id: true, name: true, defaultTests: true },
+    select: { id: true, name: true, specificationStandard: true, defaultTests: true },
     orderBy: { name: "asc" },
   })
 
   return sampleTypes.map((st) => ({
     id: st.id,
     name: st.name,
+    specificationStandard: st.specificationStandard,
     defaultTests: st.defaultTests,
   }))
 }

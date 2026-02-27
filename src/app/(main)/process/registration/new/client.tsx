@@ -30,6 +30,7 @@ import { createRegistration, searchCustomers, getCustomerById, getCustomerAddres
 type SampleTypeOption = {
   id: string
   name: string
+  specificationStandard?: string | null
   defaultTests: string
 }
 
@@ -133,7 +134,10 @@ export function NewRegistrationClient({
   }
 
   const sampleTypeOptions = useMemo(
-    () => sampleTypes.map((st) => ({ value: st.id, label: st.name })),
+    () => sampleTypes.map((st) => ({
+      value: st.id,
+      label: st.specificationStandard ? `${st.name} — ${st.specificationStandard}` : st.name,
+    })),
     [sampleTypes]
   )
 
@@ -582,7 +586,7 @@ export function NewRegistrationClient({
                       </>
                     ) : (
                       <>
-                        <span className="text-xs text-muted-foreground italic pl-1">↳ {sampleTypes.find((st) => st.id === row.sampleTypeId)?.name || ""}</span>
+                        <span className="text-xs text-muted-foreground italic pl-1">↳ {(() => { const st = sampleTypes.find((s) => s.id === row.sampleTypeId); return st ? (st.specificationStandard ? `${st.name} — ${st.specificationStandard}` : st.name) : "" })()}</span>
                         <span />
                         <Select value={row.bottleQty} onValueChange={(v) => updateRow(row.id, { bottleQty: v })}>
                           <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
