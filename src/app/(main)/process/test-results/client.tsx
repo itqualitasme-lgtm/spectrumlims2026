@@ -712,7 +712,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
               )}
 
               {/* Test results table */}
-              <ScrollArea className="flex-1">
+              <div className="flex-1 overflow-auto">
                 {selectedSample.testResults.length > 0 ? (
                   <div className="p-2">
                     <Table>
@@ -824,7 +824,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                     </Button>
                   </div>
                 )}
-              </ScrollArea>
+              </div>
             </>
           )}
         </div>
