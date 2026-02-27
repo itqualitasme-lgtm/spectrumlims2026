@@ -465,7 +465,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                       completedSamples: completedCount,
                       typeGroups: Array.from(typeMap.entries()).map(([typeName, typeSamples]) => ({
                         typeName,
-                        samples: typeSamples,
+                        samples: typeSamples.sort((a, b) => (a.subSampleNumber ?? 0) - (b.subSampleNumber ?? 0)),
                       })),
                     })
                   }
@@ -561,10 +561,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                               const sCompletedTests = sample.testResults.filter((tr) => tr.status === "completed").length
                               const sTotalTests = sample.testResults.length
                               const hasRevision = sample.reports.length > 0 && sample.reports[0].status === "revision"
-                              // Show short sub-number for registration samples
-                              const shortNum = reg.regNumber
-                                ? sample.sampleNumber.replace(reg.regNumber + "-", "")
-                                : sample.sampleNumber
+                              const shortNum = sample.sampleNumber
                               // Build detail line: sample point, description, bottle size
                               const details = [
                                 sample.samplePoint,
@@ -572,35 +569,40 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                 sample.quantity ? `${sample.quantity}` : null,
                               ].filter(Boolean).join(" · ")
 
+                              const statusDot = sample.status === "completed"
+                                ? "bg-green-500"
+                                : sample.status === "testing"
+                                  ? "bg-blue-500"
+                                  : sample.status === "assigned"
+                                    ? "bg-primary"
+                                    : "bg-muted-foreground/40"
+
                               return (
                                 <button
                                   key={sample.id}
                                   type="button"
-                                  className={`w-full text-left px-3 py-1 hover:bg-muted/50 transition-colors border-b ${
+                                  className={`w-full text-left px-2.5 py-1 hover:bg-muted/50 transition-colors border-b ${
                                     isSelected ? "bg-muted border-l-2 border-l-primary" : ""
                                   } ${hasRevision ? "border-l-2 border-l-amber-500" : ""}`}
                                   onClick={() => setSelectedSampleId(sample.id)}
                                 >
-                                  <div className="flex items-center justify-between gap-2">
+                                  <div className="flex items-center justify-between gap-1.5">
                                     <div className="flex items-center gap-1.5 min-w-0">
-                                      {reg.regNumber && (
-                                        <span className="text-[9px] text-muted-foreground shrink-0 w-4 text-right">{sIdx + 1}.</span>
-                                      )}
-                                      <span className="font-mono text-xs font-semibold shrink-0">{shortNum}</span>
+                                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${statusDot}`} />
+                                      <span className="font-mono text-[11px] font-semibold shrink-0">{shortNum}</span>
                                       {details && (
-                                        <span className="text-[10px] text-muted-foreground truncate">
+                                        <span className="text-[9px] text-muted-foreground truncate">
                                           {details}
                                         </span>
                                       )}
                                     </div>
-                                    <div className="flex items-center gap-1 shrink-0">
+                                    <div className="flex items-center gap-1.5 shrink-0">
                                       {hasRevision && (
                                         <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1 py-0">Rev</Badge>
                                       )}
                                       {sTotalTests > 0 && (
-                                        <span className="text-[9px] text-muted-foreground">{sCompletedTests}/{sTotalTests}</span>
+                                        <span className="text-[9px] text-muted-foreground whitespace-nowrap">{sCompletedTests}/{sTotalTests}</span>
                                       )}
-                                      {sampleStatusBadge(sample.status)}
                                     </div>
                                   </div>
                                   {!reg.regNumber && (
