@@ -337,9 +337,8 @@ export async function deleteReport(reportId: string) {
   const report = await db.report.findFirst({ where: { id: reportId, labId } })
   if (!report) throw new Error("Report not found")
 
-  if (report.status !== "draft") {
-    throw new Error("Can only delete reports with draft status")
-  }
+  // Delete related report verifications first
+  await db.reportVerification.deleteMany({ where: { reportId } })
 
   await db.report.delete({ where: { id: reportId } })
 

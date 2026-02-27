@@ -702,11 +702,13 @@ export async function assignSample(sampleId: string, assignedToId: string | null
   const existing = await db.sample.findFirst({ where: { id: sampleId, labId } })
   if (!existing) throw new Error("Sample not found")
 
+  // Only update status if sample hasn't progressed beyond registration
+  const shouldUpdateStatus = ["pending", "registered"].includes(existing.status)
   const sample = await db.sample.update({
     where: { id: sampleId },
     data: {
       assignedToId: assignedToId || null,
-      status: assignedToId ? "assigned" : "registered",
+      ...(shouldUpdateStatus ? { status: assignedToId ? "assigned" : "registered" } : {}),
     },
   })
 
@@ -770,6 +772,39 @@ export async function deleteSample(sampleId: string) {
   )
 
   revalidatePath("/process/registration")
+  revalidatePath("/process/sample-collection")
+
+  return { success: true }
+}
+
+export async function deleteRegistration(registrationId: string) {
+  const session = await requirePermission("process", "delete")
+  const user = session.user as any
+  const labId = user.labId
+
+  const registration = await db.registration.findFirst({
+    where: { id: registrationId, labId },
+    include: { samples: { where: { deletedAt: null }, select: { id: true } } },
+  })
+  if (!registration) throw new Error("Registration not found")
+
+  // Soft delete all samples in this registration
+  await db.sample.updateMany({
+    where: { registrationId, labId, deletedAt: null },
+    data: { deletedAt: new Date(), deletedById: user.id },
+  })
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "process",
+    "delete",
+    `Deleted registration ${registration.registrationNumber} (${registration.samples.length} samples)`
+  )
+
+  revalidatePath("/process/registration")
+  revalidatePath("/process/test-results")
   revalidatePath("/process/sample-collection")
 
   return { success: true }

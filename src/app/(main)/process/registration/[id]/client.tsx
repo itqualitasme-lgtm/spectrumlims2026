@@ -143,8 +143,11 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
   const handleOpenAssign = async () => {
     try {
       const ch = await getChemistsForSelect()
-      setChemists(ch.map((c) => ({ value: c.id, label: c.name })))
-      setAssignedToId("")
+      setChemists([
+        { value: "public", label: "All Chemists (Public)" },
+        ...ch.map((c) => ({ value: c.id, label: c.name })),
+      ])
+      setAssignedToId("public")
       setAssignOpen(true)
     } catch {
       toast.error("Failed to load chemists")
@@ -153,13 +156,13 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
 
   const handleAssign = async () => {
     if (!assignedToId) {
-      toast.error("Please select a chemist")
+      toast.error("Please select an option")
       return
     }
 
     setLoading(true)
     try {
-      await assignSample(sample.id, assignedToId)
+      await assignSample(sample.id, assignedToId === "public" ? null : assignedToId)
       toast.success(`Sample ${sample.sampleNumber} assigned successfully`)
       setAssignOpen(false)
       router.refresh()
@@ -213,12 +216,10 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
                 <Printer className="mr-2 h-4 w-4" />
                 Print Label
               </Button>
-              {["pending", "registered"].includes(sample.status) && (
-                <Button onClick={handleOpenAssign}>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Assign
-                </Button>
-              )}
+              <Button onClick={handleOpenAssign}>
+                <UserPlus className="mr-2 h-4 w-4" />
+                {sample.assignedTo ? "Reassign" : "Assign"}
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -461,9 +462,11 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
       <Dialog open={assignOpen} onOpenChange={setAssignOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Assign Sample</DialogTitle>
+            <DialogTitle>{sample.assignedTo ? "Reassign" : "Assign"} Sample</DialogTitle>
             <DialogDescription>
-              Assign {sample.sampleNumber} to a chemist for testing.
+              {sample.assignedTo
+                ? `Currently assigned to ${sample.assignedTo.name}. Select a new assignee.`
+                : `Assign ${sample.sampleNumber} to a chemist for testing.`}
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

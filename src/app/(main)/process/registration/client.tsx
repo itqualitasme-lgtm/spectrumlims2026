@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
-import { Eye, UserPlus, Loader2, QrCode, Printer, Search } from "lucide-react"
+import { Eye, UserPlus, Loader2, QrCode, Printer, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -34,6 +34,7 @@ import {
 import {
   assignSample,
   getChemistsForSelect,
+  deleteRegistration,
 } from "@/actions/registrations"
 
 type RegistrationRow = {
@@ -205,6 +206,17 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
     }
   }
 
+  const handleDeleteRegistration = async (reg: RegistrationRow) => {
+    if (!confirm(`Delete registration ${reg.registrationNumber}? This will soft-delete all ${reg.sampleCount} sample(s).`)) return
+    try {
+      await deleteRegistration(reg.id)
+      toast.success(`Deleted registration ${reg.registrationNumber}`)
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete registration")
+    }
+  }
+
   const columns: ColumnDef<RegistrationRow, any>[] = [
     {
       id: "select",
@@ -314,6 +326,15 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
               title="Print QR Labels"
             >
               <QrCode className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+              onClick={() => handleDeleteRegistration(reg)}
+              title="Delete Registration"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
             </Button>
           </div>
         )

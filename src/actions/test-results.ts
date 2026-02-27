@@ -339,10 +339,6 @@ export async function deleteTestResult(testResultId: string) {
     throw new Error("Test result not found")
   }
 
-  if (testResult.status === "completed") {
-    throw new Error("Cannot delete a completed test result")
-  }
-
   await db.testResult.delete({ where: { id: testResultId } })
 
   await logAudit(
