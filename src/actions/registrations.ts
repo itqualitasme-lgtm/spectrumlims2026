@@ -257,7 +257,10 @@ export async function getRegistrations() {
     orderBy: { createdAt: "desc" },
   })
 
-  return registrations.map((reg) => {
+  // Filter out registrations with no active samples (all soft-deleted)
+  const activeRegistrations = registrations.filter((reg) => reg.samples.length > 0)
+
+  return activeRegistrations.map((reg) => {
     // Aggregate sample types with counts
     const typeMap = new Map<string, number>()
     for (const s of reg.samples) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useCallback } from "react"
+import { useState, useMemo, useCallback, useEffect } from "react"
 import Link from "next/link"
 import { ArrowLeft, Loader2, Plus, Trash2, ChevronDown, ChevronUp, Printer, CheckCircle2 } from "lucide-react"
 import { toast } from "sonner"
@@ -110,8 +110,14 @@ export function NewRegistrationClient({
   const [reference, setReference] = useState("")
   const [collectedById, setCollectedById] = useState("")
   const [collectionLocation, setCollectionLocation] = useState("")
-  const [collectionDate, setCollectionDate] = useState(() => new Date().toISOString().slice(0, 10))
-  const [collectionTime, setCollectionTime] = useState(() => new Date().toTimeString().slice(0, 5))
+  const [collectionDate, setCollectionDate] = useState("")
+  const [collectionTime, setCollectionTime] = useState("")
+
+  // Set date/time on client only to avoid hydration mismatch
+  useEffect(() => {
+    if (!collectionDate) setCollectionDate(new Date().toISOString().slice(0, 10))
+    if (!collectionTime) setCollectionTime(new Date().toTimeString().slice(0, 5))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sample rows
   const [samples, setSamples] = useState<SampleRow[]>([createEmptyRow()])
