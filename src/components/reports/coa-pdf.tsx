@@ -425,12 +425,12 @@ const styles = StyleSheet.create({
   },
   signaturesRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "center",
     marginTop: 4,
     alignItems: "flex-end",
   },
   signatureBlock: {
-    width: "28%",
+    flex: 1,
     alignItems: "center",
   },
   signatureImage: {
@@ -466,8 +466,8 @@ const styles = StyleSheet.create({
 
   // ---- QR Code ----
   qrContainer: {
+    flex: 1,
     alignItems: "center",
-    width: 75,
   },
   qrImage: {
     width: 60,
@@ -901,7 +901,7 @@ export function COAPDF({
                 )}
               </View>
             ) : (
-              <View style={{ width: 75 }} />
+              <View style={{ flex: 1 }} />
             )}
 
             {/* Company Seal (right) — hidden for letterhead */}
@@ -1283,7 +1283,6 @@ function COAPageContent(props: COAPDFProps) {
 
           {/* Authenticated By (Lab Manager) */}
           <View style={styles.signatureBlock}>
-            <Text style={styles.signatureLabel}>LABORATORY OPERATIONS</Text>
             {showHeaderFooter && report.reviewedBy?.signatureUrl && (
               <Image style={styles.signatureImage} src={report.reviewedBy.signatureUrl} />
             )}
@@ -1310,7 +1309,7 @@ function COAPageContent(props: COAPDFProps) {
               )}
             </View>
           ) : (
-            <View style={{ width: 75 }} />
+            <View style={{ flex: 1 }} />
           )}
 
           {/* Company Seal (right) */}
