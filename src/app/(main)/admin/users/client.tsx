@@ -412,16 +412,18 @@ export function UsersClient({
                 <Label>Designation</Label>
                 <Input name="designation" defaultValue={editingUser?.designation || ""} placeholder="e.g. Senior Chemist, Lab Manager" />
               </div>
-              <div className="grid gap-2">
-                <Label>Digital Signature</Label>
-                <ImageUpload
-                  value={userSignatureUrl}
-                  onChange={setUserSignatureUrl}
-                  folder="signatures"
-                  placeholder="Upload signature image..."
-                />
-                <p className="text-xs text-muted-foreground">Used for digital signing of reports (PNG with transparent background recommended).</p>
-              </div>
+              {editingUser && (
+                <div className="grid gap-2">
+                  <Label>Digital Signature</Label>
+                  <ImageUpload
+                    value={userSignatureUrl}
+                    onChange={setUserSignatureUrl}
+                    folder="signatures"
+                    placeholder="Upload signature image..."
+                  />
+                  <p className="text-xs text-muted-foreground">Used for digital signing of reports (PNG with transparent background recommended).</p>
+                </div>
+              )}
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setUserDialogOpen(false)}>Cancel</Button>
