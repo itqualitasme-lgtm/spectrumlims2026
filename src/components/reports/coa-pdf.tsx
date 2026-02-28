@@ -869,7 +869,7 @@ export function COAPDF({
           <View style={styles.signaturesRow}>
             {/* Lab Manager Signature (left) */}
             <View style={styles.signatureBlock}>
-              <Text style={styles.signatureLabel}>LABORATORY OPERATIONS</Text>
+
               {showHeaderFooter && report.reviewedBy?.signatureUrl && (
                 <Image style={styles.signatureImage} src={report.reviewedBy.signatureUrl} />
               )}

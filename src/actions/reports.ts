@@ -59,6 +59,20 @@ export async function getReportsForAuthentication() {
           client: true,
           sampleType: true,
           assignedTo: { select: { id: true, name: true } },
+          registration: {
+            select: {
+              registrationNumber: true,
+              reference: true,
+              collectionDate: true,
+              collectionLocation: true,
+              samplingMethod: true,
+              drawnBy: true,
+              deliveredBy: true,
+              sheetNumber: true,
+              notes: true,
+              registeredAt: true,
+            },
+          },
           testResults: {
             select: {
               id: true,

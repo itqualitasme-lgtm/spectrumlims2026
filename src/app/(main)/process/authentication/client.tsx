@@ -62,20 +62,40 @@ type TestResultInfo = {
   enteredBy: { id: string; name: string } | null
 }
 
+type RegistrationInfo = {
+  registrationNumber: string
+  reference: string | null
+  collectionDate: string | null
+  collectionLocation: string | null
+  samplingMethod: string | null
+  drawnBy: string | null
+  deliveredBy: string | null
+  sheetNumber: string | null
+  notes: string | null
+  registeredAt: string | null
+}
+
 type Report = {
   id: string
   reportNumber: string
   title: string | null
   summary: string | null
+  remarks: string | null
   status: string
   createdAt: string
   reviewedAt: string | null
   sample: {
     id: string
     sampleNumber: string
+    description: string | null
+    sampleCondition: string | null
+    quantity: string | null
+    collectionDate: string | null
+    collectionLocation: string | null
     client: { id: string; name: string; company: string | null }
     sampleType: { id: string; name: string }
     assignedTo: { id: string; name: string } | null
+    registration: RegistrationInfo | null
     testResults: TestResultInfo[]
   }
   createdBy: { id: string; name: string }
@@ -366,7 +386,7 @@ export function AuthenticationClient({
 
       {/* View Results Dialog */}
       <Dialog open={viewResultsOpen} onOpenChange={setViewResultsOpen}>
-        <DialogContent className="sm:max-w-[700px]">
+        <DialogContent className="sm:max-w-[750px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               Test Results — {selectedReport?.sample.sampleNumber}
@@ -375,6 +395,55 @@ export function AuthenticationClient({
               {selectedReport?.sample.client.company || selectedReport?.sample.client.name} — {selectedReport?.sample.sampleType.name}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Registration & Sample Details */}
+          {selectedReport && (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-x-4 gap-y-1.5 text-xs border rounded-md p-3 bg-muted/30">
+              {selectedReport.sample.registration?.registrationNumber && (
+                <div><span className="text-muted-foreground">Reg #:</span> <span className="font-medium">{selectedReport.sample.registration.registrationNumber}</span></div>
+              )}
+              {selectedReport.sample.registration?.reference && (
+                <div><span className="text-muted-foreground">Reference:</span> <span className="font-medium">{selectedReport.sample.registration.reference}</span></div>
+              )}
+              {selectedReport.sample.description && (
+                <div><span className="text-muted-foreground">Description:</span> <span className="font-medium">{selectedReport.sample.description}</span></div>
+              )}
+              {selectedReport.sample.sampleCondition && (
+                <div><span className="text-muted-foreground">Condition:</span> <span className="font-medium">{selectedReport.sample.sampleCondition}</span></div>
+              )}
+              {selectedReport.sample.quantity && (
+                <div><span className="text-muted-foreground">Quantity:</span> <span className="font-medium">{selectedReport.sample.quantity}</span></div>
+              )}
+              {selectedReport.sample.registration?.samplingMethod && (
+                <div><span className="text-muted-foreground">Sampling:</span> <span className="font-medium">{selectedReport.sample.registration.samplingMethod}</span></div>
+              )}
+              {selectedReport.sample.registration?.drawnBy && (
+                <div><span className="text-muted-foreground">Drawn By:</span> <span className="font-medium">{selectedReport.sample.registration.drawnBy}</span></div>
+              )}
+              {selectedReport.sample.registration?.deliveredBy && (
+                <div><span className="text-muted-foreground">Delivered By:</span> <span className="font-medium">{selectedReport.sample.registration.deliveredBy}</span></div>
+              )}
+              {(selectedReport.sample.collectionDate || selectedReport.sample.registration?.collectionDate) && (
+                <div><span className="text-muted-foreground">Collection:</span> <span className="font-medium">{formatDate(selectedReport.sample.collectionDate || selectedReport.sample.registration?.collectionDate || "")}</span></div>
+              )}
+              {(selectedReport.sample.collectionLocation || selectedReport.sample.registration?.collectionLocation) && (
+                <div><span className="text-muted-foreground">Location:</span> <span className="font-medium">{selectedReport.sample.collectionLocation || selectedReport.sample.registration?.collectionLocation}</span></div>
+              )}
+              {selectedReport.sample.registration?.sheetNumber && (
+                <div><span className="text-muted-foreground">Sheet #:</span> <span className="font-medium">{selectedReport.sample.registration.sheetNumber}</span></div>
+              )}
+              {selectedReport.sample.registration?.registeredAt && (
+                <div><span className="text-muted-foreground">Registered:</span> <span className="font-medium">{formatDate(selectedReport.sample.registration.registeredAt)}</span></div>
+              )}
+              {selectedReport.remarks && (
+                <div className="col-span-2 md:col-span-3"><span className="text-muted-foreground">Remarks:</span> <span className="font-medium">{selectedReport.remarks}</span></div>
+              )}
+              {selectedReport.sample.registration?.notes && (
+                <div className="col-span-2 md:col-span-3"><span className="text-muted-foreground">Notes:</span> <span className="font-medium">{selectedReport.sample.registration.notes}</span></div>
+              )}
+            </div>
+          )}
+
           <div className="py-2">
             {selectedReport && selectedReport.sample.testResults.length > 0 ? (
               <div className="rounded-md border max-h-[400px] overflow-y-auto">
