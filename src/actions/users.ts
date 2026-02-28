@@ -171,23 +171,10 @@ export async function deleteUser(id: string) {
   const target = await db.user.findFirst({ where: { id, labId: user.labId } })
   if (!target) throw new Error("User not found")
 
-  // Check all associations that would prevent deletion
-  const [sampleCount, reportCount, invoiceCount, quotationCount, contractCount, registrationCount] = await Promise.all([
-    db.sample.count({
-      where: {
-        labId: user.labId,
-        OR: [
-          { assignedToId: id },
-          { collectedById: id },
-          { registeredById: id },
-        ],
-      },
-    }),
+  // Check REQUIRED associations that would prevent deletion (cannot be nullified)
+  const [reportCreatedCount, invoiceCount, quotationCount, contractCount] = await Promise.all([
     db.report.count({
-      where: {
-        labId: user.labId,
-        OR: [{ createdById: id }, { reviewedById: id }],
-      },
+      where: { labId: user.labId, createdById: id },
     }),
     db.invoice.count({
       where: { labId: user.labId, createdById: id },
@@ -198,27 +185,30 @@ export async function deleteUser(id: string) {
     db.contract.count({
       where: { labId: user.labId, createdById: id },
     }),
-    db.registration.count({
-      where: {
-        labId: user.labId,
-        OR: [{ collectedById: id }, { registeredById: id }],
-      },
-    }),
   ])
 
   const associations: string[] = []
-  if (sampleCount > 0) associations.push(`${sampleCount} sample(s)`)
-  if (reportCount > 0) associations.push(`${reportCount} report(s)`)
+  if (reportCreatedCount > 0) associations.push(`${reportCreatedCount} report(s)`)
   if (invoiceCount > 0) associations.push(`${invoiceCount} invoice(s)`)
   if (quotationCount > 0) associations.push(`${quotationCount} quotation(s)`)
   if (contractCount > 0) associations.push(`${contractCount} contract(s)`)
-  if (registrationCount > 0) associations.push(`${registrationCount} registration(s)`)
 
   if (associations.length > 0) {
     throw new Error(
       `Cannot delete user. They have ${associations.join(", ")} associated. Consider deactivating instead.`
     )
   }
+
+  // Nullify optional references before deleting
+  await Promise.all([
+    db.sample.updateMany({ where: { assignedToId: id }, data: { assignedToId: null } }),
+    db.sample.updateMany({ where: { collectedById: id }, data: { collectedById: null } }),
+    db.sample.updateMany({ where: { registeredById: id }, data: { registeredById: null } }),
+    db.testResult.updateMany({ where: { enteredById: id }, data: { enteredById: null } }),
+    db.report.updateMany({ where: { reviewedById: id }, data: { reviewedById: null } }),
+    db.registration.updateMany({ where: { collectedById: id }, data: { collectedById: null } }),
+    db.registration.updateMany({ where: { registeredById: id }, data: { registeredById: null } }),
+  ])
 
   const deletedUser = await db.user.delete({
     where: { id },
