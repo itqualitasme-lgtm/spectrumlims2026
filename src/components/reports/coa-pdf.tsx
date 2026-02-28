@@ -603,9 +603,13 @@ export function COAPDF({
   const headerImageUrl = template?.headerImageUrl || null
   const footerImageUrl = template?.footerImageUrl || null
 
-  // Determine title
-  const reportTitle = report.title || "CERTIFICATE OF QUALITY"
+  // Determine title — strip sample type suffix if already appended (e.g. "CERTIFICATE OF QUALITY - DIESEL")
+  const rawTitle = report.title || "CERTIFICATE OF QUALITY"
   const sampleTypeName = sample.sampleType.name
+  const typeSuffix = ` - ${sampleTypeName}`
+  const reportTitle = rawTitle.toUpperCase().endsWith(typeSuffix.toUpperCase())
+    ? rawTitle.slice(0, -typeSuffix.length)
+    : rawTitle
 
   // Specification standard for table column header (e.g. "ISO 8217: 2024")
   const specStandard = sample.sampleType.specificationStandard || "Specification"
@@ -667,6 +671,7 @@ export function COAPDF({
         {/* ===== TITLE ===== */}
         <View style={styles.titleSection}>
           <Text style={styles.title}>{reportTitle.toUpperCase()}</Text>
+          <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
         </View>
 
         {/* ===== REPORT NO ===== */}
@@ -1008,8 +1013,12 @@ function COAPageContent(props: COAPDFProps) {
   const headerImageUrl = template?.headerImageUrl || null
   const footerImageUrl = template?.footerImageUrl || null
 
-  const reportTitle = report.title || "CERTIFICATE OF QUALITY"
+  const rawTitle2 = report.title || "CERTIFICATE OF QUALITY"
   const sampleTypeName = sample.sampleType.name
+  const typeSuffix2 = ` - ${sampleTypeName}`
+  const reportTitle = rawTitle2.toUpperCase().endsWith(typeSuffix2.toUpperCase())
+    ? rawTitle2.slice(0, -typeSuffix2.length)
+    : rawTitle2
   const specStandard = sample.sampleType.specificationStandard || "Specification"
   const testedByName = testedBy?.name || "-"
 
@@ -1083,6 +1092,7 @@ function COAPageContent(props: COAPDFProps) {
       {/* TITLE */}
       <View style={styles.titleSection}>
         <Text style={styles.title}>{reportTitle.toUpperCase()}</Text>
+        <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
       </View>
 
       {/* REPORT NO */}
