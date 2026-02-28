@@ -593,9 +593,6 @@ export function COAPDF({
         {/* ===== TITLE ===== */}
         <View style={styles.titleSection}>
           <Text style={styles.title}>{reportTitle.toUpperCase()}</Text>
-          {!reportTitle.toUpperCase().includes(sampleTypeName.toUpperCase()) && (
-            <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
-          )}
         </View>
 
         {/* ===== REPORT NO ===== */}
@@ -1034,9 +1031,6 @@ function COAPageContent(props: COAPDFProps) {
       {/* TITLE */}
       <View style={styles.titleSection}>
         <Text style={styles.title}>{reportTitle.toUpperCase()}</Text>
-        {!reportTitle.toUpperCase().includes(sampleTypeName.toUpperCase()) && (
-          <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
-        )}
       </View>
 
       {/* REPORT NO */}
