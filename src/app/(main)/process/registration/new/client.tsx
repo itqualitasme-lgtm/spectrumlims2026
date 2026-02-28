@@ -520,8 +520,8 @@ export function NewRegistrationClient({
               </div>
             </div>
           </div>
-          {/* Row 2 */}
-          <div className="grid grid-cols-2 md:grid-cols-6 gap-x-3 gap-y-1.5 mt-1.5">
+          {/* Row 2: Reference, Location, Sampler (wider), Condition */}
+          <div className="grid grid-cols-2 md:grid-cols-[1fr_1fr_1.5fr_120px] gap-x-3 gap-y-1.5 mt-1.5">
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Reference / PO</Label>
               <Input className="h-9" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number" />
@@ -541,7 +541,7 @@ export function NewRegistrationClient({
               />
             </div>
             <div className="grid gap-0.5">
-              <Label className="text-xs text-muted-foreground">Sample Condition</Label>
+              <Label className="text-xs text-muted-foreground">Condition</Label>
               <Select value={sampleCondition} onValueChange={setSampleCondition}>
                 <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -553,6 +553,9 @@ export function NewRegistrationClient({
                 </SelectContent>
               </Select>
             </div>
+          </div>
+          {/* Row 3: Sampling, Sheet No */}
+          <div className="grid grid-cols-2 md:grid-cols-[150px_200px_1fr] gap-x-3 gap-y-1.5 mt-1.5">
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampling</Label>
               <Select value={samplingMethod} onValueChange={setSamplingMethod}>
