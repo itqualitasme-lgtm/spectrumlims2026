@@ -223,10 +223,11 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
     textAlign: "center",
+    textDecoration: "underline",
   },
 
   // ---- Report Number line ----
