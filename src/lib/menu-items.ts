@@ -162,6 +162,12 @@ export const menuGroups: MenuGroup[] = [
         permission: "admin:view",
       },
       {
+        title: "Import / Export",
+        href: "/admin/import-export",
+        icon: FileSpreadsheet,
+        permission: "admin:view",
+      },
+      {
         title: "Audit Logs",
         href: "/admin/audit-logs",
         icon: ScrollText,
