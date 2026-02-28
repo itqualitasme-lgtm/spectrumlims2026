@@ -25,6 +25,8 @@ interface ReportTemplate {
   accreditationText: string | null
   isoLogoUrl: string | null
   sealUrl: string | null
+  headerImageUrl: string | null
+  footerImageUrl: string | null
   showLabLogo: boolean
   isDefault: boolean
 }
@@ -49,6 +51,8 @@ export function EditReportTemplateClient({
   )
   const [formIsoLogoUrl, setFormIsoLogoUrl] = useState(template.isoLogoUrl || "")
   const [formSealUrl, setFormSealUrl] = useState(template.sealUrl || "")
+  const [formHeaderImageUrl, setFormHeaderImageUrl] = useState(template.headerImageUrl || "")
+  const [formFooterImageUrl, setFormFooterImageUrl] = useState(template.footerImageUrl || "")
   const [formShowLabLogo, setFormShowLabLogo] = useState(template.showLabLogo)
   const [formIsDefault, setFormIsDefault] = useState(template.isDefault)
 
@@ -69,6 +73,8 @@ export function EditReportTemplateClient({
         accreditationText: formAccreditationText || undefined,
         isoLogoUrl: formIsoLogoUrl || undefined,
         sealUrl: formSealUrl || undefined,
+        headerImageUrl: formHeaderImageUrl || undefined,
+        footerImageUrl: formFooterImageUrl || undefined,
         showLabLogo: formShowLabLogo,
         isDefault: formIsDefault,
       })
@@ -166,7 +172,44 @@ export function EditReportTemplateClient({
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-base">Header & Footer Images</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label>Header Image (PNG)</Label>
+                <ImageUpload
+                  value={formHeaderImageUrl}
+                  onChange={setFormHeaderImageUrl}
+                  folder="templates"
+                  placeholder="Upload header image..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Full-width header image with logos, lab name, and accreditation. When set, replaces the individual logo fields below.
+                </p>
+              </div>
+              <div className="grid gap-2">
+                <Label>Footer Image (PNG)</Label>
+                <ImageUpload
+                  value={formFooterImageUrl}
+                  onChange={setFormFooterImageUrl}
+                  folder="templates"
+                  placeholder="Upload footer image..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Full-width footer image with contact details. When set, replaces the red contact bar.
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle className="text-base">Logos & Seal</CardTitle>
+          <p className="text-xs text-muted-foreground">Used only when header/footer images above are not uploaded.</p>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6">

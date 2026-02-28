@@ -345,6 +345,8 @@ model ReportTemplate {
   accreditationText    String?
   isoLogoUrl           String?
   sealUrl              String?
+  headerImageUrl       String?
+  footerImageUrl       String?
   showLabLogo     Boolean  @default(true)
   isDefault       Boolean  @default(false)
   labId           String

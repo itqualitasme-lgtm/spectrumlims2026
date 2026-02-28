@@ -208,6 +208,8 @@ export async function GET(request: NextRequest) {
             accreditationText: template.accreditationText,
             isoLogoUrl: template.isoLogoUrl,
             sealUrl: template.sealUrl,
+            headerImageUrl: template.headerImageUrl,
+            footerImageUrl: template.footerImageUrl,
             showLabLogo: template.showLabLogo,
           } : null,
           qrCodeDataUrl,

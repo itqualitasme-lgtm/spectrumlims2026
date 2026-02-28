@@ -114,6 +114,8 @@ interface TemplateInfo {
   accreditationText?: string | null
   isoLogoUrl?: string | null
   sealUrl?: string | null
+  headerImageUrl?: string | null
+  footerImageUrl?: string | null
   showLabLogo?: boolean
 }
 
@@ -155,7 +157,7 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     fontSize: 9,
     paddingTop: 120,
-    paddingBottom: 50,
+    paddingBottom: 100,
     paddingHorizontal: 35,
     color: TEXT_COLOR,
   },
@@ -477,6 +479,19 @@ const styles = StyleSheet.create({
     fontSize: 6.5,
     color: GRAY_TEXT,
   },
+  footerLetterhead: {
+    position: "absolute",
+    bottom: 55,
+    left: 35,
+    right: 35,
+  },
+  pageNumberLetterhead: {
+    position: "absolute",
+    bottom: 45,
+    right: 35,
+    fontSize: 6.5,
+    color: GRAY_TEXT,
+  },
 })
 
 // ============= HELPERS =============
@@ -543,6 +558,8 @@ export function COAPDF({
   const accreditationLogoUrl = template?.accreditationLogoUrl || null
   const accreditationText = template?.accreditationText || null
   const isoLogoUrl = template?.isoLogoUrl || null
+  const headerImageUrl = template?.headerImageUrl || null
+  const footerImageUrl = template?.footerImageUrl || null
 
   // Determine title
   const reportTitle = report.title || "CERTIFICATE OF QUALITY"
@@ -563,7 +580,11 @@ export function COAPDF({
     >
       <Page size="A4" style={showHeaderFooter ? styles.page : styles.pageLetterhead}>
         {/* ===== HEADER (fixed on every page) ===== */}
-        {showHeaderFooter && (
+        {showHeaderFooter && headerImageUrl ? (
+        <View style={{ marginBottom: 6 }} fixed>
+          <Image src={headerImageUrl} style={{ width: "100%", objectFit: "contain" as any }} />
+        </View>
+        ) : showHeaderFooter ? (
         <View style={styles.header} fixed>
           <View style={styles.headerRow}>
             {showLabLogo && logoUrl ? (
@@ -599,7 +620,7 @@ export function COAPDF({
             </View>
           </View>
         </View>
-        )}
+        ) : null}
 
         {/* ===== TITLE ===== */}
         <View style={styles.titleSection}>
@@ -881,7 +902,7 @@ export function COAPDF({
         </View>
 
         {/* ===== FOOTER (fixed on every page) ===== */}
-        <View style={styles.footer} fixed>
+        <View style={showHeaderFooter ? styles.footer : styles.footerLetterhead} fixed>
           {/* Disclaimer text */}
           {footerLines.map((line, idx) => (
             <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
@@ -893,8 +914,10 @@ export function COAPDF({
             </Text>
           )}
 
-          {/* Red contact bar — hidden for letterhead printing */}
-          {showHeaderFooter && (
+          {/* Footer bar — image or red contact bar */}
+          {showHeaderFooter && footerImageUrl ? (
+            <Image src={footerImageUrl} style={{ width: "100%", marginTop: 3, objectFit: "contain" as any }} />
+          ) : showHeaderFooter ? (
           <View style={styles.footerBar}>
             <Text style={styles.footerBarText}>
               {[
@@ -907,12 +930,12 @@ export function COAPDF({
                 .join("  |  ")}
             </Text>
           </View>
-          )}
+          ) : null}
         </View>
 
         {/* Page Number */}
         <Text
-          style={styles.pageNumber}
+          style={showHeaderFooter ? styles.pageNumber : styles.pageNumberLetterhead}
           render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
           fixed
         />
@@ -972,6 +995,8 @@ function COAPageContent(props: COAPDFProps) {
   const accreditationLogoUrl = template?.accreditationLogoUrl || null
   const accreditationText = template?.accreditationText || null
   const isoLogoUrl = template?.isoLogoUrl || null
+  const headerImageUrl = template?.headerImageUrl || null
+  const footerImageUrl = template?.footerImageUrl || null
 
   const reportTitle = report.title || "CERTIFICATE OF QUALITY"
   const sampleTypeName = sample.sampleType.name
@@ -1003,7 +1028,11 @@ function COAPageContent(props: COAPDFProps) {
   return (
     <Page size="A4" style={showHeaderFooter ? styles.page : styles.pageLetterhead}>
       {/* HEADER (fixed on every page) */}
-      {showHeaderFooter && (
+      {showHeaderFooter && headerImageUrl ? (
+      <View style={{ marginBottom: 6 }} fixed>
+        <Image src={headerImageUrl} style={{ width: "100%", objectFit: "contain" as any }} />
+      </View>
+      ) : showHeaderFooter ? (
       <View style={styles.header} fixed>
         <View style={styles.headerRow}>
           {showLabLogo && logoUrl ? (
@@ -1039,7 +1068,7 @@ function COAPageContent(props: COAPDFProps) {
           </View>
         </View>
       </View>
-      )}
+      ) : null}
 
       {/* TITLE */}
       <View style={styles.titleSection}>
@@ -1266,7 +1295,7 @@ function COAPageContent(props: COAPDFProps) {
       </View>
 
       {/* FOOTER (fixed on every page) */}
-      <View style={styles.footer} fixed>
+      <View style={showHeaderFooter ? styles.footer : styles.footerLetterhead} fixed>
         {footerLines.map((line, idx) => (
           <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
         ))}
@@ -1278,7 +1307,10 @@ function COAPageContent(props: COAPDFProps) {
         )}
 
         {/* Red contact bar — hidden for letterhead printing */}
-        {showHeaderFooter && (
+        {/* Footer bar — image or red contact bar */}
+        {showHeaderFooter && footerImageUrl ? (
+          <Image src={footerImageUrl} style={{ width: "100%", marginTop: 3, objectFit: "contain" as any }} />
+        ) : showHeaderFooter ? (
         <View style={styles.footerBar}>
           <Text style={styles.footerBarText}>
             {[
@@ -1291,12 +1323,12 @@ function COAPageContent(props: COAPDFProps) {
               .join("  |  ")}
           </Text>
         </View>
-        )}
+        ) : null}
       </View>
 
       {/* Page Number */}
       <Text
-        style={styles.pageNumber}
+        style={showHeaderFooter ? styles.pageNumber : styles.pageNumberLetterhead}
         render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
         fixed
       />

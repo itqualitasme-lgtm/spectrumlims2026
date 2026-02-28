@@ -49,6 +49,8 @@ export async function createReportTemplate(data: {
   accreditationText?: string
   isoLogoUrl?: string
   sealUrl?: string
+  headerImageUrl?: string
+  footerImageUrl?: string
   showLabLogo?: boolean
   isDefault?: boolean
 }) {
@@ -76,6 +78,8 @@ export async function createReportTemplate(data: {
       accreditationText: data.accreditationText?.trim() || null,
       isoLogoUrl: data.isoLogoUrl?.trim() || null,
       sealUrl: data.sealUrl?.trim() || null,
+      headerImageUrl: data.headerImageUrl?.trim() || null,
+      footerImageUrl: data.footerImageUrl?.trim() || null,
       showLabLogo: data.showLabLogo ?? true,
       isDefault: data.isDefault ?? false,
       labId,
@@ -98,6 +102,8 @@ export async function updateReportTemplate(
     accreditationText?: string
     isoLogoUrl?: string
     sealUrl?: string
+    headerImageUrl?: string
+    footerImageUrl?: string
     showLabLogo?: boolean
     isDefault?: boolean
   }
@@ -128,6 +134,8 @@ export async function updateReportTemplate(
       accreditationText: data.accreditationText?.trim() || null,
       isoLogoUrl: data.isoLogoUrl?.trim() || null,
       sealUrl: data.sealUrl?.trim() || null,
+      headerImageUrl: data.headerImageUrl?.trim() || null,
+      footerImageUrl: data.footerImageUrl?.trim() || null,
       showLabLogo: data.showLabLogo,
       isDefault: data.isDefault,
     },
