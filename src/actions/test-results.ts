@@ -34,7 +34,7 @@ export async function getSamplesForTestEntry() {
       sampleType: true,
       client: true,
       assignedTo: { select: { name: true } },
-      registration: { select: { id: true, registrationNumber: true, samplingMethod: true, drawnBy: true, sheetNumber: true } },
+      registration: { select: { id: true, registrationNumber: true, samplingMethod: true, drawnBy: true, deliveredBy: true, sheetNumber: true } },
       testResults: {
         include: {
           enteredBy: { select: { name: true } },
@@ -310,7 +310,7 @@ export async function addTestsToSample(
 
   await db.testResult.createMany({
     data: tests.map((test) => {
-      const tatDays = test.tat || null
+      const tatDays = test.tat || 3
       const dueDate = tatDays
         ? new Date(registeredAt.getTime() + tatDays * 24 * 60 * 60 * 1000)
         : null

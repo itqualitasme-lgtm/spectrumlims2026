@@ -30,6 +30,11 @@ type RegistrationRow = {
   testedDate: string | null
   releasedDate: string | null
   sheetNumber: string | null
+  samplingMethod: string | null
+  drawnBy: string | null
+  deliveredBy: string | null
+  collectionDate: string | null
+  collectionLocation: string | null
   hasProforma: boolean
   hasTaxInvoice: boolean
 }
@@ -169,6 +174,39 @@ export function StatusTrackingClient() {
       header: "Sheet#",
       cell: ({ row }) => (
         <span className="text-[10px] truncate max-w-[60px] block">{row.original.sheetNumber || "-"}</span>
+      ),
+    },
+    {
+      accessorKey: "samplingMethod",
+      header: "Sampling",
+      cell: ({ row }) => (
+        <span className="text-[10px] truncate max-w-[60px] block">{row.original.samplingMethod || "-"}</span>
+      ),
+    },
+    {
+      accessorKey: "drawnBy",
+      header: "Drawn By",
+      cell: ({ row }) => (
+        <span className="text-[10px] truncate max-w-[80px] block">{row.original.drawnBy || "-"}</span>
+      ),
+    },
+    {
+      accessorKey: "deliveredBy",
+      header: "Delivered By",
+      cell: ({ row }) => (
+        <span className="text-[10px] truncate max-w-[80px] block">{row.original.deliveredBy || "-"}</span>
+      ),
+    },
+    {
+      accessorKey: "collectionDate",
+      header: "Collected",
+      cell: ({ row }) => <span className="text-[10px] whitespace-nowrap">{formatDate(row.original.collectionDate)}</span>,
+    },
+    {
+      accessorKey: "collectionLocation",
+      header: "Location",
+      cell: ({ row }) => (
+        <span className="text-[10px] truncate max-w-[80px] block">{row.original.collectionLocation || "-"}</span>
       ),
     },
     {

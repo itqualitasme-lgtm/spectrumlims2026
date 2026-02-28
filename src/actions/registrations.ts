@@ -204,7 +204,7 @@ export async function createRegistration(data: {
       if (tests.length > 0) {
         await db.testResult.createMany({
           data: tests.map((test, idx) => {
-            const tatDays = test.tat || null
+            const tatDays = test.tat || 3
             const dueDate = tatDays
               ? new Date(recordDate.getTime() + tatDays * 24 * 60 * 60 * 1000)
               : null
@@ -636,7 +636,7 @@ export async function createSample(data: {
         if (testsToCreate.length > 0) {
           await db.testResult.createMany({
             data: testsToCreate.map((test) => {
-              const tatDays = test.tat || null
+              const tatDays = test.tat || 3
               const dueDate = tatDays
                 ? new Date(recordDate.getTime() + tatDays * 24 * 60 * 60 * 1000)
                 : null

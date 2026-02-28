@@ -166,6 +166,11 @@ export async function getStatusTrackingData(filters: {
         testedDate: testedDate?.toISOString() || null,
         releasedDate: releasedDate?.toISOString() || null,
         sheetNumber: reg.sheetNumber || null,
+        samplingMethod: reg.samplingMethod || null,
+        drawnBy: reg.drawnBy || null,
+        deliveredBy: reg.deliveredBy || null,
+        collectionDate: reg.samples[0]?.collectionDate?.toISOString() || null,
+        collectionLocation: reg.samples[0]?.collectionLocation || null,
         hasProforma,
         hasTaxInvoice,
       }
