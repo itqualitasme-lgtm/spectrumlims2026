@@ -742,7 +742,7 @@ export function COAPDF({
                 <Text style={styles.infoGridValue}>{sample.reference || ""}</Text>
               </View>
               <View style={styles.infoGridRight}>
-                <Text style={styles.infoGridLabel}>{sample.sheetNumber ? "Sheet No." : ""}</Text>
+                <Text style={styles.infoGridLabel}>{sample.sheetNumber ? "Lab Ref No." : ""}</Text>
                 <Text style={styles.infoGridSep}>{sample.sheetNumber ? ":" : ""}</Text>
                 <Text style={styles.infoGridValue}>{sample.sheetNumber || ""}</Text>
               </View>
@@ -1157,7 +1157,7 @@ function COAPageContent(props: COAPDFProps) {
               <Text style={styles.infoGridValue}>{sample.reference || ""}</Text>
             </View>
             <View style={styles.infoGridRight}>
-              <Text style={styles.infoGridLabel}>{sample.sheetNumber ? "Sheet No." : ""}</Text>
+              <Text style={styles.infoGridLabel}>{sample.sheetNumber ? "Lab Ref No." : ""}</Text>
               <Text style={styles.infoGridSep}>{sample.sheetNumber ? ":" : ""}</Text>
               <Text style={styles.infoGridValue}>{sample.sheetNumber || ""}</Text>
             </View>
