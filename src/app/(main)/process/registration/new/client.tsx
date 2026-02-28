@@ -519,14 +519,16 @@ export function NewRegistrationClient({
                 <Input className="h-9 w-[180px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
               </div>
             </div>
-            {/* Row 2: Reference/PO, Location, Sampler, Sample Condition */}
+          </div>
+          {/* Row 2 */}
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-x-3 gap-y-1.5 mt-1.5">
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Reference / PO</Label>
               <Input className="h-9" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number" />
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Location</Label>
-              <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="Auto-filled from customer address" />
+              <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="Customer address" />
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampler / Reception *</Label>
@@ -551,7 +553,6 @@ export function NewRegistrationClient({
                 </SelectContent>
               </Select>
             </div>
-            {/* Row 3: Sampling Method, Sheet Number */}
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampling</Label>
               <Select value={samplingMethod} onValueChange={setSamplingMethod}>
@@ -566,7 +567,7 @@ export function NewRegistrationClient({
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2 grid gap-0.5">
+            <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sheet No.</Label>
               <Input className="h-9" value={sheetNumber} onChange={(e) => setSheetNumber(e.target.value)} placeholder="Optional" />
             </div>
