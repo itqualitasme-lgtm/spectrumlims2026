@@ -151,7 +151,8 @@ export async function getTestResults(sampleId: string) {
 
 export async function batchUpdateTestResults(
   sampleId: string,
-  results: { id: string; resultValue: string }[]
+  results: { id: string; resultValue: string }[],
+  remarks?: string
 ) {
   const session = await requirePermission("process", "edit")
   const user = session.user as any
@@ -249,6 +250,17 @@ export async function batchUpdateTestResults(
       await db.sample.update({
         where: { id: sampleId },
         data: { status: "testing" },
+      })
+    }
+  }
+
+  // Save remarks on the report if provided
+  if (remarks !== undefined) {
+    const report = await db.report.findFirst({ where: { sampleId, labId, deletedAt: null } })
+    if (report) {
+      await db.report.update({
+        where: { id: report.id },
+        data: { remarks },
       })
     }
   }
@@ -354,5 +366,53 @@ export async function deleteTestResult(testResultId: string) {
   revalidatePath("/process/registration")
   revalidatePath(`/process/registration/${testResult.sampleId}`)
 
+  return { success: true }
+}
+
+// ============= REPORT REMARKS =============
+
+export async function getReportRemarks(sampleId: string) {
+  const session = await getSession()
+  const user = session.user as any
+
+  const report = await db.report.findFirst({
+    where: { sampleId, labId: user.labId, deletedAt: null },
+    select: { remarks: true },
+  })
+
+  return report?.remarks || ""
+}
+
+export async function getPrefilledRemarks() {
+  const session = await getSession()
+  const user = session.user as any
+
+  const remarks = await db.reportRemark.findMany({
+    where: { labId: user.labId },
+    orderBy: { text: "asc" },
+  })
+
+  return remarks.map((r) => ({ id: r.id, text: r.text }))
+}
+
+export async function createPrefilledRemark(text: string) {
+  const session = await requirePermission("process", "edit")
+  const user = session.user as any
+
+  const remark = await db.reportRemark.create({
+    data: { text: text.trim(), labId: user.labId },
+  })
+
+  return { id: remark.id, text: remark.text }
+}
+
+export async function deletePrefilledRemark(id: string) {
+  const session = await requirePermission("process", "edit")
+  const user = session.user as any
+
+  const existing = await db.reportRemark.findFirst({ where: { id, labId: user.labId } })
+  if (!existing) throw new Error("Remark not found")
+
+  await db.reportRemark.delete({ where: { id } })
   return { success: true }
 }

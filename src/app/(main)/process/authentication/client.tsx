@@ -124,7 +124,19 @@ const STATUS_OPTIONS = [
   { value: "revision", label: "Revision Required" },
 ]
 
-export function AuthenticationClient({ reports }: { reports: Report[] }) {
+type Template = {
+  id: string
+  name: string
+  isDefault: boolean
+}
+
+export function AuthenticationClient({
+  reports,
+  templates,
+}: {
+  reports: Report[]
+  templates: Template[]
+}) {
   const router = useRouter()
   const [statusFilter, setStatusFilter] = useState("all")
 
@@ -136,6 +148,7 @@ export function AuthenticationClient({ reports }: { reports: Report[] }) {
   // Selected report for actions
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
   const [revisionReason, setRevisionReason] = useState("")
+  const [selectedTemplateId, setSelectedTemplateId] = useState("")
 
   const filteredReports = useMemo(() => {
     if (statusFilter === "all") return reports
@@ -152,9 +165,9 @@ export function AuthenticationClient({ reports }: { reports: Report[] }) {
     }
   }
 
-  const handleAuthenticate = async (report: Report) => {
+  const handleAuthenticate = async (report: Report, templateId?: string) => {
     try {
-      await approveReport(report.id)
+      await approveReport(report.id, templateId || undefined)
       toast.success(`Report ${report.reportNumber} authenticated`)
       router.refresh()
     } catch (error: any) {
@@ -164,6 +177,9 @@ export function AuthenticationClient({ reports }: { reports: Report[] }) {
 
   const handleOpenViewResults = (report: Report) => {
     setSelectedReport(report)
+    // Default to the first default template
+    const defaultTemplate = templates.find((t) => t.isDefault)
+    setSelectedTemplateId(defaultTemplate?.id || "")
     setViewResultsOpen(true)
   }
 
@@ -420,6 +436,25 @@ export function AuthenticationClient({ reports }: { reports: Report[] }) {
               </p>
             )}
           </div>
+          {/* Template Selector */}
+          {selectedReport && (selectedReport.status === "draft" || selectedReport.status === "review") && templates.length > 0 && (
+            <div className="flex items-center gap-3 pt-2 border-t">
+              <Label className="text-xs shrink-0">Report Template</Label>
+              <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
+                <SelectTrigger className="h-8 text-xs flex-1">
+                  <SelectValue placeholder="Select template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name}{t.isDefault ? " (Default)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setViewResultsOpen(false)}>
               Close
@@ -448,7 +483,7 @@ export function AuthenticationClient({ reports }: { reports: Report[] }) {
                 {selectedReport.status === "review" && (
                   <Button onClick={() => {
                     setViewResultsOpen(false)
-                    handleAuthenticate(selectedReport)
+                    handleAuthenticate(selectedReport, selectedTemplateId)
                   }}>
                     <ShieldCheck className="mr-1 h-4 w-4" />
                     Authenticate

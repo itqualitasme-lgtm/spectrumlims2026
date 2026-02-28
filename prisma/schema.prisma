@@ -44,6 +44,7 @@ model Lab {
   registrations        Registration[]
   reportVerifications  ReportVerification[]
   reportTemplates      ReportTemplate[]
+  reportRemarks        ReportRemark[]
 }
 
 model Role {
@@ -296,6 +297,7 @@ model Report {
   reportType   String    @default("test_report")
   title        String?
   summary      String?
+  remarks      String?
   templateId   String?
   createdById  String
   reviewedById String?
@@ -314,6 +316,17 @@ model Report {
   reviewedBy    User?                @relation("ReviewedBy", fields: [reviewedById], references: [id])
   lab           Lab                  @relation(fields: [labId], references: [id])
   verifications ReportVerification[]
+}
+
+model ReportRemark {
+  id        String   @id @default(cuid())
+  text      String
+  labId     String
+  createdAt DateTime @default(now())
+
+  lab Lab @relation(fields: [labId], references: [id])
+
+  @@index([labId])
 }
 
 model ReportTemplate {

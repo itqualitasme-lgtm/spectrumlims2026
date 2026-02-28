@@ -104,10 +104,6 @@ export async function updateRole(
     throw new Error("Role not found")
   }
 
-  if (existing.isSystem) {
-    throw new Error("System roles cannot be edited")
-  }
-
   // Delete all existing role permissions
   await db.rolePermission.deleteMany({
     where: { roleId: id },
@@ -159,10 +155,6 @@ export async function deleteRole(id: string) {
 
   if (!existing || existing.labId !== user.labId) {
     throw new Error("Role not found")
-  }
-
-  if (existing.isSystem) {
-    throw new Error("System roles cannot be deleted")
   }
 
   if (existing._count.users > 0) {

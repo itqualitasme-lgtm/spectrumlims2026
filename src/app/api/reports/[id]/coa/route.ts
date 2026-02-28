@@ -135,6 +135,7 @@ export async function GET(
         reportType: report.reportType,
         title: report.title,
         summary: report.summary,
+        remarks: report.remarks,
         status: report.status,
         createdAt: report.createdAt,
         reviewedAt: report.reviewedAt,

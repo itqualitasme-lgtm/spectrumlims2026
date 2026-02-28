@@ -242,7 +242,7 @@ export function UsersClient({
     try {
       if (editingUser) {
         await updateUser(editingUser.id, {
-          name, email: email || undefined, phone: phone || undefined,
+          name, username, email: email || undefined, phone: phone || undefined,
           roleId: userRoleId, password: password || undefined,
           designation: designation || undefined,
           signatureUrl: userSignatureUrl || undefined,
@@ -395,7 +395,7 @@ export function UsersClient({
               </div>
               <div className="grid gap-2">
                 <Label>Username *</Label>
-                <Input name="username" defaultValue={editingUser?.username || ""} placeholder="Username" disabled={!!editingUser} />
+                <Input name="username" defaultValue={editingUser?.username || ""} placeholder="Username" />
               </div>
               <div className="grid gap-2">
                 <Label>Password {editingUser ? "(leave blank to keep current)" : "*"}</Label>

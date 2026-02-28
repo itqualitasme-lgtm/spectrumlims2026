@@ -146,6 +146,7 @@ export async function GET(request: NextRequest) {
             reportType: report.reportType,
             title: report.title,
             summary: report.summary,
+            remarks: report.remarks,
             status: report.status,
             createdAt: report.createdAt,
             reviewedAt: report.reviewedAt,

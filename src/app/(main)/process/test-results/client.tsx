@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import {
   Loader2,
@@ -12,6 +12,8 @@ import {
   ChevronDown,
   AlertTriangle,
   Search,
+  MessageSquare,
+  X,
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -46,7 +48,16 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Checkbox } from "@/components/ui/checkbox"
 
-import { batchUpdateTestResults, addTestsToSample, deleteTestResult } from "@/actions/test-results"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  batchUpdateTestResults,
+  addTestsToSample,
+  deleteTestResult,
+  getReportRemarks,
+  getPrefilledRemarks,
+  createPrefilledRemark,
+  deletePrefilledRemark,
+} from "@/actions/test-results"
 
 // ============= TYPES =============
 
@@ -197,6 +208,64 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
   const [newTat, setNewTat] = useState("")
   const [addTestLoading, setAddTestLoading] = useState(false)
 
+  // Remarks state
+  const [remarksText, setRemarksText] = useState("")
+  const [prefilledRemarksList, setPrefilledRemarksList] = useState<{ id: string; text: string }[]>([])
+  const [remarksLoaded, setRemarksLoaded] = useState<string | null>(null)
+  const [newRemarkText, setNewRemarkText] = useState("")
+
+  // Load remarks when a sample is selected
+  const loadRemarks = useCallback(async (sampleId: string) => {
+    if (remarksLoaded === sampleId) return
+    try {
+      const [existingRemarks, prefilled] = await Promise.all([
+        getReportRemarks(sampleId),
+        prefilledRemarksList.length === 0 ? getPrefilledRemarks() : Promise.resolve(prefilledRemarksList),
+      ])
+      setRemarksText(existingRemarks)
+      setPrefilledRemarksList(prefilled)
+      setRemarksLoaded(sampleId)
+    } catch {
+      // silently fail
+    }
+  }, [remarksLoaded, prefilledRemarksList])
+
+  useEffect(() => {
+    if (selectedSampleId) {
+      loadRemarks(selectedSampleId)
+    } else {
+      setRemarksText("")
+      setRemarksLoaded(null)
+    }
+  }, [selectedSampleId, loadRemarks])
+
+  const handleAddPrefilledRemark = async () => {
+    if (!newRemarkText.trim()) return
+    try {
+      const remark = await createPrefilledRemark(newRemarkText.trim())
+      setPrefilledRemarksList((prev) => [...prev, remark].sort((a, b) => a.text.localeCompare(b.text)))
+      setNewRemarkText("")
+    } catch (error: any) {
+      toast.error(error.message || "Failed to create remark")
+    }
+  }
+
+  const handleDeletePrefilledRemark = async (id: string) => {
+    try {
+      await deletePrefilledRemark(id)
+      setPrefilledRemarksList((prev) => prev.filter((r) => r.id !== id))
+    } catch (error: any) {
+      toast.error(error.message || "Failed to delete remark")
+    }
+  }
+
+  const handleInsertRemark = (text: string) => {
+    setRemarksText((prev) => {
+      if (prev.trim()) return prev.trim() + "\n" + text
+      return text
+    })
+  }
+
   const toggleRegCollapse = (regNumber: string) => {
     setCollapsedRegs((prev) => {
       const next = new Set(prev)
@@ -251,14 +320,14 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
         resultValue: resultValues[tr.id].trim(),
       }))
 
-    if (results.length === 0) {
-      toast.error("Please enter at least one result value")
+    if (results.length === 0 && !remarksText.trim()) {
+      toast.error("Please enter at least one result value or remarks")
       return
     }
 
     setSavingIds((prev) => new Set(prev).add(sample.id))
     try {
-      await batchUpdateTestResults(sample.id, results)
+      await batchUpdateTestResults(sample.id, results, remarksText.trim() || undefined)
       toast.success(`Saved ${results.length} result(s) for ${sample.sampleNumber}`)
       router.refresh()
     } catch (error: any) {
@@ -378,7 +447,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
   const hasEnteredValues = selectedSample
     ? selectedSample.testResults.some(
         (tr) => tr.status === "pending" && resultValues[tr.id]?.trim()
-      )
+      ) || remarksText.trim().length > 0
     : false
 
   return (
@@ -711,10 +780,10 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                 </div>
               )}
 
-              {/* Test results table */}
+              {/* Test results table + remarks */}
               <div className="flex-1 overflow-auto">
                 {selectedSample.testResults.length > 0 ? (
-                  <div className="p-2">
+                  <div className="p-2 space-y-3">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -806,6 +875,89 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                         })}
                       </TableBody>
                     </Table>
+
+                    {/* Remarks Section */}
+                    <div className="border rounded-md p-3 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                        <Label className="text-xs font-medium">Report Remarks</Label>
+                      </div>
+
+                      {/* Prefilled remarks chips */}
+                      {prefilledRemarksList.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5">
+                          {prefilledRemarksList.map((r) => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full border bg-muted/50 hover:bg-muted transition-colors"
+                              onClick={() => handleInsertRemark(r.text)}
+                            >
+                              <Plus className="h-2.5 w-2.5" />
+                              {r.text}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+
+                      <Textarea
+                        value={remarksText}
+                        onChange={(e) => setRemarksText(e.target.value)}
+                        placeholder="Enter remarks to display on the report..."
+                        className="text-xs min-h-[60px] resize-none"
+                        rows={3}
+                      />
+
+                      {/* Manage prefilled remarks */}
+                      <div className="flex items-center gap-1.5">
+                        <Input
+                          value={newRemarkText}
+                          onChange={(e) => setNewRemarkText(e.target.value)}
+                          placeholder="Add a reusable remark..."
+                          className="h-7 text-xs flex-1"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              handleAddPrefilledRemark()
+                            }
+                          }}
+                        />
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs shrink-0"
+                          onClick={handleAddPrefilledRemark}
+                          disabled={!newRemarkText.trim()}
+                        >
+                          <Plus className="mr-1 h-3 w-3" />
+                          Save Remark
+                        </Button>
+                      </div>
+
+                      {/* List of saved remarks with delete option */}
+                      {prefilledRemarksList.length > 0 && (
+                        <details className="text-xs">
+                          <summary className="text-muted-foreground cursor-pointer hover:text-foreground">
+                            Manage saved remarks ({prefilledRemarksList.length})
+                          </summary>
+                          <div className="mt-1.5 space-y-1">
+                            {prefilledRemarksList.map((r) => (
+                              <div key={r.id} className="flex items-center justify-between gap-2 px-2 py-1 rounded bg-muted/30">
+                                <span className="text-xs truncate">{r.text}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-5 w-5 p-0 text-destructive hover:text-destructive shrink-0"
+                                  onClick={() => handleDeletePrefilledRemark(r.id)}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center py-12 text-center">

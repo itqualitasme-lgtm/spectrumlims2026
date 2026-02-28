@@ -108,6 +108,7 @@ export async function updateUser(
   id: string,
   data: {
     name?: string
+    username?: string
     email?: string
     phone?: string
     roleId?: string
@@ -126,6 +127,7 @@ export async function updateUser(
 
   const updateData: any = {
     name: data.name,
+    username: data.username || undefined,
     email: data.email || null,
     phone: data.phone || null,
     roleId: data.roleId,
@@ -169,35 +171,52 @@ export async function deleteUser(id: string) {
   const target = await db.user.findFirst({ where: { id, labId: user.labId } })
   if (!target) throw new Error("User not found")
 
-  // Check if user has associated samples
-  const sampleCount = await db.sample.count({
-    where: {
-      labId: user.labId,
-      OR: [
-        { assignedToId: id },
-        { collectedById: id },
-        { registeredById: id },
-      ],
-    },
-  })
+  // Check all associations that would prevent deletion
+  const [sampleCount, reportCount, invoiceCount, quotationCount, contractCount, registrationCount] = await Promise.all([
+    db.sample.count({
+      where: {
+        labId: user.labId,
+        OR: [
+          { assignedToId: id },
+          { collectedById: id },
+          { registeredById: id },
+        ],
+      },
+    }),
+    db.report.count({
+      where: {
+        labId: user.labId,
+        OR: [{ createdById: id }, { reviewedById: id }],
+      },
+    }),
+    db.invoice.count({
+      where: { labId: user.labId, createdById: id },
+    }),
+    db.quotation.count({
+      where: { labId: user.labId, createdById: id },
+    }),
+    db.contract.count({
+      where: { labId: user.labId, createdById: id },
+    }),
+    db.registration.count({
+      where: {
+        labId: user.labId,
+        OR: [{ collectedById: id }, { registeredById: id }],
+      },
+    }),
+  ])
 
-  if (sampleCount > 0) {
+  const associations: string[] = []
+  if (sampleCount > 0) associations.push(`${sampleCount} sample(s)`)
+  if (reportCount > 0) associations.push(`${reportCount} report(s)`)
+  if (invoiceCount > 0) associations.push(`${invoiceCount} invoice(s)`)
+  if (quotationCount > 0) associations.push(`${quotationCount} quotation(s)`)
+  if (contractCount > 0) associations.push(`${contractCount} contract(s)`)
+  if (registrationCount > 0) associations.push(`${registrationCount} registration(s)`)
+
+  if (associations.length > 0) {
     throw new Error(
-      `Cannot delete user. There are ${sampleCount} sample(s) associated with this user.`
-    )
-  }
-
-  // Check if user has associated reports
-  const reportCount = await db.report.count({
-    where: {
-      labId: user.labId,
-      OR: [{ createdById: id }, { reviewedById: id }],
-    },
-  })
-
-  if (reportCount > 0) {
-    throw new Error(
-      `Cannot delete user. There are ${reportCount} report(s) associated with this user.`
+      `Cannot delete user. They have ${associations.join(", ")} associated. Consider deactivating instead.`
     )
   }
 

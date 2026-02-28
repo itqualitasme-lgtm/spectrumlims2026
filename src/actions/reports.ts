@@ -214,7 +214,7 @@ export async function submitReport(reportId: string) {
   return report
 }
 
-export async function approveReport(reportId: string) {
+export async function approveReport(reportId: string, templateId?: string) {
   const session = await requirePermission("process", "edit")
   const user = session.user as any
   const labId = user.labId
@@ -222,13 +222,19 @@ export async function approveReport(reportId: string) {
   const existing = await db.report.findFirst({ where: { id: reportId, labId } })
   if (!existing) throw new Error("Report not found")
 
+  const updateData: any = {
+    status: "approved",
+    reviewedById: user.id,
+    reviewedAt: new Date(),
+  }
+
+  if (templateId !== undefined) {
+    updateData.templateId = templateId || null
+  }
+
   const report = await db.report.update({
     where: { id: reportId },
-    data: {
-      status: "approved",
-      reviewedById: user.id,
-      reviewedAt: new Date(),
-    },
+    data: updateData,
   })
 
   // Also update sample status to "reported"

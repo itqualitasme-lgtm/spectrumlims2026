@@ -179,7 +179,7 @@ export function RolesClient({
           >
             <Shield className="h-4 w-4" />
           </Button>
-          {!row.original.isSystem && row.original._count.users === 0 && (
+          {row.original._count.users === 0 && (
             <Button
               variant="ghost"
               size="sm"
@@ -284,7 +284,6 @@ export function RolesClient({
   }
 
   // ========== Permission Grid ==========
-  const isSystemRole = formMode === "edit" && (selectedRole?.isSystem ?? false)
 
   return (
     <div className="space-y-6">
@@ -322,7 +321,6 @@ export function RolesClient({
                 value={roleName}
                 onChange={(e) => setRoleName(e.target.value)}
                 placeholder="Enter role name"
-                disabled={isSystemRole}
               />
             </div>
             <div className="space-y-4">
@@ -333,7 +331,6 @@ export function RolesClient({
                   variant="outline"
                   size="sm"
                   onClick={toggleAll}
-                  disabled={isSystemRole}
                 >
                   {isAllChecked() ? "Deselect All" : "Select All"}
                 </Button>
@@ -362,7 +359,6 @@ export function RolesClient({
                                 <Checkbox
                                   checked={isPermissionChecked(module, action)}
                                   onCheckedChange={() => togglePermission(module, action)}
-                                  disabled={isSystemRole}
                                 />
                               </div>
                             </td>
@@ -372,7 +368,6 @@ export function RolesClient({
                               <Checkbox
                                 checked={isModuleAllChecked(module)}
                                 onCheckedChange={() => toggleModuleAll(module)}
-                                disabled={isSystemRole}
                               />
                             </div>
                           </td>
@@ -393,7 +388,7 @@ export function RolesClient({
               </Button>
               <Button
                 onClick={handleSubmit}
-                disabled={loading || isSystemRole}
+                disabled={loading}
               >
                 {loading
                   ? "Saving..."

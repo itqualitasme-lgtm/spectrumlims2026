@@ -94,6 +94,7 @@ interface ReportInfo {
   reportType: string
   title?: string | null
   summary?: string | null
+  remarks?: string | null
   status: string
   createdAt: Date | string
   reviewedAt?: Date | string | null
@@ -762,13 +763,13 @@ export function COAPDF({
         </View>
 
         {/* ===== REMARKS ===== */}
-        {report.summary && (
+        {(report.remarks || report.summary) && (
           <View style={{ marginBottom: 4 }}>
             <Text style={{ fontSize: 8, fontFamily: "Helvetica-Bold", marginBottom: 2 }}>
               *Remarks:
             </Text>
             <Text style={{ fontSize: 7.5, color: BLACK, lineHeight: 1.5 }}>
-              {report.summary}
+              {report.remarks || report.summary}
             </Text>
           </View>
         )}
