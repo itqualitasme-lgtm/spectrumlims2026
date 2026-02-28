@@ -116,7 +116,7 @@ type SampleData = {
   assignedTo: { name: string } | null
   collectedBy: { name: string } | null
   registeredBy: { name: string } | null
-  registration: { id: string; samplingMethod: string; sheetNumber: string | null } | null
+  registration: { id: string; samplingMethod: string; drawnBy: string; sheetNumber: string | null } | null
   testResults: TestResult[]
 }
 
@@ -168,6 +168,7 @@ export function EditSampleClient({
   const [quantity, setQuantity] = useState(sample.quantity || "1 Ltr")
   const [notes, setNotes] = useState(sample.notes || "")
   const [samplingMethod, setSamplingMethod] = useState(sample.registration?.samplingMethod || "NP")
+  const [drawnBy, setDrawnBy] = useState(sample.registration?.drawnBy || "NP & Spectrum")
   const [sheetNumber, setSheetNumber] = useState(sample.registration?.sheetNumber || "")
 
   // Add test dialog
@@ -277,6 +278,7 @@ export function EditSampleClient({
       if (sample.registration?.id) {
         promises.push(updateRegistration(sample.registration.id, {
           samplingMethod,
+          drawnBy: drawnBy || undefined,
           sheetNumber: sheetNumber || undefined,
           reference: reference || undefined,
           collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
@@ -485,6 +487,10 @@ export function EditSampleClient({
               </Select>
             </div>
             {/* Row 3 */}
+            <div className="grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Drawn By</Label>
+              <Input className="h-9" value={drawnBy} onChange={(e) => setDrawnBy(e.target.value)} placeholder="NP & Spectrum" />
+            </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sheet No.</Label>
               <Input className="h-9" value={sheetNumber} onChange={(e) => setSheetNumber(e.target.value)} placeholder="Optional" />

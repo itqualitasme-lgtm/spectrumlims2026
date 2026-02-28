@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
     const user = session.user as any
     const ids = request.nextUrl.searchParams.get("ids")
     const registrationId = request.nextUrl.searchParams.get("registrationId")
+    const showHeaderFooter = request.nextUrl.searchParams.get("noHeader") !== "1"
 
     let reportIds: string[] = []
 
@@ -58,6 +59,7 @@ export async function GET(request: NextRequest) {
             registration: {
               select: {
                 samplingMethod: true,
+                drawnBy: true,
                 sheetNumber: true,
                 _count: { select: { samples: { where: { deletedAt: null } } } },
               },
@@ -67,6 +69,7 @@ export async function GET(request: NextRequest) {
               include: {
                 enteredBy: { select: { id: true, name: true } },
               },
+              orderBy: { sortOrder: "asc" },
             },
           },
         },
@@ -173,6 +176,7 @@ export async function GET(request: NextRequest) {
             registeredAt: report.sample.registeredAt,
             notes: report.sample.notes,
             samplingMethod: report.sample.registration?.samplingMethod || null,
+            drawnBy: report.sample.registration?.drawnBy || null,
             sheetNumber: report.sample.registration?.sheetNumber || null,
             client: report.sample.client,
             sampleType: report.sample.sampleType,
@@ -207,6 +211,7 @@ export async function GET(request: NextRequest) {
           qrCodeDataUrl,
           verificationCode: verification.verificationCode,
           verificationUrl,
+          showHeaderFooter,
         } as COAPDFProps
       })
     )

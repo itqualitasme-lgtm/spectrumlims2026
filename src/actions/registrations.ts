@@ -18,6 +18,7 @@ export async function createRegistration(data: {
   collectionDate?: string
   sampleCondition?: string
   samplingMethod?: string
+  drawnBy?: string
   sheetNumber?: string
   notes?: string
   rows: {
@@ -28,6 +29,22 @@ export async function createRegistration(data: {
     description?: string
     remarks?: string
     selectedTests: number[]
+    orderedTests?: {
+      parameter: string
+      method?: string
+      unit?: string
+      specMin?: string
+      specMax?: string
+      tat?: number
+    }[]
+    customTests?: {
+      parameter: string
+      method?: string
+      unit?: string
+      specMin?: string
+      specMax?: string
+      tat?: number
+    }[]
   }[]
 }) {
   const session = await requirePermission("process", "create")
@@ -65,6 +82,7 @@ export async function createRegistration(data: {
       registeredById: user.id,
       registeredAt: recordDate,
       samplingMethod: data.samplingMethod || "NP",
+      drawnBy: data.drawnBy || "NP & Spectrum",
       sheetNumber: data.sheetNumber || null,
       notes: data.notes || null,
       labId,
@@ -98,6 +116,7 @@ export async function createRegistration(data: {
     })
     if (!sampleType) throw new Error("Sample type not found")
 
+    // Build tests list: prefer orderedTests (pre-ordered by user), fall back to selectedTests + customTests
     const tests: Array<{
       parameter: string
       method?: string
@@ -107,15 +126,38 @@ export async function createRegistration(data: {
       specMax?: string
       tat?: number
     }> = []
-    try {
-      const parsed = JSON.parse(sampleType.defaultTests)
-      if (Array.isArray(parsed)) {
-        for (const [i, t] of parsed.entries()) {
-          if (row.selectedTests.includes(i)) tests.push(t)
+
+    if (row.orderedTests?.length) {
+      // New flow: tests are already in the user's desired order
+      for (const t of row.orderedTests) {
+        if (t.parameter.trim()) tests.push(t)
+      }
+    } else {
+      // Legacy flow: build from selectedTests indices + customTests
+      try {
+        const parsed = JSON.parse(sampleType.defaultTests)
+        if (Array.isArray(parsed)) {
+          for (const [i, t] of parsed.entries()) {
+            if (row.selectedTests.includes(i)) tests.push(t)
+          }
+        }
+      } catch {
+        // skip
+      }
+      if (row.customTests?.length) {
+        for (const ct of row.customTests) {
+          if (ct.parameter.trim()) {
+            tests.push({
+              parameter: ct.parameter.trim(),
+              method: ct.method || undefined,
+              unit: ct.unit || undefined,
+              specMin: ct.specMin || undefined,
+              specMax: ct.specMax || undefined,
+              tat: ct.tat || undefined,
+            })
+          }
         }
       }
-    } catch {
-      // skip
     }
 
     const groupLetter = groupLetterMap.get(row.sampleTypeId)!
@@ -159,7 +201,7 @@ export async function createRegistration(data: {
       // Create test results for this sub-sample
       if (tests.length > 0) {
         await db.testResult.createMany({
-          data: tests.map((test) => {
+          data: tests.map((test, idx) => {
             const tatDays = test.tat || null
             const dueDate = tatDays
               ? new Date(recordDate.getTime() + tatDays * 24 * 60 * 60 * 1000)
@@ -173,6 +215,7 @@ export async function createRegistration(data: {
               specMax: test.specMax || null,
               tat: tatDays,
               dueDate,
+              sortOrder: idx,
               status: "pending",
             }
           }),
@@ -701,6 +744,7 @@ export async function updateRegistration(
   registrationId: string,
   data: {
     samplingMethod?: string
+    drawnBy?: string
     sheetNumber?: string
     reference?: string
     collectionLocation?: string
@@ -719,6 +763,7 @@ export async function updateRegistration(
     where: { id: registrationId },
     data: {
       samplingMethod: data.samplingMethod || "NP",
+      drawnBy: data.drawnBy !== undefined ? (data.drawnBy || "NP & Spectrum") : undefined,
       sheetNumber: data.sheetNumber !== undefined ? (data.sheetNumber || null) : undefined,
       reference: data.reference !== undefined ? (data.reference || null) : undefined,
       collectionLocation: data.collectionLocation !== undefined ? (data.collectionLocation || null) : undefined,

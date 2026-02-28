@@ -397,7 +397,7 @@ async function main() {
   });
 
   const formatReport = await prisma.formatID.create({
-    data: { module: 'report', prefix: 'RPT', lastNumber: 1, labId: lab.id },
+    data: { module: 'report', prefix: 'SPL', lastNumber: 1, labId: lab.id },
   });
 
   const formatInvoice = await prisma.formatID.create({

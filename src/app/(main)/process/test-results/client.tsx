@@ -721,6 +721,9 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                       {selectedSample.registration.samplingMethod && selectedSample.registration.samplingMethod !== "NP" && (
                         <> — {selectedSample.registration.samplingMethod}</>
                       )}
+                      {selectedSample.registration.sheetNumber && (
+                        <> — Sheet #{selectedSample.registration.sheetNumber}</>
+                      )}
                     </span>
                   )}
                 </div>

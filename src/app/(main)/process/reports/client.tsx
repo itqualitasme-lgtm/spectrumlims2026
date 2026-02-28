@@ -12,6 +12,7 @@ import {
   Printer,
   Eye,
   Trash2,
+  ChevronDown,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -30,6 +31,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   Table,
   TableBody,
@@ -306,15 +313,26 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
             </Button>
 
             {/* View COA PDF */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
-              onClick={() => window.open(`/api/reports/${report.id}/coa`, "_blank")}
-              title="View COA"
-            >
-              <FileText className="h-4 w-4" />
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  title="View COA"
+                >
+                  <FileText className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => window.open(`/api/reports/${report.id}/coa`, "_blank")}>
+                  With Header & Footer
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.open(`/api/reports/${report.id}/coa?noHeader=1`, "_blank")}>
+                  Without Header & Footer
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* Authenticated → Publish */}
             {report.status === "approved" && (
@@ -369,25 +387,44 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
           <span className="text-xs text-muted-foreground">
             {selectedIds.size} selected
           </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-7 text-xs"
-            onClick={handleBatchPrint}
-          >
-            <Printer className="mr-1 h-3 w-3" />
-            Print COA ({selectedIds.size})
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="h-7 text-xs">
+                <Printer className="mr-1 h-3 w-3" />
+                Print COA ({selectedIds.size})
+                <ChevronDown className="ml-1 h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem onClick={handleBatchPrint}>
+                With Header & Footer
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => {
+                if (selectedIds.size === 0) { toast.error("No reports selected"); return }
+                window.open(`/api/reports/batch-coa?ids=${Array.from(selectedIds).join(",")}&noHeader=1`, "_blank")
+              }}>
+                Without Header & Footer
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {selectedRegistrationId && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-7 text-xs"
-              onClick={() => handlePrintRegistrationCOA(selectedRegistrationId)}
-            >
-              <FileText className="mr-1 h-3 w-3" />
-              Print Registration COA
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-7 text-xs">
+                  <FileText className="mr-1 h-3 w-3" />
+                  Print Registration COA
+                  <ChevronDown className="ml-1 h-3 w-3" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                <DropdownMenuItem onClick={() => handlePrintRegistrationCOA(selectedRegistrationId)}>
+                  With Header & Footer
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => window.open(`/api/reports/batch-coa?registrationId=${selectedRegistrationId}&noHeader=1`, "_blank")}>
+                  Without Header & Footer
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           )}
           <Button
             variant="ghost"

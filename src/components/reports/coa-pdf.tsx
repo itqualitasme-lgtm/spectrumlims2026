@@ -72,6 +72,7 @@ interface SampleInfo {
   registeredAt?: Date | string | null
   notes?: string | null
   samplingMethod?: string | null
+  drawnBy?: string | null
   sheetNumber?: string | null
   client: CustomerInfo
   sampleType: SampleTypeInfo
@@ -126,6 +127,7 @@ export interface COAPDFProps {
   qrCodeDataUrl?: string
   verificationCode?: string
   verificationUrl?: string
+  showHeaderFooter?: boolean
 }
 
 // ============= COLORS =============
@@ -379,10 +381,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   signatureImage: {
-    width: 75,
-    height: 32,
+    width: 55,
+    height: 24,
     objectFit: "contain" as any,
-    marginBottom: 3,
+    marginBottom: 2,
   },
   signatureLine: {
     width: "100%",
@@ -510,6 +512,7 @@ export function COAPDF({
   qrCodeDataUrl,
   verificationCode,
   verificationUrl,
+  showHeaderFooter = true,
 }: COAPDFProps) {
   // Template overrides lab defaults
   const footerText = template?.footerText || lab.reportFooterText
@@ -551,46 +554,50 @@ export function COAPDF({
     >
       <Page size="A4" style={styles.page}>
         {/* ===== HEADER (fixed on every page) ===== */}
-        <View style={styles.header} fixed>
-          <View style={styles.headerRow}>
-            {showLabLogo && logoUrl ? (
-              <Image style={styles.headerLogo} src={logoUrl} />
-            ) : (
-              <View style={{ width: 150 }} />
-            )}
-            <View style={styles.headerCenter}>
-              {headerSubLines.length > 0 && (
-                <Text style={{ fontSize: 7, color: GRAY_TEXT, marginBottom: 1, textAlign: "center" }}>
-                  {headerSubLines[0]}
-                </Text>
+        {showHeaderFooter && (
+          <View style={styles.header} fixed>
+            <View style={styles.headerRow}>
+              {showLabLogo && logoUrl ? (
+                <Image style={styles.headerLogo} src={logoUrl} />
+              ) : (
+                <View style={{ width: 150 }} />
               )}
-              <Text style={styles.labName}>{lab.name}</Text>
-              {headerSubLines.slice(1).map((line, idx) => (
-                <Text key={idx} style={styles.headerSubline}>{line}</Text>
-              ))}
-              {accreditationText && (
-                <Text style={{ fontSize: 6.5, color: RED_BRAND, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>
-                  {accreditationText}
-                </Text>
-              )}
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              {isoLogoUrl && (
-                <Image style={styles.isoLogo} src={isoLogoUrl} />
-              )}
-              {accreditationLogoUrl ? (
-                <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
-              ) : !isoLogoUrl ? (
-                <View style={{ width: 75 }} />
-              ) : null}
+              <View style={styles.headerCenter}>
+                {headerSubLines.length > 0 && (
+                  <Text style={{ fontSize: 7, color: GRAY_TEXT, marginBottom: 1, textAlign: "center" }}>
+                    {headerSubLines[0]}
+                  </Text>
+                )}
+                <Text style={styles.labName}>{lab.name}</Text>
+                {headerSubLines.slice(1).map((line, idx) => (
+                  <Text key={idx} style={styles.headerSubline}>{line}</Text>
+                ))}
+                {accreditationText && (
+                  <Text style={{ fontSize: 6.5, color: RED_BRAND, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>
+                    {accreditationText}
+                  </Text>
+                )}
+              </View>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                {isoLogoUrl && (
+                  <Image style={styles.isoLogo} src={isoLogoUrl} />
+                )}
+                {accreditationLogoUrl ? (
+                  <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
+                ) : !isoLogoUrl ? (
+                  <View style={{ width: 75 }} />
+                ) : null}
+              </View>
             </View>
           </View>
-        </View>
+        )}
 
         {/* ===== TITLE ===== */}
         <View style={styles.titleSection}>
           <Text style={styles.title}>{reportTitle.toUpperCase()}</Text>
-          <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
+          {!reportTitle.toUpperCase().includes(sampleTypeName.toUpperCase()) && (
+            <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
+          )}
         </View>
 
         {/* ===== REPORT NO ===== */}
@@ -636,7 +643,7 @@ export function COAPDF({
                   <Text style={styles.infoGridLabel}>Sample Drawn By</Text>
                   <Text style={styles.infoSep}>:</Text>
                   <Text style={styles.infoValue}>
-                    {sample.collectionLocation || "N/A"}
+                    {sample.drawnBy || "NP & Spectrum"}
                   </Text>
                 </View>
               </View>
@@ -825,30 +832,7 @@ export function COAPDF({
           <Text style={styles.reportedByLabel}>Reported by:</Text>
 
           <View style={styles.signaturesRow}>
-            {/* Company Seal */}
-            <View style={styles.signatureBlock}>
-              {template?.sealUrl && (
-                <Image
-                  style={{ width: 110, height: 110, objectFit: "contain" as any }}
-                  src={template.sealUrl}
-                />
-              )}
-            </View>
-
-            {/* QR Code in center */}
-            {qrCodeDataUrl ? (
-              <View style={styles.qrContainer}>
-                <Image style={styles.qrImage} src={qrCodeDataUrl} />
-                <Text style={styles.qrLabel}>Scan to verify</Text>
-                {verificationCode && (
-                  <Text style={styles.qrCode}>{verificationCode}</Text>
-                )}
-              </View>
-            ) : (
-              <View style={{ width: 75 }} />
-            )}
-
-            {/* Lab Manager Signature */}
+            {/* Lab Manager Signature (left) */}
             <View style={styles.signatureBlock}>
               <Text style={styles.signatureLabel}>LABORATORY OPERATIONS</Text>
               {report.reviewedBy?.signatureUrl && (
@@ -866,36 +850,61 @@ export function COAPDF({
                 <Text style={styles.signatureName}>Laboratory Manager</Text>
               )}
             </View>
+
+            {/* QR Code in center */}
+            {qrCodeDataUrl ? (
+              <View style={styles.qrContainer}>
+                <Image style={styles.qrImage} src={qrCodeDataUrl} />
+                <Text style={styles.qrLabel}>Scan to verify</Text>
+                {verificationCode && (
+                  <Text style={styles.qrCode}>{verificationCode}</Text>
+                )}
+              </View>
+            ) : (
+              <View style={{ width: 75 }} />
+            )}
+
+            {/* Company Seal (right) */}
+            <View style={styles.signatureBlock}>
+              {template?.sealUrl && (
+                <Image
+                  style={{ width: 110, height: 110, objectFit: "contain" as any }}
+                  src={template.sealUrl}
+                />
+              )}
+            </View>
           </View>
         </View>
 
         {/* ===== FOOTER (fixed on every page) ===== */}
-        <View style={styles.footer} fixed>
-          {/* Disclaimer text */}
-          {footerLines.map((line, idx) => (
-            <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
-          ))}
+        {showHeaderFooter && (
+          <View style={styles.footer} fixed>
+            {/* Disclaimer text */}
+            {footerLines.map((line, idx) => (
+              <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
+            ))}
 
-          {verificationUrl && (
-            <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
-              Verify this report: {verificationUrl}
-            </Text>
-          )}
+            {verificationUrl && (
+              <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
+                Verify this report: {verificationUrl}
+              </Text>
+            )}
 
-          {/* Red contact bar */}
-          <View style={styles.footerBar}>
-            <Text style={styles.footerBarText}>
-              {[
-                lab.phone && `Tel.: ${lab.phone}`,
-                lab.address,
-                lab.email && `E-mail: ${lab.email}`,
-                lab.website,
-              ]
-                .filter(Boolean)
-                .join("  |  ")}
-            </Text>
+            {/* Red contact bar */}
+            <View style={styles.footerBar}>
+              <Text style={styles.footerBarText}>
+                {[
+                  lab.phone && `Tel.: ${lab.phone}`,
+                  lab.address,
+                  lab.email && `E-mail: ${lab.email}`,
+                  lab.website,
+                ]
+                  .filter(Boolean)
+                  .join("  |  ")}
+              </Text>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Page Number */}
         <Text
@@ -937,6 +946,7 @@ function COAPageContent(props: COAPDFProps) {
     template,
     qrCodeDataUrl,
     verificationUrl,
+    showHeaderFooter = true,
   } = props
 
   const footerText = template?.footerText || lab.reportFooterText
@@ -989,46 +999,50 @@ function COAPageContent(props: COAPDFProps) {
   return (
     <Page size="A4" style={styles.page}>
       {/* HEADER (fixed on every page) */}
-      <View style={styles.header} fixed>
-        <View style={styles.headerRow}>
-          {showLabLogo && logoUrl ? (
-            <Image style={styles.headerLogo} src={logoUrl} />
-          ) : (
-            <View style={{ width: 150 }} />
-          )}
-          <View style={styles.headerCenter}>
-            {headerSubLines.length > 0 && (
-              <Text style={{ fontSize: 7, color: GRAY_TEXT, marginBottom: 1, textAlign: "center" }}>
-                {headerSubLines[0]}
-              </Text>
+      {showHeaderFooter && (
+        <View style={styles.header} fixed>
+          <View style={styles.headerRow}>
+            {showLabLogo && logoUrl ? (
+              <Image style={styles.headerLogo} src={logoUrl} />
+            ) : (
+              <View style={{ width: 150 }} />
             )}
-            <Text style={styles.labName}>{lab.name}</Text>
-            {headerSubLines.slice(1).map((line, idx) => (
-              <Text key={idx} style={styles.headerSubline}>{line}</Text>
-            ))}
-            {accreditationText && (
-              <Text style={{ fontSize: 6.5, color: RED_BRAND, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>
-                {accreditationText}
-              </Text>
-            )}
-          </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            {isoLogoUrl && (
-              <Image style={styles.isoLogo} src={isoLogoUrl} />
-            )}
-            {accreditationLogoUrl ? (
-              <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
-            ) : !isoLogoUrl ? (
-              <View style={{ width: 75 }} />
-            ) : null}
+            <View style={styles.headerCenter}>
+              {headerSubLines.length > 0 && (
+                <Text style={{ fontSize: 7, color: GRAY_TEXT, marginBottom: 1, textAlign: "center" }}>
+                  {headerSubLines[0]}
+                </Text>
+              )}
+              <Text style={styles.labName}>{lab.name}</Text>
+              {headerSubLines.slice(1).map((line, idx) => (
+                <Text key={idx} style={styles.headerSubline}>{line}</Text>
+              ))}
+              {accreditationText && (
+                <Text style={{ fontSize: 6.5, color: RED_BRAND, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>
+                  {accreditationText}
+                </Text>
+              )}
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {isoLogoUrl && (
+                <Image style={styles.isoLogo} src={isoLogoUrl} />
+              )}
+              {accreditationLogoUrl ? (
+                <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
+              ) : !isoLogoUrl ? (
+                <View style={{ width: 75 }} />
+              ) : null}
+            </View>
           </View>
         </View>
-      </View>
+      )}
 
       {/* TITLE */}
       <View style={styles.titleSection}>
         <Text style={styles.title}>{reportTitle.toUpperCase()}</Text>
-        <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
+        {!reportTitle.toUpperCase().includes(sampleTypeName.toUpperCase()) && (
+          <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
+        )}
       </View>
 
       {/* REPORT NO */}
@@ -1194,7 +1208,7 @@ function COAPageContent(props: COAPDFProps) {
         <Text style={styles.reportedByLabel}>Reported by:</Text>
 
         <View style={styles.signaturesRow}>
-          {/* Tested By (Chemist) */}
+          {/* Tested By (Chemist) - left */}
           <View style={styles.signatureBlock}>
             {report.createdBy.signatureUrl && (
               <Image style={styles.signatureImage} src={report.createdBy.signatureUrl} />
@@ -1206,17 +1220,26 @@ function COAPageContent(props: COAPDFProps) {
             )}
           </View>
 
-          {/* Company Seal */}
+          {/* Authenticated By (Lab Manager) */}
           <View style={styles.signatureBlock}>
-            {template?.sealUrl && (
-              <Image
-                style={{ width: 110, height: 110, objectFit: "contain" as any }}
-                src={template.sealUrl}
-              />
+            <Text style={styles.signatureLabel}>LABORATORY OPERATIONS</Text>
+            {report.reviewedBy?.signatureUrl && (
+              <Image style={styles.signatureImage} src={report.reviewedBy.signatureUrl} />
+            )}
+            <View style={styles.signatureLine} />
+            {report.reviewedBy ? (
+              <>
+                <Text style={styles.signatureName}>{report.reviewedBy.name}</Text>
+                {report.reviewedBy.designation && (
+                  <Text style={styles.signatureDesignation}>{report.reviewedBy.designation}</Text>
+                )}
+              </>
+            ) : (
+              <Text style={styles.signatureName}>Laboratory Manager</Text>
             )}
           </View>
 
-          {/* QR Code in center */}
+          {/* QR Code */}
           {qrCodeDataUrl ? (
             <View style={styles.qrContainer}>
               <Image style={styles.qrImage} src={qrCodeDataUrl} />
@@ -1229,53 +1252,46 @@ function COAPageContent(props: COAPDFProps) {
             <View style={{ width: 75 }} />
           )}
 
-          {/* Authenticated By (Lab Manager) */}
+          {/* Company Seal (right) */}
           <View style={styles.signatureBlock}>
-            {report.reviewedBy?.signatureUrl && (
-              <Image style={styles.signatureImage} src={report.reviewedBy.signatureUrl} />
-            )}
-            <View style={styles.signatureLine} />
-            <Text style={styles.signatureLabel}>LABORATORY OPERATIONS</Text>
-            {report.reviewedBy ? (
-              <>
-                <Text style={styles.signatureName}>{report.reviewedBy.name}</Text>
-                {report.reviewedBy.designation && (
-                  <Text style={styles.signatureDesignation}>{report.reviewedBy.designation}</Text>
-                )}
-              </>
-            ) : (
-              <Text style={styles.signatureName}>Laboratory Manager</Text>
+            {template?.sealUrl && (
+              <Image
+                style={{ width: 110, height: 110, objectFit: "contain" as any }}
+                src={template.sealUrl}
+              />
             )}
           </View>
         </View>
       </View>
 
       {/* FOOTER (fixed on every page) */}
-      <View style={styles.footer} fixed>
-        {footerLines.map((line, idx) => (
-          <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
-        ))}
+      {showHeaderFooter && (
+        <View style={styles.footer} fixed>
+          {footerLines.map((line, idx) => (
+            <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
+          ))}
 
-        {verificationUrl && (
-          <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
-            Verify this report: {verificationUrl}
-          </Text>
-        )}
+          {verificationUrl && (
+            <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
+              Verify this report: {verificationUrl}
+            </Text>
+          )}
 
-        {/* Red contact bar */}
-        <View style={styles.footerBar}>
-          <Text style={styles.footerBarText}>
-            {[
-              lab.phone && `Tel.: ${lab.phone}`,
-              lab.address,
-              lab.email && `E-mail: ${lab.email}`,
-              lab.website,
-            ]
-              .filter(Boolean)
-              .join("  |  ")}
-          </Text>
+          {/* Red contact bar */}
+          <View style={styles.footerBar}>
+            <Text style={styles.footerBarText}>
+              {[
+                lab.phone && `Tel.: ${lab.phone}`,
+                lab.address,
+                lab.email && `E-mail: ${lab.email}`,
+                lab.website,
+              ]
+                .filter(Boolean)
+                .join("  |  ")}
+            </Text>
+          </View>
         </View>
-      </View>
+      )}
 
       {/* Page Number */}
       <Text

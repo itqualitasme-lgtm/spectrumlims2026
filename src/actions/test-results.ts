@@ -34,12 +34,12 @@ export async function getSamplesForTestEntry() {
       sampleType: true,
       client: true,
       assignedTo: { select: { name: true } },
-      registration: { select: { id: true, registrationNumber: true, samplingMethod: true, sheetNumber: true } },
+      registration: { select: { id: true, registrationNumber: true, samplingMethod: true, drawnBy: true, sheetNumber: true } },
       testResults: {
         include: {
           enteredBy: { select: { name: true } },
         },
-        orderBy: { parameter: "asc" },
+        orderBy: { sortOrder: "asc" },
       },
       reports: {
         where: { status: "revision" },
@@ -83,7 +83,7 @@ export async function getRegistrationGroups() {
         include: {
           enteredBy: { select: { name: true } },
         },
-        orderBy: { parameter: "asc" },
+        orderBy: { sortOrder: "asc" },
       },
     },
     orderBy: { createdAt: "desc" },
@@ -143,7 +143,7 @@ export async function getTestResults(sampleId: string) {
     include: {
       enteredBy: { select: { name: true } },
     },
-    orderBy: { parameter: "asc" },
+    orderBy: { sortOrder: "asc" },
   })
 
   return testResults
@@ -214,7 +214,7 @@ export async function batchUpdateTestResults(
       if (sample?.sequenceNumber) {
         reportNumber = await generateLinkedNumber(labId, "report", sample.sequenceNumber)
       } else {
-        const result = await generateNextNumber(labId, "report", "RPT")
+        const result = await generateNextNumber(labId, "report", "SPL")
         reportNumber = result.formatted
       }
 
@@ -301,6 +301,13 @@ export async function addTestsToSample(
 
   const registeredAt = sample.registeredAt || sample.createdAt
 
+  // Get the current max sortOrder for this sample
+  const maxResult = await db.testResult.aggregate({
+    where: { sampleId },
+    _max: { sortOrder: true },
+  })
+  let nextOrder = (maxResult._max.sortOrder ?? -1) + 1
+
   await db.testResult.createMany({
     data: tests.map((test) => {
       const tatDays = test.tat || null
@@ -316,6 +323,7 @@ export async function addTestsToSample(
         specMax: test.specMax || null,
         tat: tatDays,
         dueDate,
+        sortOrder: nextOrder++,
         status: "pending",
       }
     }),

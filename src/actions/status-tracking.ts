@@ -165,6 +165,7 @@ export async function getStatusTrackingData(filters: {
         dueDate: maxDueDate?.toISOString() || null,
         testedDate: testedDate?.toISOString() || null,
         releasedDate: releasedDate?.toISOString() || null,
+        sheetNumber: reg.sheetNumber || null,
         hasProforma,
         hasTaxInvoice,
       }

@@ -29,6 +29,7 @@ type RegistrationRow = {
   dueDate: string | null
   testedDate: string | null
   releasedDate: string | null
+  sheetNumber: string | null
   hasProforma: boolean
   hasTaxInvoice: boolean
 }
@@ -161,6 +162,13 @@ export function StatusTrackingClient() {
       header: "PO/Ref",
       cell: ({ row }) => (
         <span className="text-[10px] truncate max-w-[60px] block">{row.original.reference || "-"}</span>
+      ),
+    },
+    {
+      accessorKey: "sheetNumber",
+      header: "Sheet#",
+      cell: ({ row }) => (
+        <span className="text-[10px] truncate max-w-[60px] block">{row.original.sheetNumber || "-"}</span>
       ),
     },
     {

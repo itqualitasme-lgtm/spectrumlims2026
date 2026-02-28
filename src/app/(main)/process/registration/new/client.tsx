@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, Loader2, Plus, Trash2, ChevronDown, ChevronUp, Printer, CheckCircle2 } from "lucide-react"
+import { ArrowLeft, Loader2, Plus, Trash2, ChevronDown, ChevronUp, Printer, CheckCircle2, ArrowUpIcon, ArrowDownIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -55,15 +55,28 @@ const BOTTLE_SIZES = [
   { value: "300 Ml", label: "300 Ml" },
 ]
 
+type OrderedTest = {
+  type: "template"
+  index: number
+} | {
+  type: "custom"
+  parameter: string
+  method: string
+  unit: string
+  specMin: string
+  specMax: string
+  tat: string
+}
+
 type SampleRow = {
   id: number
-  groupId: number  // rows with the same groupId share sample type + tests
+  groupId: number
   sampleTypeId: string
   bottleQty: string
   samplePoint: string
   description: string
   remarks: string
-  selectedTests: Set<number>
+  testOrder: OrderedTest[]
   expanded: boolean
 }
 
@@ -80,13 +93,17 @@ function createEmptyRow(): SampleRow {
     samplePoint: "",
     description: "",
     remarks: "",
-    selectedTests: new Set(),
+    testOrder: [],
     expanded: false,
   }
 }
 
 function getTestMethod(test: TestParam): string {
   return test.method || test.testMethod || ""
+}
+
+function cloneTestOrder(order: OrderedTest[]): OrderedTest[] {
+  return order.map((t) => t.type === "template" ? { ...t } : { ...t })
 }
 
 export function NewRegistrationClient({
@@ -114,6 +131,7 @@ export function NewRegistrationClient({
   const [collectionTime, setCollectionTime] = useState("")
   const [sampleCondition, setSampleCondition] = useState("Sealed")
   const [samplingMethod, setSamplingMethod] = useState("NP")
+  const [drawnBy, setDrawnBy] = useState("NP & Spectrum")
   const [sheetNumber, setSheetNumber] = useState("")
 
   // Set date/time on client only to avoid hydration mismatch
@@ -178,28 +196,35 @@ export function NewRegistrationClient({
 
   const handleSampleTypeChange = (rowId: number, value: string) => {
     const tests = getTestsForType(value)
-    // Propagate to all rows in the same group
     setSamples((prev) => {
       const row = prev.find((s) => s.id === rowId)
       if (!row) return prev
       return prev.map((s) =>
         s.groupId === row.groupId
-          ? { ...s, sampleTypeId: value, selectedTests: new Set<number>(), expanded: s.id === rowId && tests.length > 0 }
+          ? { ...s, sampleTypeId: value, testOrder: [], expanded: s.id === rowId && tests.length > 0 }
           : s
       )
     })
+  }
+
+  // Check if a template test index is in the testOrder
+  const isTemplateSelected = (row: SampleRow, index: number): boolean => {
+    return row.testOrder.some((t) => t.type === "template" && t.index === index)
   }
 
   const toggleTest = (rowId: number, index: number) => {
     setSamples((prev) => {
       const row = prev.find((s) => s.id === rowId)
       if (!row) return prev
-      const next = new Set(row.selectedTests)
-      if (next.has(index)) next.delete(index)
-      else next.add(index)
-      // Propagate to all rows in same group
+      const exists = row.testOrder.findIndex((t) => t.type === "template" && t.index === index)
+      let newOrder: OrderedTest[]
+      if (exists >= 0) {
+        newOrder = row.testOrder.filter((_, i) => i !== exists)
+      } else {
+        newOrder = [...row.testOrder, { type: "template" as const, index }]
+      }
       return prev.map((s) =>
-        s.groupId === row.groupId ? { ...s, selectedTests: new Set(next) } : s
+        s.groupId === row.groupId ? { ...s, testOrder: cloneTestOrder(newOrder) } : s
       )
     })
   }
@@ -209,11 +234,76 @@ export function NewRegistrationClient({
       const row = prev.find((s) => s.id === rowId)
       if (!row) return prev
       const tests = getTestsForType(row.sampleTypeId)
-      const newSelected = row.selectedTests.size === tests.length
-        ? new Set<number>()
-        : new Set(tests.map((_, i) => i))
+      const templateCount = row.testOrder.filter((t) => t.type === "template").length
+      const customItems = row.testOrder.filter((t) => t.type === "custom")
+      let newOrder: OrderedTest[]
+      if (templateCount === tests.length) {
+        // Deselect all template tests, keep custom
+        newOrder = customItems
+      } else {
+        // Select all template tests (preserve existing order, add missing at end)
+        const existingTemplateIndices = new Set(
+          row.testOrder.filter((t) => t.type === "template").map((t) => (t as { type: "template"; index: number }).index)
+        )
+        const missingTemplates: OrderedTest[] = tests
+          .map((_, i) => i)
+          .filter((i) => !existingTemplateIndices.has(i))
+          .map((i) => ({ type: "template" as const, index: i }))
+        newOrder = [...row.testOrder, ...missingTemplates]
+      }
       return prev.map((s) =>
-        s.groupId === row.groupId ? { ...s, selectedTests: new Set(newSelected) } : s
+        s.groupId === row.groupId ? { ...s, testOrder: cloneTestOrder(newOrder) } : s
+      )
+    })
+  }
+
+  const addCustomTest = (rowId: number) => {
+    setSamples((prev) => {
+      const row = prev.find((s) => s.id === rowId)
+      if (!row) return prev
+      const newTest: OrderedTest = { type: "custom", parameter: "", method: "", unit: "", specMin: "", specMax: "", tat: "" }
+      const newOrder = [...row.testOrder, newTest]
+      return prev.map((s) =>
+        s.groupId === row.groupId ? { ...s, testOrder: cloneTestOrder(newOrder) } : s
+      )
+    })
+  }
+
+  const updateCustomTest = (rowId: number, orderIdx: number, field: string, value: string) => {
+    setSamples((prev) => {
+      const row = prev.find((s) => s.id === rowId)
+      if (!row) return prev
+      const newOrder = row.testOrder.map((t, i) => {
+        if (i !== orderIdx || t.type !== "custom") return t
+        return { ...t, [field]: value }
+      })
+      return prev.map((s) =>
+        s.groupId === row.groupId ? { ...s, testOrder: cloneTestOrder(newOrder) } : s
+      )
+    })
+  }
+
+  const removeOrderItem = (rowId: number, orderIdx: number) => {
+    setSamples((prev) => {
+      const row = prev.find((s) => s.id === rowId)
+      if (!row) return prev
+      const newOrder = row.testOrder.filter((_, i) => i !== orderIdx)
+      return prev.map((s) =>
+        s.groupId === row.groupId ? { ...s, testOrder: cloneTestOrder(newOrder) } : s
+      )
+    })
+  }
+
+  const moveOrderItem = (rowId: number, orderIdx: number, direction: "up" | "down") => {
+    setSamples((prev) => {
+      const row = prev.find((s) => s.id === rowId)
+      if (!row) return prev
+      const newOrder = [...row.testOrder]
+      const targetIdx = direction === "up" ? orderIdx - 1 : orderIdx + 1
+      if (targetIdx < 0 || targetIdx >= newOrder.length) return prev
+      ;[newOrder[orderIdx], newOrder[targetIdx]] = [newOrder[targetIdx], newOrder[orderIdx]]
+      return prev.map((s) =>
+        s.groupId === row.groupId ? { ...s, testOrder: cloneTestOrder(newOrder) } : s
       )
     })
   }
@@ -230,11 +320,9 @@ export function NewRegistrationClient({
 
       if (qty === currentQty) return prev
 
-      // Find the position of the last row in this group
       const lastGroupIdx = prev.findLastIndex((s) => s.groupId === groupId)
 
       if (qty > currentQty) {
-        // Add more rows after the last row in the group
         const newRows: SampleRow[] = []
         for (let i = 0; i < qty - currentQty; i++) {
           newRows.push({
@@ -245,7 +333,7 @@ export function NewRegistrationClient({
             samplePoint: "",
             description: "",
             remarks: row.remarks,
-            selectedTests: new Set(row.selectedTests),
+            testOrder: cloneTestOrder(row.testOrder),
             expanded: false,
           })
         }
@@ -253,9 +341,7 @@ export function NewRegistrationClient({
         result.splice(lastGroupIdx + 1, 0, ...newRows)
         return result
       } else {
-        // Remove rows from the end of the group
         const toRemove = currentQty - qty
-        // Remove from the end of the group
         const reversedGroupIds: number[] = []
         for (let i = prev.length - 1; i >= 0; i--) {
           if (prev[i].groupId === groupId) {
@@ -291,6 +377,9 @@ export function NewRegistrationClient({
     setCollectionDate(new Date().toISOString().slice(0, 10))
     setCollectionTime(new Date().toTimeString().slice(0, 5))
     setSampleCondition("Sealed")
+    setSamplingMethod("NP")
+    setDrawnBy("NP & Spectrum")
+    setSheetNumber("")
     setRegistrationNumber("")
     setRegistrationId("")
     setRegisteredSamples([])
@@ -305,6 +394,13 @@ export function NewRegistrationClient({
   }
 
   const totalSampleCount = samples.filter((s) => s.sampleTypeId).length
+
+  // Helper: count selected tests for a row
+  const getTestCounts = (row: SampleRow) => {
+    const templateCount = row.testOrder.filter((t) => t.type === "template").length
+    const customCount = row.testOrder.filter((t) => t.type === "custom" && t.parameter.trim()).length
+    return { templateCount, customCount, total: templateCount + customCount }
+  }
 
   const handleSubmit = async () => {
     if (!clientId) {
@@ -321,14 +417,9 @@ export function NewRegistrationClient({
       return
     }
     for (const s of validSamples) {
-      const tests = getTestsForType(s.sampleTypeId)
-      if (tests.length === 0) {
-        const stName = sampleTypes.find((st) => st.id === s.sampleTypeId)?.name || "selected type"
-        toast.error(`No tests configured for "${stName}". Please add tests to this sample type first.`)
-        return
-      }
-      if (s.selectedTests.size === 0) {
-        toast.error("Each sample must have at least one test selected")
+      const { total } = getTestCounts(s)
+      if (total === 0) {
+        toast.error("Each sample must have at least one test selected or a custom parameter added")
         return
       }
       if (!s.samplePoint.trim()) {
@@ -339,6 +430,7 @@ export function NewRegistrationClient({
 
     setLoading(true)
     try {
+      // Build ordered tests for the server: template indices + custom tests, in testOrder sequence
       const result = await createRegistration({
         clientId,
         jobType,
@@ -349,16 +441,47 @@ export function NewRegistrationClient({
         collectionDate: `${collectionDate}T${collectionTime}`,
         sampleCondition: sampleCondition || undefined,
         samplingMethod: samplingMethod || undefined,
+        drawnBy: drawnBy || undefined,
         sheetNumber: sheetNumber || undefined,
-        rows: validSamples.map((s) => ({
-          sampleTypeId: s.sampleTypeId,
-          qty: 1,
-          bottleQty: s.bottleQty,
-          samplePoint: s.samplePoint || undefined,
-          description: s.description || undefined,
-          remarks: s.remarks || undefined,
-          selectedTests: Array.from(s.selectedTests),
-        })),
+        rows: validSamples.map((s) => {
+          const templateTests = getTestsForType(s.sampleTypeId)
+          // Build the ordered test list from testOrder
+          const orderedTests: { parameter: string; method?: string; unit?: string; specMin?: string; specMax?: string; tat?: number }[] = []
+          for (const item of s.testOrder) {
+            if (item.type === "template") {
+              const t = templateTests[item.index]
+              if (t) {
+                orderedTests.push({
+                  parameter: t.parameter,
+                  method: getTestMethod(t) || undefined,
+                  unit: t.unit || undefined,
+                  specMin: t.specMin || undefined,
+                  specMax: t.specMax || undefined,
+                  tat: t.tat || undefined,
+                })
+              }
+            } else if (item.type === "custom" && item.parameter.trim()) {
+              orderedTests.push({
+                parameter: item.parameter.trim(),
+                method: item.method.trim() || undefined,
+                unit: item.unit.trim() || undefined,
+                specMin: item.specMin.trim() || undefined,
+                specMax: item.specMax.trim() || undefined,
+                tat: item.tat ? parseInt(item.tat) || undefined : undefined,
+              })
+            }
+          }
+          return {
+            sampleTypeId: s.sampleTypeId,
+            qty: 1,
+            bottleQty: s.bottleQty,
+            samplePoint: s.samplePoint || undefined,
+            description: s.description || undefined,
+            remarks: s.remarks || undefined,
+            selectedTests: [] as number[],
+            orderedTests,
+          }
+        }),
       })
       setRegistrationId(result.registrationId)
       setRegistrationNumber(result.registrationNumber)
@@ -554,8 +677,8 @@ export function NewRegistrationClient({
               </Select>
             </div>
           </div>
-          {/* Row 3: Sampling, Sheet No */}
-          <div className="grid grid-cols-2 md:grid-cols-[150px_200px_1fr] gap-x-3 gap-y-1.5 mt-1.5">
+          {/* Row 3: Sampling, Drawn By, Sheet No */}
+          <div className="grid grid-cols-2 md:grid-cols-[150px_200px_150px_1fr] gap-x-3 gap-y-1.5 mt-1.5">
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampling</Label>
               <Select value={samplingMethod} onValueChange={setSamplingMethod}>
@@ -569,6 +692,10 @@ export function NewRegistrationClient({
                   <SelectItem value="DB">DB</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Drawn By</Label>
+              <Input className="h-9" value={drawnBy} onChange={(e) => setDrawnBy(e.target.value)} placeholder="NP & Spectrum" />
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sheet No.</Label>
@@ -598,6 +725,7 @@ export function NewRegistrationClient({
               const tests = getTestsForType(row.sampleTypeId)
               const groupRows = samples.filter((s) => s.groupId === row.groupId)
               const isFirstInGroup = groupRows[0]?.id === row.id
+              const { templateCount, customCount, total } = getTestCounts(row)
               return (
                 <div key={row.id} className={!isFirstInGroup ? "bg-muted/20" : ""}>
                   {/* Main row */}
@@ -652,15 +780,12 @@ export function NewRegistrationClient({
 
                     {isFirstInGroup ? (
                       <>
-                        {tests.length > 0 ? (
-                          <Button variant="ghost" size="sm" className="h-7 text-xs px-2 justify-start" onClick={() => toggleExpanded(row.id)}>
-                            <Badge variant="secondary" className="text-[10px] px-1 py-0 mr-1">{row.selectedTests.size}/{tests.length}</Badge>
-                            {row.expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                          </Button>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">-</span>
-                        )}
-                        {/* Delete entire group */}
+                        <Button variant="ghost" size="sm" className="h-7 text-xs px-2 justify-start" onClick={() => toggleExpanded(row.id)}>
+                          <Badge variant="secondary" className="text-[10px] px-1 py-0 mr-1">
+                            {total}{tests.length > 0 ? `/${tests.length}` : ""}{customCount > 0 ? `+${customCount}` : ""}
+                          </Badge>
+                          {row.expanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        </Button>
                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive" onClick={() => removeGroup(row.groupId)}>
                           <Trash2 className="h-3 w-3" />
                         </Button>
@@ -674,31 +799,104 @@ export function NewRegistrationClient({
                   </div>
 
                   {/* Expanded test panel — only on first row of group */}
-                  {isFirstInGroup && row.expanded && tests.length > 0 && (
+                  {isFirstInGroup && row.expanded && (
                     <div className="ml-7 mr-1 mb-1.5 rounded border text-xs overflow-hidden">
-                      {/* Header */}
-                      <div className="flex items-center gap-3 px-2 py-1 bg-muted/50 border-b">
-                        <label className="flex items-center gap-1.5 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleAllTests(row.id) }}>
-                          <Checkbox checked={row.selectedTests.size === tests.length} className="h-3.5 w-3.5" tabIndex={-1} />
-                          <span className="font-medium">Select All</span>
-                        </label>
-                        <span className="ml-auto text-muted-foreground">{row.selectedTests.size}/{tests.length}</span>
-                      </div>
-                      {/* Test list */}
-                      <div className="max-h-[200px] overflow-y-auto divide-y">
-                        {tests.map((test, testIdx) => (
-                          <label
-                            key={testIdx}
-                            className="flex items-center gap-3 px-2 py-1.5 hover:bg-muted/30 cursor-pointer"
-                            onClick={(e) => { e.preventDefault(); toggleTest(row.id, testIdx) }}
-                          >
-                            <Checkbox checked={row.selectedTests.has(testIdx)} className="h-3.5 w-3.5 shrink-0" tabIndex={-1} />
-                            <span className="font-medium min-w-0 flex-1">{test.parameter}</span>
-                            <span className="text-muted-foreground shrink-0 w-24">{getTestMethod(test) || "-"}</span>
-                            <span className="text-muted-foreground shrink-0 w-16 text-right">{test.unit || "-"}</span>
-                            <span className="text-muted-foreground shrink-0 w-14 text-right">{test.tat ? `${test.tat}d` : "-"}</span>
-                          </label>
-                        ))}
+                      {/* Template test checkboxes */}
+                      {tests.length > 0 && (
+                        <>
+                          <div className="flex items-center gap-3 px-2 py-1 bg-muted/50 border-b">
+                            <label className="flex items-center gap-1.5 cursor-pointer" onClick={(e) => { e.preventDefault(); toggleAllTests(row.id) }}>
+                              <Checkbox checked={templateCount === tests.length} className="h-3.5 w-3.5" tabIndex={-1} />
+                              <span className="font-medium">Select All</span>
+                            </label>
+                            <span className="ml-auto text-muted-foreground">{templateCount}/{tests.length}</span>
+                          </div>
+                          <div className="max-h-[200px] overflow-y-auto divide-y">
+                            {tests.map((test, testIdx) => (
+                              <label
+                                key={testIdx}
+                                className="flex items-center gap-3 px-2 py-1.5 hover:bg-muted/30 cursor-pointer"
+                                onClick={(e) => { e.preventDefault(); toggleTest(row.id, testIdx) }}
+                              >
+                                <Checkbox checked={isTemplateSelected(row, testIdx)} className="h-3.5 w-3.5 shrink-0" tabIndex={-1} />
+                                <span className="font-medium min-w-0 flex-1">{test.parameter}</span>
+                                <span className="text-muted-foreground shrink-0 w-24">{getTestMethod(test) || "-"}</span>
+                                <span className="text-muted-foreground shrink-0 w-16 text-right">{test.unit || "-"}</span>
+                                <span className="text-muted-foreground shrink-0 w-14 text-right">{test.tat ? `${test.tat}d` : "-"}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Ordered list of all selected tests (template + custom) with reorder */}
+                      {row.testOrder.length > 0 && (
+                        <div className={tests.length > 0 ? "border-t" : ""}>
+                          <div className="flex items-center gap-3 px-2 py-1 bg-green-50 dark:bg-green-950/30 border-b">
+                            <span className="font-medium">Parameter Order (drag to reorder in report)</span>
+                            <span className="ml-auto text-muted-foreground">{total} parameters</span>
+                          </div>
+                          <div className="divide-y">
+                            {row.testOrder.map((item, orderIdx) => {
+                              if (item.type === "template") {
+                                const test = tests[item.index]
+                                if (!test) return null
+                                return (
+                                  <div key={`t-${item.index}`} className="flex items-center gap-2 px-2 py-1 hover:bg-muted/20">
+                                    <span className="text-[10px] text-muted-foreground w-5 text-center shrink-0">{orderIdx + 1}</span>
+                                    <span className="font-medium min-w-0 flex-1">{test.parameter}</span>
+                                    <span className="text-muted-foreground shrink-0 w-20 truncate">{getTestMethod(test) || ""}</span>
+                                    <span className="text-muted-foreground shrink-0 w-12 text-right">{test.unit || ""}</span>
+                                    <div className="flex shrink-0">
+                                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0" disabled={orderIdx === 0} onClick={() => moveOrderItem(row.id, orderIdx, "up")}>
+                                        <ArrowUpIcon className="h-3 w-3" />
+                                      </Button>
+                                      <Button variant="ghost" size="sm" className="h-5 w-5 p-0" disabled={orderIdx === row.testOrder.length - 1} onClick={() => moveOrderItem(row.id, orderIdx, "down")}>
+                                        <ArrowDownIcon className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                )
+                              } else {
+                                return (
+                                  <div key={`c-${orderIdx}`} className="px-2 py-1 hover:bg-blue-50/50 dark:hover:bg-blue-950/20">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] text-muted-foreground w-5 text-center shrink-0">{orderIdx + 1}</span>
+                                      <div className="grid grid-cols-[1fr_90px_50px_50px_50px_40px] gap-1 flex-1">
+                                        <Input className="h-5 text-xs" placeholder="Parameter *" value={item.parameter} onChange={(e) => updateCustomTest(row.id, orderIdx, "parameter", e.target.value)} />
+                                        <Input className="h-5 text-xs" placeholder="Method" value={item.method} onChange={(e) => updateCustomTest(row.id, orderIdx, "method", e.target.value)} />
+                                        <Input className="h-5 text-xs" placeholder="Unit" value={item.unit} onChange={(e) => updateCustomTest(row.id, orderIdx, "unit", e.target.value)} />
+                                        <Input className="h-5 text-xs" placeholder="Min" value={item.specMin} onChange={(e) => updateCustomTest(row.id, orderIdx, "specMin", e.target.value)} />
+                                        <Input className="h-5 text-xs" placeholder="Max" value={item.specMax} onChange={(e) => updateCustomTest(row.id, orderIdx, "specMax", e.target.value)} />
+                                        <Input className="h-5 text-xs" placeholder="TAT" type="number" value={item.tat} onChange={(e) => updateCustomTest(row.id, orderIdx, "tat", e.target.value)} />
+                                      </div>
+                                      <div className="flex shrink-0">
+                                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0" disabled={orderIdx === 0} onClick={() => moveOrderItem(row.id, orderIdx, "up")}>
+                                          <ArrowUpIcon className="h-3 w-3" />
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0" disabled={orderIdx === row.testOrder.length - 1} onClick={() => moveOrderItem(row.id, orderIdx, "down")}>
+                                          <ArrowDownIcon className="h-3 w-3" />
+                                        </Button>
+                                        <Button variant="ghost" size="sm" className="h-5 w-5 p-0 text-destructive" onClick={() => removeOrderItem(row.id, orderIdx)}>
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )
+                              }
+                            })}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Add custom parameter button */}
+                      <div className={row.testOrder.length > 0 || tests.length > 0 ? "border-t" : ""}>
+                        <div className="px-2 py-1.5">
+                          <Button variant="outline" size="sm" className="h-6 text-[11px]" onClick={() => addCustomTest(row.id)}>
+                            <Plus className="mr-1 h-3 w-3" /> Add Custom Parameter
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   )}

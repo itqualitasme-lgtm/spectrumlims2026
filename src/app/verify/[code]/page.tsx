@@ -1,7 +1,7 @@
 import { db } from "@/lib/db"
 import { notFound } from "next/navigation"
 import { format } from "date-fns"
-import { CheckCircle2, XCircle, Shield, FlaskConical, User, Calendar, FileText, Hash } from "lucide-react"
+import { CheckCircle2, XCircle, Shield, FlaskConical, User, Calendar, FileText, Hash, Download } from "lucide-react"
 
 export default async function VerifyReportPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = await params
@@ -127,6 +127,17 @@ export default async function VerifyReportPage({ params }: { params: Promise<{ c
             </div>
             <p className="font-semibold text-gray-900">{verification.issuedBy}</p>
           </div>
+
+          {/* Download Report */}
+          <a
+            href={`/api/reports/public/${code}/coa`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center justify-center gap-2 w-full bg-green-600 hover:bg-green-700 text-white rounded-lg py-2.5 px-4 text-sm font-medium transition-colors"
+          >
+            <Download className="h-4 w-4" />
+            Download Report (PDF)
+          </a>
 
           {/* Verification stamp */}
           <div className="border-t pt-4 mt-4">

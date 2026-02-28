@@ -1,37 +1,34 @@
 import { NextResponse } from "next/server"
-import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 import { generateCOAPDF } from "@/components/reports/coa-pdf"
 import type { COAPDFProps } from "@/components/reports/coa-pdf"
 import QRCode from "qrcode"
-import crypto from "crypto"
-
-function generateVerificationCode(): string {
-  return crypto.randomBytes(12).toString("base64url")
-}
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ code: string }> }
 ) {
   try {
-    // Authenticate
-    const session = await auth()
-    if (!session?.user) {
+    const { code } = await params
+
+    // Look up the verification record (public — no auth required)
+    const verification = await db.reportVerification.findUnique({
+      where: { verificationCode: code },
+    })
+
+    if (!verification) {
       return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
+        { error: "Invalid verification code" },
+        { status: 404 }
       )
     }
 
-    const { id } = await params
-    const user = session.user as any
-    const url = new URL(request.url)
-    const showHeaderFooter = url.searchParams.get("noHeader") !== "1"
-
-    // Fetch report with all related data including template and signatures
+    // Fetch the full report with all related data
     const report = await db.report.findFirst({
-      where: { id, labId: user.labId },
+      where: {
+        id: verification.reportId,
+        status: { in: ["approved", "published"] },
+      },
       include: {
         sample: {
           include: {
@@ -67,48 +64,16 @@ export async function GET(
 
     if (!report) {
       return NextResponse.json(
-        { error: "Report not found" },
+        { error: "Report not found or not yet published" },
         { status: 404 }
       )
     }
 
-    // Validate report status
-    if (report.status !== "published" && report.status !== "approved") {
-      return NextResponse.json(
-        { error: "Report must be approved or published to generate COA" },
-        { status: 400 }
-      )
-    }
-
-    // If no template assigned, try to use the default template
+    // Use assigned or default template
     let template = report.template
     if (!template) {
       template = await db.reportTemplate.findFirst({
         where: { labId: report.labId, isDefault: true },
-      })
-    }
-
-    // Generate or retrieve verification record
-    let verification = await db.reportVerification.findFirst({
-      where: { reportId: report.id },
-      orderBy: { createdAt: "desc" },
-    })
-
-    if (!verification) {
-      const verificationCode = generateVerificationCode()
-      verification = await db.reportVerification.create({
-        data: {
-          verificationCode,
-          reportId: report.id,
-          reportNumber: report.reportNumber,
-          sampleNumber: report.sample.sampleNumber,
-          clientName: report.sample.client.name,
-          sampleType: report.sample.sampleType.name,
-          testCount: report.sample.testResults.length,
-          issuedAt: report.reviewedAt || report.createdAt,
-          issuedBy: report.createdBy.name,
-          labId: report.labId,
-        },
       })
     }
 
@@ -121,21 +86,21 @@ export async function GET(
 
     const verificationUrl = `${baseUrl}/verify/${verification.verificationCode}`
 
-    // Generate QR code data URL
+    // Generate QR code
     const qrCodeDataUrl = await QRCode.toDataURL(verificationUrl, {
       width: 200,
       margin: 1,
       color: { dark: "#1e3a5f", light: "#ffffff" },
     })
 
-    // Get the chemist who entered test results
+    // Get chemist
     const testedByUser = report.sample.testResults.find(tr => tr.enteredBy)?.enteredBy
     const chemist = testedByUser || (report.sample.assignedTo ? {
       id: report.sample.assignedTo.id,
       name: report.sample.assignedTo.name,
     } : null)
 
-    // Build props for the PDF component
+    // Build props — always with header & footer for customer downloads
     const pdfProps: COAPDFProps = {
       report: {
         id: report.id,
@@ -201,13 +166,11 @@ export async function GET(
       qrCodeDataUrl,
       verificationCode: verification.verificationCode,
       verificationUrl,
-      showHeaderFooter,
+      showHeaderFooter: true,
     }
 
-    // Generate PDF buffer
     const pdfBuffer = await generateCOAPDF(pdfProps)
 
-    // Return PDF response
     return new Response(new Uint8Array(pdfBuffer), {
       status: 200,
       headers: {
@@ -217,7 +180,7 @@ export async function GET(
       },
     })
   } catch (error) {
-    console.error("Error generating COA PDF:", error)
+    console.error("Error generating public COA PDF:", error)
     return NextResponse.json(
       { error: "Failed to generate COA PDF" },
       { status: 500 }

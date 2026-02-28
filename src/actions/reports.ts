@@ -33,7 +33,7 @@ export async function getReports() {
               enteredById: true,
               enteredBy: { select: { id: true, name: true } },
             },
-            orderBy: { parameter: "asc" },
+            orderBy: { sortOrder: "asc" },
           },
         },
       },
@@ -72,7 +72,7 @@ export async function getReportsForAuthentication() {
               enteredById: true,
               enteredBy: { select: { id: true, name: true } },
             },
-            orderBy: { parameter: "asc" },
+            orderBy: { sortOrder: "asc" },
           },
         },
       },
@@ -155,7 +155,7 @@ export async function createReport(data: {
   if (sample?.sequenceNumber) {
     reportNumber = await generateLinkedNumber(labId, "report", sample.sequenceNumber)
   } else {
-    const result = await generateNextNumber(labId, "report", "RPT")
+    const result = await generateNextNumber(labId, "report", "SPL")
     reportNumber = result.formatted
   }
 
