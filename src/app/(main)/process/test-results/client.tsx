@@ -101,7 +101,7 @@ type Sample = {
   client: { id: string; name: string; company: string | null }
   sampleType: { id: string; name: string; defaultTests: string }
   assignedTo: { name: string } | null
-  registration: { id: string; registrationNumber: string } | null
+  registration: { id: string; registrationNumber: string; samplingMethod: string; sheetNumber: string | null } | null
   notes: string | null
   testResults: TestResult[]
   reports: { summary: string | null; status: string; reviewedBy: { name: string } | null }[]
@@ -718,6 +718,9 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                   {selectedSample.registration && (
                     <span className="text-[10px] text-muted-foreground">
                       ({selectedSample.registration.registrationNumber})
+                      {selectedSample.registration.samplingMethod && selectedSample.registration.samplingMethod !== "NP" && (
+                        <> — {selectedSample.registration.samplingMethod}</>
+                      )}
                     </span>
                   )}
                 </div>

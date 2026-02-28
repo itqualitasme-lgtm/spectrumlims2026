@@ -113,6 +113,8 @@ export function NewRegistrationClient({
   const [collectionDate, setCollectionDate] = useState("")
   const [collectionTime, setCollectionTime] = useState("")
   const [sampleCondition, setSampleCondition] = useState("Sealed")
+  const [samplingMethod, setSamplingMethod] = useState("NP")
+  const [sheetNumber, setSheetNumber] = useState("")
 
   // Set date/time on client only to avoid hydration mismatch
   useEffect(() => {
@@ -346,6 +348,8 @@ export function NewRegistrationClient({
         collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
         collectionDate: `${collectionDate}T${collectionTime}`,
         sampleCondition: sampleCondition || undefined,
+        samplingMethod: samplingMethod || undefined,
+        sheetNumber: sheetNumber || undefined,
         rows: validSamples.map((s) => ({
           sampleTypeId: s.sampleTypeId,
           qty: 1,
@@ -546,6 +550,25 @@ export function NewRegistrationClient({
                   <SelectItem value="Opened">Opened</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            {/* Row 3: Sampling Method, Sheet Number */}
+            <div className="grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Sampling</Label>
+              <Select value={samplingMethod} onValueChange={setSamplingMethod}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NP">NP</SelectItem>
+                  <SelectItem value="Running Sample">Running Sample</SelectItem>
+                  <SelectItem value="UML">UML</SelectItem>
+                  <SelectItem value="TUMLB">TUMLB</SelectItem>
+                  <SelectItem value="Multi Level">Multi Level</SelectItem>
+                  <SelectItem value="DB">DB</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2 grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Sheet No.</Label>
+              <Input className="h-9" value={sheetNumber} onChange={(e) => setSheetNumber(e.target.value)} placeholder="Optional" />
             </div>
           </div>
         </CardContent>

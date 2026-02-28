@@ -42,7 +42,7 @@ import {
 
 import { Checkbox } from "@/components/ui/checkbox"
 
-import { updateSample, searchCustomers, getCustomerById } from "@/actions/registrations"
+import { updateSample, updateRegistration, searchCustomers, getCustomerById } from "@/actions/registrations"
 import { addTestsToSample, deleteTestResult } from "@/actions/test-results"
 
 type TestParam = {
@@ -116,6 +116,7 @@ type SampleData = {
   assignedTo: { name: string } | null
   collectedBy: { name: string } | null
   registeredBy: { name: string } | null
+  registration: { id: string; samplingMethod: string; sheetNumber: string | null } | null
   testResults: TestResult[]
 }
 
@@ -166,6 +167,8 @@ export function EditSampleClient({
   const [description, setDescription] = useState(sample.description || "")
   const [quantity, setQuantity] = useState(sample.quantity || "1 Ltr")
   const [notes, setNotes] = useState(sample.notes || "")
+  const [samplingMethod, setSamplingMethod] = useState(sample.registration?.samplingMethod || "NP")
+  const [sheetNumber, setSheetNumber] = useState(sample.registration?.sheetNumber || "")
 
   // Add test dialog
   const [addTestOpen, setAddTestOpen] = useState(false)
@@ -255,20 +258,32 @@ export function EditSampleClient({
 
     setLoading(true)
     try {
-      await updateSample(sample.id, {
-        clientId,
-        sampleTypeId,
-        jobType,
-        priority,
-        reference: reference || undefined,
-        description: description || undefined,
-        collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
-        collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
-        samplePoint: samplePoint || undefined,
-        quantity: quantity || undefined,
-        notes: notes || undefined,
-        collectionDate: `${collectionDate}T${collectionTime}`,
-      })
+      const promises: Promise<any>[] = [
+        updateSample(sample.id, {
+          clientId,
+          sampleTypeId,
+          jobType,
+          priority,
+          reference: reference || undefined,
+          description: description || undefined,
+          collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+          collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
+          samplePoint: samplePoint || undefined,
+          quantity: quantity || undefined,
+          notes: notes || undefined,
+          collectionDate: `${collectionDate}T${collectionTime}`,
+        }),
+      ]
+      if (sample.registration?.id) {
+        promises.push(updateRegistration(sample.registration.id, {
+          samplingMethod,
+          sheetNumber: sheetNumber || undefined,
+          reference: reference || undefined,
+          collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
+          collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+        }))
+      }
+      await Promise.all(promises)
       toast.success(`Sample ${sample.sampleNumber} updated`)
       router.push(`/process/registration/${sample.id}`)
       router.refresh()
@@ -445,7 +460,7 @@ export function EditSampleClient({
               <Label className="text-xs text-muted-foreground">Location</Label>
               <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="Ajman Port" />
             </div>
-            <div className="col-span-2 grid gap-0.5">
+            <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampler</Label>
               <SearchableSelect
                 options={samplerOptions}
@@ -454,6 +469,25 @@ export function EditSampleClient({
                 placeholder="Select sampler..."
                 searchPlaceholder="Search..."
               />
+            </div>
+            <div className="grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Sampling</Label>
+              <Select value={samplingMethod} onValueChange={setSamplingMethod}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NP">NP</SelectItem>
+                  <SelectItem value="Running Sample">Running Sample</SelectItem>
+                  <SelectItem value="UML">UML</SelectItem>
+                  <SelectItem value="TUMLB">TUMLB</SelectItem>
+                  <SelectItem value="Multi Level">Multi Level</SelectItem>
+                  <SelectItem value="DB">DB</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {/* Row 3 */}
+            <div className="grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Sheet No.</Label>
+              <Input className="h-9" value={sheetNumber} onChange={(e) => setSheetNumber(e.target.value)} placeholder="Optional" />
             </div>
           </div>
         </CardContent>

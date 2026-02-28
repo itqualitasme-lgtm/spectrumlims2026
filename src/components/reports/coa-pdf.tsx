@@ -71,6 +71,8 @@ interface SampleInfo {
   reference?: string | null
   registeredAt?: Date | string | null
   notes?: string | null
+  samplingMethod?: string | null
+  sheetNumber?: string | null
   client: CustomerInfo
   sampleType: SampleTypeInfo
   testResults: TestResultInfo[]
@@ -661,12 +663,34 @@ export function COAPDF({
             </View>
           </View>
 
-          {/* Reference */}
-          {sample.reference && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Reference</Text>
-              <Text style={styles.infoSep}>:</Text>
-              <Text style={styles.infoValue}>{sample.reference}</Text>
+          {/* Reference, Sampling, Sheet No */}
+          {(sample.reference || (sample.samplingMethod && sample.samplingMethod !== "NP") || sample.sheetNumber) && (
+            <View style={styles.infoGrid}>
+              <View style={styles.infoGridLeft}>
+                {sample.reference && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Reference</Text>
+                    <Text style={styles.infoSep}>:</Text>
+                    <Text style={styles.infoValue}>{sample.reference}</Text>
+                  </View>
+                )}
+                {sample.samplingMethod && sample.samplingMethod !== "NP" && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoLabel}>Sampling</Text>
+                    <Text style={styles.infoSep}>:</Text>
+                    <Text style={styles.infoValue}>{sample.samplingMethod}</Text>
+                  </View>
+                )}
+              </View>
+              <View style={styles.infoGridRight}>
+                {sample.sheetNumber && (
+                  <View style={styles.infoRow}>
+                    <Text style={styles.infoGridLabel}>Sheet No.</Text>
+                    <Text style={styles.infoSep}>:</Text>
+                    <Text style={styles.infoValue}>{sample.sheetNumber}</Text>
+                  </View>
+                )}
+              </View>
             </View>
           )}
 
@@ -1078,6 +1102,20 @@ function COAPageContent(props: COAPDFProps) {
           <Text style={styles.infoSep}>:</Text>
           <Text style={styles.infoValue}>Client</Text>
         </View>
+        {sample.samplingMethod && sample.samplingMethod !== "NP" && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Sampling</Text>
+            <Text style={styles.infoSep}>:</Text>
+            <Text style={styles.infoValue}>{sample.samplingMethod}</Text>
+          </View>
+        )}
+        {sample.sheetNumber && (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Sheet No.</Text>
+            <Text style={styles.infoSep}>:</Text>
+            <Text style={styles.infoValue}>{sample.sheetNumber}</Text>
+          </View>
+        )}
       </View>
 
       {/* TEST RESULTS TABLE */}

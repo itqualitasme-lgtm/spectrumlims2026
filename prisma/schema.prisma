@@ -207,6 +207,8 @@ model Registration {
   collectedById        String?
   registeredById       String?
   registeredAt         DateTime?
+  samplingMethod       String    @default("NP")
+  sheetNumber          String?
   notes                String?
   labId                String
   createdAt            DateTime  @default(now())

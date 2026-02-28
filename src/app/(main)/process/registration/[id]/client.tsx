@@ -63,6 +63,8 @@ type Report = {
 type RegistrationContext = {
   id: string
   registrationNumber: string
+  samplingMethod: string
+  sheetNumber: string | null
   samples: { id: string; sampleNumber: string; subSampleNumber: number; status: string; samplePoint: string | null; quantity: string | null; description: string | null; sampleGroup: string | null }[]
 }
 
@@ -296,6 +298,18 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
               <div>
                 <p className="text-sm font-medium text-muted-foreground">Collection Location</p>
                 <p className="text-sm">{sample.collectionLocation}</p>
+              </div>
+            )}
+            {sample.registration?.samplingMethod && sample.registration.samplingMethod !== "NP" && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Sampling</p>
+                <p className="text-sm">{sample.registration.samplingMethod}</p>
+              </div>
+            )}
+            {sample.registration?.sheetNumber && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Sheet No.</p>
+                <p className="text-sm">{sample.registration.sheetNumber}</p>
               </div>
             )}
             {sample.description && (

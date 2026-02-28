@@ -17,6 +17,8 @@ export async function createRegistration(data: {
   collectionLocation?: string
   collectionDate?: string
   sampleCondition?: string
+  samplingMethod?: string
+  sheetNumber?: string
   notes?: string
   rows: {
     sampleTypeId: string
@@ -62,6 +64,8 @@ export async function createRegistration(data: {
       collectedById,
       registeredById: user.id,
       registeredAt: recordDate,
+      samplingMethod: data.samplingMethod || "NP",
+      sheetNumber: data.sheetNumber || null,
       notes: data.notes || null,
       labId,
     },
@@ -691,6 +695,51 @@ export async function updateSample(
   revalidatePath("/process/sample-collection")
 
   return sample
+}
+
+export async function updateRegistration(
+  registrationId: string,
+  data: {
+    samplingMethod?: string
+    sheetNumber?: string
+    reference?: string
+    collectionLocation?: string
+    collectedById?: string
+    notes?: string
+  }
+) {
+  const session = await requirePermission("process", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const existing = await db.registration.findFirst({ where: { id: registrationId, labId } })
+  if (!existing) throw new Error("Registration not found")
+
+  const registration = await db.registration.update({
+    where: { id: registrationId },
+    data: {
+      samplingMethod: data.samplingMethod || "NP",
+      sheetNumber: data.sheetNumber !== undefined ? (data.sheetNumber || null) : undefined,
+      reference: data.reference !== undefined ? (data.reference || null) : undefined,
+      collectionLocation: data.collectionLocation !== undefined ? (data.collectionLocation || null) : undefined,
+      collectedById: data.collectedById !== undefined ? (data.collectedById || null) : undefined,
+      notes: data.notes !== undefined ? (data.notes || null) : undefined,
+    },
+  })
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "process",
+    "edit",
+    `Updated registration ${registration.registrationNumber}`
+  )
+
+  revalidatePath("/process/registration")
+  revalidatePath(`/process/registration/${registrationId}`)
+
+  return registration
 }
 
 export async function assignSample(sampleId: string, assignedToId: string | null) {

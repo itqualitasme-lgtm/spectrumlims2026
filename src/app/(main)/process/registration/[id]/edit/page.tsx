@@ -1,4 +1,4 @@
-import { getSample, getSampleTypesForSelect, getSamplersForSelect, searchCustomers, getCustomerById } from "@/actions/registrations"
+import { getSample, getSampleTypesForSelect, getSamplersForSelect } from "@/actions/registrations"
 import { EditSampleClient } from "./client"
 import { notFound } from "next/navigation"
 

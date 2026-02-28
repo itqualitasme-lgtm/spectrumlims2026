@@ -34,7 +34,7 @@ export async function getSamplesForTestEntry() {
       sampleType: true,
       client: true,
       assignedTo: { select: { name: true } },
-      registration: { select: { id: true, registrationNumber: true } },
+      registration: { select: { id: true, registrationNumber: true, samplingMethod: true, sheetNumber: true } },
       testResults: {
         include: {
           enteredBy: { select: { name: true } },
