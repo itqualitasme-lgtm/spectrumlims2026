@@ -129,6 +129,8 @@ export function EditReportTemplateClient({
               </div>
             </div>
 
+            {!formHeaderImageUrl && (
+            <>
             <div className="grid gap-2">
               <Label>Header Text</Label>
               <Textarea
@@ -143,6 +145,20 @@ export function EditReportTemplateClient({
             </div>
 
             <div className="grid gap-2">
+              <Label>Accreditation Text</Label>
+              <Input
+                value={formAccreditationText}
+                onChange={(e) => setFormAccreditationText(e.target.value)}
+                placeholder="e.g. ISO/IEC 17025:2017 Accredited | ENAS CAB-XXX"
+              />
+              <p className="text-xs text-muted-foreground">
+                Short accreditation line shown alongside logos in the header.
+              </p>
+            </div>
+            </>
+            )}
+
+            <div className="grid gap-2">
               <Label>Footer Text</Label>
               <Textarea
                 value={formFooterText}
@@ -152,18 +168,6 @@ export function EditReportTemplateClient({
               />
               <p className="text-xs text-muted-foreground">
                 Shown at the bottom of every page as disclaimer text.
-              </p>
-            </div>
-
-            <div className="grid gap-2">
-              <Label>Accreditation Text</Label>
-              <Input
-                value={formAccreditationText}
-                onChange={(e) => setFormAccreditationText(e.target.value)}
-                placeholder="e.g. ISO/IEC 17025:2017 Accredited | ENAS CAB-XXX"
-              />
-              <p className="text-xs text-muted-foreground">
-                Short accreditation line shown alongside logos in the header.
               </p>
             </div>
           </div>
@@ -206,10 +210,11 @@ export function EditReportTemplateClient({
         </CardContent>
       </Card>
 
+      {!formHeaderImageUrl && (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Logos & Seal</CardTitle>
-          <p className="text-xs text-muted-foreground">Used only when header/footer images above are not uploaded.</p>
+          <p className="text-xs text-muted-foreground">Not needed when header image is uploaded above.</p>
         </CardHeader>
         <CardContent>
           <div className="grid gap-6">
@@ -258,6 +263,7 @@ export function EditReportTemplateClient({
           </div>
         </CardContent>
       </Card>
+      )}
 
       <div className="flex justify-end gap-3">
         <Button variant="outline" asChild>
