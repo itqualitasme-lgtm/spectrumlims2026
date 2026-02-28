@@ -426,12 +426,12 @@ const styles = StyleSheet.create({
   },
   signaturesRow: {
     flexDirection: "row",
-    justifyContent: "center",
+    justifyContent: "space-between",
     marginTop: 4,
     alignItems: "flex-end",
   },
   signatureBlock: {
-    flex: 1,
+    width: "33%",
     alignItems: "center",
   },
   signatureImage: {
@@ -467,7 +467,7 @@ const styles = StyleSheet.create({
 
   // ---- QR Code ----
   qrContainer: {
-    flex: 1,
+    width: "33%",
     alignItems: "center",
   },
   qrImage: {
@@ -903,7 +903,7 @@ export function COAPDF({
                 )}
               </View>
             ) : (
-              <View style={{ flex: 1 }} />
+              <View style={{ width: "33%" }} />
             )}
 
             {/* Company Seal (right) — hidden for letterhead */}
