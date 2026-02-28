@@ -244,16 +244,23 @@ const styles = StyleSheet.create({
   // ---- Info Section ----
   infoSection: {
     marginBottom: 6,
+    borderWidth: 1,
+    borderColor: BORDER,
   },
   infoRow: {
     flexDirection: "row",
-    marginBottom: 2,
+    borderBottomWidth: 0.5,
+    borderBottomColor: BORDER,
+    minHeight: 14,
+    alignItems: "center",
   },
   infoLabel: {
-    width: 145,
+    width: 130,
     fontSize: 8,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
+    paddingLeft: 4,
+    paddingVertical: 2,
   },
   infoSep: {
     width: 10,
@@ -264,21 +271,47 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 8,
     color: BLACK,
+    paddingVertical: 2,
+    paddingRight: 4,
   },
   infoGrid: {
     flexDirection: "row",
+    borderBottomWidth: 0.5,
+    borderBottomColor: BORDER,
   },
   infoGridLeft: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    minHeight: 14,
   },
   infoGridRight: {
     flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    borderLeftWidth: 0.5,
+    borderLeftColor: BORDER,
+    minHeight: 14,
   },
   infoGridLabel: {
-    width: 85,
+    width: 100,
     fontSize: 8,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
+    paddingLeft: 4,
+    paddingVertical: 2,
+  },
+  infoGridSep: {
+    width: 10,
+    fontSize: 8,
+    color: BLACK,
+  },
+  infoGridValue: {
+    flex: 1,
+    fontSize: 8,
+    color: BLACK,
+    paddingVertical: 2,
+    paddingRight: 4,
   },
 
   // ---- Test Results Header ----
@@ -345,16 +378,23 @@ const styles = StyleSheet.create({
   metaSection: {
     marginTop: 4,
     marginBottom: 6,
+    borderWidth: 1,
+    borderColor: BORDER,
   },
   metaRow: {
     flexDirection: "row",
-    marginBottom: 2,
+    borderBottomWidth: 0.5,
+    borderBottomColor: BORDER,
+    minHeight: 14,
+    alignItems: "center",
   },
   metaLabel: {
     fontSize: 8,
     fontFamily: "Helvetica-Bold",
     width: 145,
     color: BLACK,
+    paddingLeft: 4,
+    paddingVertical: 2,
   },
   metaSep: {
     fontSize: 8,
@@ -364,11 +404,13 @@ const styles = StyleSheet.create({
   metaValue: {
     fontSize: 8,
     color: BLACK,
+    paddingVertical: 2,
   },
   metaNote: {
     fontSize: 7.5,
     color: BLACK,
-    marginTop: 2,
+    paddingHorizontal: 4,
+    paddingVertical: 3,
   },
 
   // ---- Reported By + Signatures ----
@@ -658,112 +700,80 @@ export function COAPDF({
           {/* Sample Delivered By & Sample Drawn By */}
           <View style={styles.infoGrid}>
             <View style={styles.infoGridLeft}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Sample Delivered By</Text>
-                <Text style={styles.infoSep}>:</Text>
-                <Text style={styles.infoValue}>{sample.deliveredBy || customer.contactPerson || customer.name}</Text>
-              </View>
+              <Text style={styles.infoGridLabel}>Sample Delivered By</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>{sample.deliveredBy || customer.contactPerson || customer.name}</Text>
             </View>
             <View style={styles.infoGridRight}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoGridLabel}>Sample Drawn By</Text>
-                <Text style={styles.infoSep}>:</Text>
-                <Text style={styles.infoValue}>
-                  {sample.drawnBy || "NP & Spectrum"}
-                </Text>
-              </View>
+              <Text style={styles.infoGridLabel}>Sample Drawn By</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>{sample.drawnBy || "NP & Spectrum"}</Text>
             </View>
           </View>
 
           {/* No. of Samples & Condition */}
           <View style={styles.infoGrid}>
             <View style={styles.infoGridLeft}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>No. of Samples</Text>
-                <Text style={styles.infoSep}>:</Text>
-                <Text style={styles.infoValue}>
-                  {sample.sampleCount ? `${sample.sampleCount} x ${sample.quantity || "Bottle"}` : sample.quantity || "-"}
-                </Text>
-              </View>
+              <Text style={styles.infoGridLabel}>No. of Samples</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>
+                {sample.sampleCount ? `${sample.sampleCount} x ${sample.quantity || "Bottle"}` : sample.quantity || "-"}
+              </Text>
             </View>
             <View style={styles.infoGridRight}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoGridLabel}>Condition of Sample</Text>
-                <Text style={styles.infoSep}>:</Text>
-                <Text style={styles.infoValue}>{sample.sampleCondition || "-"}</Text>
-              </View>
+              <Text style={styles.infoGridLabel}>Condition of Sample</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>{sample.sampleCondition || "-"}</Text>
             </View>
           </View>
 
-          {/* Reference, Sampling, Sheet No */}
-          {(sample.reference || (sample.samplingMethod && sample.samplingMethod !== "NP") || sample.sheetNumber) && (
+          {/* Reference & Sheet No */}
+          {(sample.reference || sample.sheetNumber) && (
             <View style={styles.infoGrid}>
               <View style={styles.infoGridLeft}>
-                {sample.reference && (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Reference</Text>
-                    <Text style={styles.infoSep}>:</Text>
-                    <Text style={styles.infoValue}>{sample.reference}</Text>
-                  </View>
-                )}
-                {sample.samplingMethod && sample.samplingMethod !== "NP" && (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoLabel}>Sampling</Text>
-                    <Text style={styles.infoSep}>:</Text>
-                    <Text style={styles.infoValue}>{sample.samplingMethod}</Text>
-                  </View>
-                )}
+                <Text style={styles.infoGridLabel}>{sample.reference ? "Reference" : ""}</Text>
+                <Text style={styles.infoGridSep}>{sample.reference ? ":" : ""}</Text>
+                <Text style={styles.infoGridValue}>{sample.reference || ""}</Text>
               </View>
               <View style={styles.infoGridRight}>
-                {sample.sheetNumber && (
-                  <View style={styles.infoRow}>
-                    <Text style={styles.infoGridLabel}>Sheet No.</Text>
-                    <Text style={styles.infoSep}>:</Text>
-                    <Text style={styles.infoValue}>{sample.sheetNumber}</Text>
-                  </View>
-                )}
+                <Text style={styles.infoGridLabel}>{sample.sheetNumber ? "Sheet No." : ""}</Text>
+                <Text style={styles.infoGridSep}>{sample.sheetNumber ? ":" : ""}</Text>
+                <Text style={styles.infoGridValue}>{sample.sheetNumber || ""}</Text>
               </View>
             </View>
           )}
 
-          {/* Dates: Received + Tested | Reported */}
+          {/* Dates: Received & Reported */}
           <View style={styles.infoGrid}>
             <View style={styles.infoGridLeft}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Date Received</Text>
-                <Text style={styles.infoSep}>:</Text>
-                <Text style={styles.infoValue}>
-                  {formatDate(sample.registeredAt || sample.collectionDate)}
-                </Text>
-              </View>
+              <Text style={styles.infoGridLabel}>Date Received</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>
+                {formatDate(sample.registeredAt || sample.collectionDate)}
+              </Text>
             </View>
             <View style={styles.infoGridRight}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoGridLabel}>Date Reported</Text>
-                <Text style={styles.infoSep}>:</Text>
-                <Text style={styles.infoValue}>
-                  {formatDateTime(report.reviewedAt || report.createdAt)}
-                </Text>
-              </View>
+              <Text style={styles.infoGridLabel}>Date Reported</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>
+                {formatDateTime(report.reviewedAt || report.createdAt)}
+              </Text>
             </View>
           </View>
 
-          <View style={styles.infoGrid}>
+          {/* Dates: Tested & Sample No */}
+          <View style={[styles.infoGrid, { borderBottomWidth: 0 }]}>
             <View style={styles.infoGridLeft}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Date Tested</Text>
-                <Text style={styles.infoSep}>:</Text>
-                <Text style={styles.infoValue}>
-                  {formatDate(report.createdAt)}
-                </Text>
-              </View>
+              <Text style={styles.infoGridLabel}>Date Tested</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>
+                {formatDate(report.createdAt)}
+              </Text>
             </View>
             <View style={styles.infoGridRight}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoGridLabel}>Sample No</Text>
-                <Text style={styles.infoSep}>:</Text>
-                <Text style={styles.infoValue}>{sample.sampleNumber}</Text>
-              </View>
+              <Text style={styles.infoGridLabel}>Sample No</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>{sample.sampleNumber}</Text>
             </View>
           </View>
         </View>
@@ -1087,79 +1097,90 @@ function COAPageContent(props: COAPDFProps) {
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Client</Text>
           <Text style={styles.infoSep}>:</Text>
-          <Text style={styles.infoValue}>{clientName}</Text>
+          <Text style={[styles.infoValue, { fontFamily: "Helvetica-Bold" }]}>{clientName}</Text>
         </View>
-        {sample.reference && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Reference</Text>
-            <Text style={styles.infoSep}>:</Text>
-            <Text style={styles.infoValue}>{sample.reference}</Text>
-          </View>
-        )}
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Sample Description</Text>
           <Text style={styles.infoSep}>:</Text>
-          <Text style={styles.infoValue}>{sample.description || sampleTypeName}</Text>
+          <Text style={styles.infoValue}>
+            {sample.description || sampleTypeName}
+            {sample.samplePoint ? ` | ${sample.samplePoint}` : ""}
+          </Text>
         </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Sample Identification No.</Text>
-          <Text style={styles.infoSep}>:</Text>
-          <Text style={styles.infoValue}>{sample.sampleNumber}</Text>
-        </View>
-        {sample.samplePoint && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Sample Point</Text>
-            <Text style={styles.infoSep}>:</Text>
-            <Text style={styles.infoValue}>{sample.samplePoint}</Text>
-          </View>
-        )}
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Date Sample Received</Text>
-          <Text style={styles.infoSep}>:</Text>
-          <Text style={styles.infoValue}>{registeredAtStr}</Text>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Date of Report</Text>
-          <Text style={styles.infoSep}>:</Text>
-          <Text style={styles.infoValue}>{reportDateStr}</Text>
-        </View>
+
+        {/* Delivered By & Drawn By */}
         <View style={styles.infoGrid}>
           <View style={styles.infoGridLeft}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>No. of Samples</Text>
-              <Text style={styles.infoSep}>:</Text>
-              <Text style={styles.infoValue}>
-                {sample.sampleCount ? `${sample.sampleCount} x ${sample.quantity || "Bottle"}` : sample.quantity || "-"}
-              </Text>
-            </View>
+            <Text style={styles.infoGridLabel}>Sample Delivered By</Text>
+            <Text style={styles.infoGridSep}>:</Text>
+            <Text style={styles.infoGridValue}>{sample.deliveredBy || clientName}</Text>
           </View>
           <View style={styles.infoGridRight}>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoGridLabel}>Condition of Sample</Text>
-              <Text style={styles.infoSep}>:</Text>
-              <Text style={styles.infoValue}>{sample.sampleCondition || "-"}</Text>
+            <Text style={styles.infoGridLabel}>Sample Drawn By</Text>
+            <Text style={styles.infoGridSep}>:</Text>
+            <Text style={styles.infoGridValue}>{sample.drawnBy || "NP & Spectrum"}</Text>
+          </View>
+        </View>
+
+        {/* No. of Samples & Condition */}
+        <View style={styles.infoGrid}>
+          <View style={styles.infoGridLeft}>
+            <Text style={styles.infoGridLabel}>No. of Samples</Text>
+            <Text style={styles.infoGridSep}>:</Text>
+            <Text style={styles.infoGridValue}>
+              {sample.sampleCount ? `${sample.sampleCount} x ${sample.quantity || "Bottle"}` : sample.quantity || "-"}
+            </Text>
+          </View>
+          <View style={styles.infoGridRight}>
+            <Text style={styles.infoGridLabel}>Condition of Sample</Text>
+            <Text style={styles.infoGridSep}>:</Text>
+            <Text style={styles.infoGridValue}>{sample.sampleCondition || "-"}</Text>
+          </View>
+        </View>
+
+        {/* Reference & Sheet No */}
+        {(sample.reference || sample.sheetNumber) && (
+          <View style={styles.infoGrid}>
+            <View style={styles.infoGridLeft}>
+              <Text style={styles.infoGridLabel}>{sample.reference ? "Reference" : ""}</Text>
+              <Text style={styles.infoGridSep}>{sample.reference ? ":" : ""}</Text>
+              <Text style={styles.infoGridValue}>{sample.reference || ""}</Text>
+            </View>
+            <View style={styles.infoGridRight}>
+              <Text style={styles.infoGridLabel}>{sample.sheetNumber ? "Sheet No." : ""}</Text>
+              <Text style={styles.infoGridSep}>{sample.sheetNumber ? ":" : ""}</Text>
+              <Text style={styles.infoGridValue}>{sample.sheetNumber || ""}</Text>
             </View>
           </View>
-        </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Sample Delivered By</Text>
-          <Text style={styles.infoSep}>:</Text>
-          <Text style={styles.infoValue}>{sample.deliveredBy || clientName}</Text>
-        </View>
-        {sample.samplingMethod && sample.samplingMethod !== "NP" && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Sampling</Text>
-            <Text style={styles.infoSep}>:</Text>
-            <Text style={styles.infoValue}>{sample.samplingMethod}</Text>
-          </View>
         )}
-        {sample.sheetNumber && (
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Sheet No.</Text>
-            <Text style={styles.infoSep}>:</Text>
-            <Text style={styles.infoValue}>{sample.sheetNumber}</Text>
+
+        {/* Dates: Received & Report */}
+        <View style={styles.infoGrid}>
+          <View style={styles.infoGridLeft}>
+            <Text style={styles.infoGridLabel}>Date Received</Text>
+            <Text style={styles.infoGridSep}>:</Text>
+            <Text style={styles.infoGridValue}>{registeredAtStr}</Text>
           </View>
-        )}
+          <View style={styles.infoGridRight}>
+            <Text style={styles.infoGridLabel}>Date Reported</Text>
+            <Text style={styles.infoGridSep}>:</Text>
+            <Text style={styles.infoGridValue}>{reportDateStr}</Text>
+          </View>
+        </View>
+
+        {/* Date Tested & Sample No */}
+        <View style={[styles.infoGrid, { borderBottomWidth: 0 }]}>
+          <View style={styles.infoGridLeft}>
+            <Text style={styles.infoGridLabel}>Date Tested</Text>
+            <Text style={styles.infoGridSep}>:</Text>
+            <Text style={styles.infoGridValue}>{formatDate(report.createdAt)}</Text>
+          </View>
+          <View style={styles.infoGridRight}>
+            <Text style={styles.infoGridLabel}>Sample No</Text>
+            <Text style={styles.infoGridSep}>:</Text>
+            <Text style={styles.infoGridValue}>{sample.sampleNumber}</Text>
+          </View>
+        </View>
       </View>
 
       {/* TEST RESULTS TABLE */}
