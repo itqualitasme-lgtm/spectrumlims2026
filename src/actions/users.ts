@@ -138,6 +138,7 @@ export async function updateUser(
 
   if (data.password) {
     updateData.passwordHash = await hash(data.password, 12)
+    updateData.passwordChangedAt = new Date()
   }
 
   const updatedUser = await db.user.update({

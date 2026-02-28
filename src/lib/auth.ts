@@ -117,6 +117,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.customerId = (user as any).customerId
         token.permissions = (user as any).permissions
         token.hiddenMenuItems = (user as any).hiddenMenuItems
+        token.issuedAt = Date.now()
       }
       return token
     },
@@ -159,6 +160,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               },
             })
             if (freshUser && freshUser.isActive) {
+              // Force re-login if password was changed after this session was created
+              if (freshUser.passwordChangedAt && token.issuedAt) {
+                if (freshUser.passwordChangedAt.getTime() > (token.issuedAt as number)) {
+                  ;(session.user as any).permissions = []
+                  ;(session.user as any).hiddenMenuItems = []
+                  return session
+                }
+              }
               const freshPermissions = freshUser.role.rolePermissions.map(
                 (rp) => `${rp.permission.module}:${rp.permission.action}`
               )
