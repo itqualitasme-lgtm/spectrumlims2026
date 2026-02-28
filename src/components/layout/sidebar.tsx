@@ -18,9 +18,10 @@ import { hasPermission } from "@/lib/permissions-client"
 interface SidebarProps {
   permissions: string[]
   roleName: string
+  hiddenMenuItems?: string[]
 }
 
-export default function Sidebar({ permissions, roleName }: SidebarProps) {
+export default function Sidebar({ permissions, roleName, hiddenMenuItems = [] }: SidebarProps) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
 
@@ -44,7 +45,9 @@ export default function Sidebar({ permissions, roleName }: SidebarProps) {
       items: group.items.filter((item) => {
         if (!item.permission) return true
         const [module, action] = item.permission.split(":")
-        return hasPermission(permissions, module, action, roleName)
+        if (!hasPermission(permissions, module, action, roleName)) return false
+        if (hiddenMenuItems.includes(item.href)) return false
+        return true
       }),
     }))
     .filter((group) => group.items.length > 0)

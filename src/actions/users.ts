@@ -334,3 +334,57 @@ export async function deletePortalUser(id: string) {
   revalidatePath("/admin/users")
   return portalUser
 }
+
+export async function getUserMenuAccess(userId: string) {
+  const session = await requirePermission("admin", "view")
+  const user = session.user as any
+
+  const target = await db.user.findFirst({
+    where: { id: userId, labId: user.labId },
+    include: {
+      role: {
+        include: {
+          rolePermissions: {
+            include: { permission: true },
+          },
+        },
+      },
+    },
+  })
+
+  if (!target) throw new Error("User not found")
+
+  const rolePermissions = target.role.rolePermissions.map(
+    (rp) => `${rp.permission.module}:${rp.permission.action}`
+  )
+
+  return {
+    hiddenItems: (target.menuAccess as string[]) || [],
+    rolePermissions,
+    roleName: target.role.name,
+  }
+}
+
+export async function updateUserMenuAccess(userId: string, hiddenItems: string[]) {
+  const session = await requirePermission("admin", "edit")
+  const user = session.user as any
+
+  const target = await db.user.findFirst({ where: { id: userId, labId: user.labId } })
+  if (!target) throw new Error("User not found")
+
+  await db.user.update({
+    where: { id: userId },
+    data: { menuAccess: hiddenItems },
+  })
+
+  await logAudit(
+    user.labId,
+    user.id,
+    user.name,
+    "admin",
+    "update",
+    `Updated menu access for user: ${target.name} (${target.username})`
+  )
+
+  revalidatePath("/admin/menu-access")
+}

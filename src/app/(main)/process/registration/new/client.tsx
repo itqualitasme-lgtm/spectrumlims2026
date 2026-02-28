@@ -515,16 +515,14 @@ export function NewRegistrationClient({
                 <Input className="h-9 w-[180px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
               </div>
             </div>
-            {/* Row 2: Reference/PO (small), Location (large), Sampler */}
-            <div className="grid grid-cols-[160px_1fr] gap-x-3 col-span-2">
-              <div className="grid gap-0.5">
-                <Label className="text-xs text-muted-foreground">Reference / PO</Label>
-                <Input className="h-9" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number" />
-              </div>
-              <div className="grid gap-0.5">
-                <Label className="text-xs text-muted-foreground">Location</Label>
-                <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="Auto-filled from customer address" />
-              </div>
+            {/* Row 2: Reference/PO, Location, Sampler, Sample Condition */}
+            <div className="grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Reference / PO</Label>
+              <Input className="h-9" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number" />
+            </div>
+            <div className="grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Location</Label>
+              <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="Auto-filled from customer address" />
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampler / Reception *</Label>
@@ -532,7 +530,7 @@ export function NewRegistrationClient({
                 options={samplerOptions}
                 value={collectedById}
                 onValueChange={setCollectedById}
-                placeholder="Select sampler or reception..."
+                placeholder="Select sampler..."
                 searchPlaceholder="Search..."
               />
             </div>

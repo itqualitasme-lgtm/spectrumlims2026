@@ -15,6 +15,7 @@ import {
   FileCheck,
   Trash2,
   Activity,
+  Menu,
   type LucideIcon,
 } from "lucide-react"
 
@@ -153,6 +154,12 @@ export const menuGroups: MenuGroup[] = [
         title: "Roles & Permissions",
         href: "/admin/roles",
         icon: Shield,
+        permission: "admin:view",
+      },
+      {
+        title: "Menu Access",
+        href: "/admin/menu-access",
+        icon: Menu,
         permission: "admin:view",
       },
       {

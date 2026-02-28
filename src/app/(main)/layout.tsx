@@ -21,6 +21,7 @@ export default async function MainLayout({
   const labId: string = user.labId ?? ""
   const labName: string = user.labName ?? ""
   const permissions: string[] = user.permissions ?? []
+  const hiddenMenuItems: string[] = user.hiddenMenuItems ?? []
 
   // Portal users should be redirected to the portal dashboard
   if (roleName === "Portal User") {
@@ -29,7 +30,7 @@ export default async function MainLayout({
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <Sidebar permissions={permissions} roleName={roleName} />
+      <Sidebar permissions={permissions} roleName={roleName} hiddenMenuItems={hiddenMenuItems} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header user={{ name, username, roleName, labName }} />
         <main className="flex-1 overflow-y-auto p-6 bg-muted/30">

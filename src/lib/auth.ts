@@ -64,6 +64,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             labCode: user.lab.code,
             customerId: null,
             permissions,
+            hiddenMenuItems: (user.menuAccess as string[]) || [],
           } as any
         }
 
@@ -115,6 +116,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.labCode = (user as any).labCode
         token.customerId = (user as any).customerId
         token.permissions = (user as any).permissions
+        token.hiddenMenuItems = (user as any).hiddenMenuItems
       }
       return token
     },
@@ -128,6 +130,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         ;(session.user as any).labName = token.labName
         ;(session.user as any).labCode = token.labCode
         ;(session.user as any).customerId = token.customerId
+        ;(session.user as any).hiddenMenuItems = token.hiddenMenuItems || []
 
         // Refresh permissions from DB
         const tokenId = token.id as string
@@ -161,11 +164,14 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               )
               ;(session.user as any).permissions = freshPermissions
               ;(session.user as any).roleName = freshUser.role.name
+              ;(session.user as any).hiddenMenuItems = (freshUser.menuAccess as string[]) || []
             } else {
               ;(session.user as any).permissions = []
+              ;(session.user as any).hiddenMenuItems = []
             }
           } catch {
             ;(session.user as any).permissions = token.permissions
+            ;(session.user as any).hiddenMenuItems = token.hiddenMenuItems || []
           }
         }
       }

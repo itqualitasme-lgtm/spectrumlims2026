@@ -96,6 +96,7 @@ model User {
   roleId         String
   labId          String
   isActive       Boolean   @default(true)
+  menuAccess     Json?
   lastLoginAt    DateTime?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
