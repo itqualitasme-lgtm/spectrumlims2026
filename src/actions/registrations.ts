@@ -16,6 +16,7 @@ export async function createRegistration(data: {
   collectedById?: string
   collectionLocation?: string
   collectionDate?: string
+  sampleCondition?: string
   notes?: string
   rows: {
     sampleTypeId: string
@@ -132,6 +133,7 @@ export async function createRegistration(data: {
           sampleTypeId: row.sampleTypeId,
           description: row.description || null,
           quantity: row.bottleQty || null,
+          sampleCondition: data.sampleCondition || null,
           priority: data.priority || "normal",
           jobType: data.jobType || "testing",
           reference: data.reference || null,

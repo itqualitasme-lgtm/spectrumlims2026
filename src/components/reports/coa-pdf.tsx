@@ -61,6 +61,8 @@ interface SampleInfo {
   sampleNumber: string
   description?: string | null
   quantity?: string | null
+  sampleCondition?: string | null
+  sampleCount?: number | null
   priority: string
   status: string
   collectionDate?: Date | string | null
@@ -638,14 +640,25 @@ export function COAPDF({
             </View>
           )}
 
-          {/* Condition of Sample Received */}
-          {sample.quantity && (
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Condition of Sample Received</Text>
-              <Text style={styles.infoSep}>:</Text>
-              <Text style={styles.infoValue}>{sample.quantity}</Text>
+          {/* No. of Samples & Condition */}
+          <View style={styles.infoGrid}>
+            <View style={styles.infoGridLeft}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>No. of Samples</Text>
+                <Text style={styles.infoSep}>:</Text>
+                <Text style={styles.infoValue}>
+                  {sample.sampleCount ? `${sample.sampleCount} x ${sample.quantity || "Bottle"}` : sample.quantity || "-"}
+                </Text>
+              </View>
             </View>
-          )}
+            <View style={styles.infoGridRight}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoGridLabel}>Condition of Sample</Text>
+                <Text style={styles.infoSep}>:</Text>
+                <Text style={styles.infoValue}>{sample.sampleCondition || "-"}</Text>
+              </View>
+            </View>
+          </View>
 
           {/* Reference */}
           {sample.reference && (
@@ -1041,13 +1054,26 @@ function COAPageContent(props: COAPDFProps) {
           <Text style={styles.infoSep}>:</Text>
           <Text style={styles.infoValue}>{reportDateStr}</Text>
         </View>
-        <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Sample Delivered By</Text>
-          <Text style={styles.infoSep}>:</Text>
-          <Text style={styles.infoValue}>Client</Text>
+        <View style={styles.infoGrid}>
+          <View style={styles.infoGridLeft}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>No. of Samples</Text>
+              <Text style={styles.infoSep}>:</Text>
+              <Text style={styles.infoValue}>
+                {sample.sampleCount ? `${sample.sampleCount} x ${sample.quantity || "Bottle"}` : sample.quantity || "-"}
+              </Text>
+            </View>
+          </View>
+          <View style={styles.infoGridRight}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoGridLabel}>Condition of Sample</Text>
+              <Text style={styles.infoSep}>:</Text>
+              <Text style={styles.infoValue}>{sample.sampleCondition || "-"}</Text>
+            </View>
+          </View>
         </View>
         <View style={styles.infoRow}>
-          <Text style={styles.infoLabel}>Sample Drawn By</Text>
+          <Text style={styles.infoLabel}>Sample Delivered By</Text>
           <Text style={styles.infoSep}>:</Text>
           <Text style={styles.infoValue}>Client</Text>
         </View>

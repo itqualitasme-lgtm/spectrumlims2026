@@ -228,6 +228,7 @@ model Sample {
   sampleTypeId       String
   description        String?
   quantity           String?
+  sampleCondition    String?
   priority           String    @default("normal")
   status             String    @default("pending")
   assignedToId       String?

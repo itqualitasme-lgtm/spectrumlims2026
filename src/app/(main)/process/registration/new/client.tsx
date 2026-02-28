@@ -112,6 +112,7 @@ export function NewRegistrationClient({
   const [collectionLocation, setCollectionLocation] = useState("")
   const [collectionDate, setCollectionDate] = useState("")
   const [collectionTime, setCollectionTime] = useState("")
+  const [sampleCondition, setSampleCondition] = useState("Sealed")
 
   // Set date/time on client only to avoid hydration mismatch
   useEffect(() => {
@@ -287,6 +288,7 @@ export function NewRegistrationClient({
     setCollectionLocation("")
     setCollectionDate(new Date().toISOString().slice(0, 10))
     setCollectionTime(new Date().toTimeString().slice(0, 5))
+    setSampleCondition("Sealed")
     setRegistrationNumber("")
     setRegistrationId("")
     setRegisteredSamples([])
@@ -343,6 +345,7 @@ export function NewRegistrationClient({
         collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
         collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
         collectionDate: `${collectionDate}T${collectionTime}`,
+        sampleCondition: sampleCondition || undefined,
         rows: validSamples.map((s) => ({
           sampleTypeId: s.sampleTypeId,
           qty: 1,
@@ -523,7 +526,7 @@ export function NewRegistrationClient({
                 <Input className="h-9" value={collectionLocation} onChange={(e) => setCollectionLocation(e.target.value)} placeholder="Auto-filled from customer address" />
               </div>
             </div>
-            <div className="col-span-2 grid gap-0.5">
+            <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampler / Reception *</Label>
               <SearchableSelect
                 options={samplerOptions}
@@ -532,6 +535,19 @@ export function NewRegistrationClient({
                 placeholder="Select sampler or reception..."
                 searchPlaceholder="Search..."
               />
+            </div>
+            <div className="grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Sample Condition</Label>
+              <Select value={sampleCondition} onValueChange={setSampleCondition}>
+                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sealed">Sealed</SelectItem>
+                  <SelectItem value="Good">Good</SelectItem>
+                  <SelectItem value="Damaged">Damaged</SelectItem>
+                  <SelectItem value="Leaking">Leaking</SelectItem>
+                  <SelectItem value="Opened">Opened</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardContent>

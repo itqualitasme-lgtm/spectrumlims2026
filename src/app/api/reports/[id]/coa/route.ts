@@ -35,6 +35,9 @@ export async function GET(
           include: {
             client: true,
             sampleType: true,
+            registration: {
+              select: { _count: { select: { samples: { where: { deletedAt: null } } } } },
+            },
             assignedTo: { select: { id: true, name: true, designation: true, signatureUrl: true } },
             testResults: {
               include: {
@@ -143,6 +146,8 @@ export async function GET(
         sampleNumber: report.sample.sampleNumber,
         description: report.sample.description,
         quantity: report.sample.quantity,
+        sampleCondition: report.sample.sampleCondition,
+        sampleCount: report.sample.registration?._count.samples || null,
         priority: report.sample.priority,
         status: report.sample.status,
         collectionDate: report.sample.collectionDate,
