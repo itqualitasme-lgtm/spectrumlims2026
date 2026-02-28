@@ -554,43 +554,41 @@ export function COAPDF({
     >
       <Page size="A4" style={styles.page}>
         {/* ===== HEADER (fixed on every page) ===== */}
-        {showHeaderFooter && (
-          <View style={styles.header} fixed>
-            <View style={styles.headerRow}>
-              {showLabLogo && logoUrl ? (
-                <Image style={styles.headerLogo} src={logoUrl} />
-              ) : (
-                <View style={{ width: 150 }} />
+        <View style={[styles.header, showHeaderFooter ? {} : { opacity: 0 }]} fixed>
+          <View style={styles.headerRow}>
+            {showLabLogo && logoUrl ? (
+              <Image style={styles.headerLogo} src={logoUrl} />
+            ) : (
+              <View style={{ width: 150 }} />
+            )}
+            <View style={styles.headerCenter}>
+              {headerSubLines.length > 0 && (
+                <Text style={{ fontSize: 7, color: GRAY_TEXT, marginBottom: 1, textAlign: "center" }}>
+                  {headerSubLines[0]}
+                </Text>
               )}
-              <View style={styles.headerCenter}>
-                {headerSubLines.length > 0 && (
-                  <Text style={{ fontSize: 7, color: GRAY_TEXT, marginBottom: 1, textAlign: "center" }}>
-                    {headerSubLines[0]}
-                  </Text>
-                )}
-                <Text style={styles.labName}>{lab.name}</Text>
-                {headerSubLines.slice(1).map((line, idx) => (
-                  <Text key={idx} style={styles.headerSubline}>{line}</Text>
-                ))}
-                {accreditationText && (
-                  <Text style={{ fontSize: 6.5, color: RED_BRAND, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>
-                    {accreditationText}
-                  </Text>
-                )}
-              </View>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-                {isoLogoUrl && (
-                  <Image style={styles.isoLogo} src={isoLogoUrl} />
-                )}
-                {accreditationLogoUrl ? (
-                  <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
-                ) : !isoLogoUrl ? (
-                  <View style={{ width: 75 }} />
-                ) : null}
-              </View>
+              <Text style={styles.labName}>{lab.name}</Text>
+              {headerSubLines.slice(1).map((line, idx) => (
+                <Text key={idx} style={styles.headerSubline}>{line}</Text>
+              ))}
+              {accreditationText && (
+                <Text style={{ fontSize: 6.5, color: RED_BRAND, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>
+                  {accreditationText}
+                </Text>
+              )}
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {isoLogoUrl && (
+                <Image style={styles.isoLogo} src={isoLogoUrl} />
+              )}
+              {accreditationLogoUrl ? (
+                <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
+              ) : !isoLogoUrl ? (
+                <View style={{ width: 75 }} />
+              ) : null}
             </View>
           </View>
-        )}
+        </View>
 
         {/* ===== TITLE ===== */}
         <View style={styles.titleSection}>
@@ -877,34 +875,32 @@ export function COAPDF({
         </View>
 
         {/* ===== FOOTER (fixed on every page) ===== */}
-        {showHeaderFooter && (
-          <View style={styles.footer} fixed>
-            {/* Disclaimer text */}
-            {footerLines.map((line, idx) => (
-              <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
-            ))}
+        <View style={[styles.footer, showHeaderFooter ? {} : { opacity: 0 }]} fixed>
+          {/* Disclaimer text */}
+          {footerLines.map((line, idx) => (
+            <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
+          ))}
 
-            {verificationUrl && (
-              <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
-                Verify this report: {verificationUrl}
-              </Text>
-            )}
+          {verificationUrl && (
+            <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
+              Verify this report: {verificationUrl}
+            </Text>
+          )}
 
-            {/* Red contact bar */}
-            <View style={styles.footerBar}>
-              <Text style={styles.footerBarText}>
-                {[
-                  lab.phone && `Tel.: ${lab.phone}`,
-                  lab.address,
-                  lab.email && `E-mail: ${lab.email}`,
-                  lab.website,
-                ]
-                  .filter(Boolean)
-                  .join("  |  ")}
-              </Text>
-            </View>
+          {/* Red contact bar */}
+          <View style={styles.footerBar}>
+            <Text style={styles.footerBarText}>
+              {[
+                lab.phone && `Tel.: ${lab.phone}`,
+                lab.address,
+                lab.email && `E-mail: ${lab.email}`,
+                lab.website,
+              ]
+                .filter(Boolean)
+                .join("  |  ")}
+            </Text>
           </View>
-        )}
+        </View>
 
         {/* Page Number */}
         <Text
@@ -999,43 +995,41 @@ function COAPageContent(props: COAPDFProps) {
   return (
     <Page size="A4" style={styles.page}>
       {/* HEADER (fixed on every page) */}
-      {showHeaderFooter && (
-        <View style={styles.header} fixed>
-          <View style={styles.headerRow}>
-            {showLabLogo && logoUrl ? (
-              <Image style={styles.headerLogo} src={logoUrl} />
-            ) : (
-              <View style={{ width: 150 }} />
+      <View style={[styles.header, showHeaderFooter ? {} : { opacity: 0 }]} fixed>
+        <View style={styles.headerRow}>
+          {showLabLogo && logoUrl ? (
+            <Image style={styles.headerLogo} src={logoUrl} />
+          ) : (
+            <View style={{ width: 150 }} />
+          )}
+          <View style={styles.headerCenter}>
+            {headerSubLines.length > 0 && (
+              <Text style={{ fontSize: 7, color: GRAY_TEXT, marginBottom: 1, textAlign: "center" }}>
+                {headerSubLines[0]}
+              </Text>
             )}
-            <View style={styles.headerCenter}>
-              {headerSubLines.length > 0 && (
-                <Text style={{ fontSize: 7, color: GRAY_TEXT, marginBottom: 1, textAlign: "center" }}>
-                  {headerSubLines[0]}
-                </Text>
-              )}
-              <Text style={styles.labName}>{lab.name}</Text>
-              {headerSubLines.slice(1).map((line, idx) => (
-                <Text key={idx} style={styles.headerSubline}>{line}</Text>
-              ))}
-              {accreditationText && (
-                <Text style={{ fontSize: 6.5, color: RED_BRAND, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>
-                  {accreditationText}
-                </Text>
-              )}
-            </View>
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-              {isoLogoUrl && (
-                <Image style={styles.isoLogo} src={isoLogoUrl} />
-              )}
-              {accreditationLogoUrl ? (
-                <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
-              ) : !isoLogoUrl ? (
-                <View style={{ width: 75 }} />
-              ) : null}
-            </View>
+            <Text style={styles.labName}>{lab.name}</Text>
+            {headerSubLines.slice(1).map((line, idx) => (
+              <Text key={idx} style={styles.headerSubline}>{line}</Text>
+            ))}
+            {accreditationText && (
+              <Text style={{ fontSize: 6.5, color: RED_BRAND, fontFamily: "Helvetica-Bold", textAlign: "center", marginTop: 1 }}>
+                {accreditationText}
+              </Text>
+            )}
+          </View>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            {isoLogoUrl && (
+              <Image style={styles.isoLogo} src={isoLogoUrl} />
+            )}
+            {accreditationLogoUrl ? (
+              <Image style={styles.accreditationLogo} src={accreditationLogoUrl} />
+            ) : !isoLogoUrl ? (
+              <View style={{ width: 75 }} />
+            ) : null}
           </View>
         </View>
-      )}
+      </View>
 
       {/* TITLE */}
       <View style={styles.titleSection}>
@@ -1265,33 +1259,31 @@ function COAPageContent(props: COAPDFProps) {
       </View>
 
       {/* FOOTER (fixed on every page) */}
-      {showHeaderFooter && (
-        <View style={styles.footer} fixed>
-          {footerLines.map((line, idx) => (
-            <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
-          ))}
+      <View style={[styles.footer, showHeaderFooter ? {} : { opacity: 0 }]} fixed>
+        {footerLines.map((line, idx) => (
+          <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
+        ))}
 
-          {verificationUrl && (
-            <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
-              Verify this report: {verificationUrl}
-            </Text>
-          )}
+        {verificationUrl && (
+          <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
+            Verify this report: {verificationUrl}
+          </Text>
+        )}
 
-          {/* Red contact bar */}
-          <View style={styles.footerBar}>
-            <Text style={styles.footerBarText}>
-              {[
-                lab.phone && `Tel.: ${lab.phone}`,
-                lab.address,
-                lab.email && `E-mail: ${lab.email}`,
-                lab.website,
-              ]
-                .filter(Boolean)
-                .join("  |  ")}
-            </Text>
-          </View>
+        {/* Red contact bar */}
+        <View style={styles.footerBar}>
+          <Text style={styles.footerBarText}>
+            {[
+              lab.phone && `Tel.: ${lab.phone}`,
+              lab.address,
+              lab.email && `E-mail: ${lab.email}`,
+              lab.website,
+            ]
+              .filter(Boolean)
+              .join("  |  ")}
+          </Text>
         </View>
-      )}
+      </View>
 
       {/* Page Number */}
       <Text
