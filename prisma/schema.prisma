@@ -299,6 +299,7 @@ model Report {
   createdById  String
   reviewedById String?
   reviewedAt   DateTime?
+  publishedAt  DateTime?
   status       String    @default("draft")
   deletedAt    DateTime?
   deletedById  String?

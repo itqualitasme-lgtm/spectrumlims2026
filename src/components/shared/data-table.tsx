@@ -31,6 +31,7 @@ interface DataTableProps<TData, TValue> {
   searchKey?: string
   hideSearch?: boolean
   pageSize?: number
+  compact?: boolean
 }
 
 export function DataTable<TData, TValue>({
@@ -40,6 +41,7 @@ export function DataTable<TData, TValue>({
   searchKey,
   hideSearch,
   pageSize = 10,
+  compact,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
@@ -101,19 +103,19 @@ export function DataTable<TData, TValue>({
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
-                  <TableHead key={header.id}>
+                  <TableHead key={header.id} className={compact ? "px-2 py-1 text-[10px]" : undefined}>
                     {header.isPlaceholder ? null : header.column.getCanSort() ? (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="-ml-3 h-8"
+                        className={compact ? "-ml-2 h-6 text-[10px] px-1" : "-ml-3 h-8"}
                         onClick={() => header.column.toggleSorting()}
                       >
                         {flexRender(
                           header.column.columnDef.header,
                           header.getContext()
                         )}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
+                        <ArrowUpDown className={compact ? "ml-1 h-3 w-3" : "ml-2 h-4 w-4"} />
                       </Button>
                     ) : (
                       flexRender(
@@ -131,7 +133,7 @@ export function DataTable<TData, TValue>({
               table.getRowModel().rows.map((row) => (
                 <TableRow key={row.id}>
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className={compact ? "px-2 py-1" : undefined}>
                       {flexRender(
                         cell.column.columnDef.cell,
                         cell.getContext()

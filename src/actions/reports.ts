@@ -310,7 +310,7 @@ export async function publishReport(reportId: string) {
 
   const report = await db.report.update({
     where: { id: reportId },
-    data: { status: "published" },
+    data: { status: "published", publishedAt: new Date() },
   })
 
   await logAudit(

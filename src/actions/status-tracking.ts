@@ -69,7 +69,11 @@ export async function getStatusTrackingData(filters: {
         include: {
           sampleType: { select: { name: true } },
           testResults: {
-            select: { status: true, dueDate: true, enteredAt: true },
+            select: { status: true, tat: true, dueDate: true, enteredAt: true },
+          },
+          reports: {
+            where: { deletedAt: null },
+            select: { status: true, publishedAt: true },
           },
           invoiceItems: {
             select: {
@@ -101,21 +105,37 @@ export async function getStatusTrackingData(filters: {
       const totalTests = reg.samples.reduce((sum, s) => sum + s.testResults.length, 0)
 
       // Due date: MAXIMUM due date across all test results (latest deadline)
+      // Recalculate from TAT if dueDate is missing but TAT exists
+      const regDate = reg.registeredAt || reg.createdAt
       const allDueDates = reg.samples.flatMap((s) =>
-        s.testResults.filter((tr) => tr.dueDate).map((tr) => tr.dueDate!)
+        s.testResults.map((tr) => {
+          if (tr.dueDate) return tr.dueDate
+          if (tr.tat) return new Date(regDate.getTime() + tr.tat * 24 * 60 * 60 * 1000)
+          return null
+        }).filter((d): d is Date => d !== null)
       )
       const maxDueDate = allDueDates.length > 0
         ? new Date(Math.max(...allDueDates.map((d) => d.getTime())))
         : null
 
-      // Completion: all tests done across all samples
+      // Tested date: when all tests were completed (max enteredAt)
       const allTestResults = reg.samples.flatMap((s) => s.testResults)
       const allTestsDone = allTestResults.length > 0 && allTestResults.every((tr) => tr.status === "completed")
       const completedDates = allTestResults
         .filter((tr) => tr.enteredAt)
         .map((tr) => tr.enteredAt!)
-      const completionDate = allTestsDone && completedDates.length > 0
+      const testedDate = allTestsDone && completedDates.length > 0
         ? new Date(Math.max(...completedDates.map((d) => d.getTime())))
+        : null
+
+      // Released date: when all reports were published (max publishedAt)
+      const allReports = reg.samples.flatMap((s) => s.reports)
+      const allPublished = allReports.length > 0 && allReports.every((r) => r.status === "published")
+      const publishedDates = allReports
+        .filter((r) => r.publishedAt)
+        .map((r) => r.publishedAt!)
+      const releasedDate = allPublished && publishedDates.length > 0
+        ? new Date(Math.max(...publishedDates.map((d) => d.getTime())))
         : null
 
       // Overall status
@@ -143,7 +163,8 @@ export async function getStatusTrackingData(filters: {
         testCount: totalTests,
         registeredAt: reg.registeredAt?.toISOString() || reg.createdAt.toISOString(),
         dueDate: maxDueDate?.toISOString() || null,
-        completionDate: completionDate?.toISOString() || null,
+        testedDate: testedDate?.toISOString() || null,
+        releasedDate: releasedDate?.toISOString() || null,
         hasProforma,
         hasTaxInvoice,
       }

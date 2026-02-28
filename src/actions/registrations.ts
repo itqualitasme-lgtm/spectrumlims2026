@@ -384,27 +384,22 @@ export async function searchCustomers(query: string) {
   const customers = await db.customer.findMany({
     where: {
       labId,
+      status: "active",
       OR: [
         { name: { contains: query, mode: "insensitive" } },
         { company: { contains: query, mode: "insensitive" } },
         { code: { contains: query, mode: "insensitive" } },
       ],
     },
-    select: { id: true, name: true, company: true, status: true },
-    orderBy: [{ status: "asc" }, { name: "asc" }],
+    select: { id: true, name: true, company: true },
+    orderBy: { name: "asc" },
     take: 20,
   })
 
-  return customers.map((c) => {
-    const isInactive = c.status !== "active"
-    const label = c.company ? `${c.name} - ${c.company}` : c.name
-    return {
-      value: c.id,
-      label: isInactive ? `${label} (Inactive)` : label,
-      disabled: isInactive,
-      disabledReason: isInactive ? "Account Inactive" : undefined,
-    }
-  })
+  return customers.map((c) => ({
+    value: c.id,
+    label: c.company ? `${c.name} - ${c.company}` : c.name,
+  }))
 }
 
 export async function getCustomerById(id: string) {

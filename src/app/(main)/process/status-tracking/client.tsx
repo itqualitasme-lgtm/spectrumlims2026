@@ -26,7 +26,8 @@ type RegistrationRow = {
   testCount: number
   registeredAt: string
   dueDate: string | null
-  completionDate: string | null
+  testedDate: string | null
+  releasedDate: string | null
   hasProforma: boolean
   hasTaxInvoice: boolean
 }
@@ -47,7 +48,7 @@ function formatDate(iso: string | null) {
   return new Date(iso).toLocaleDateString("en-GB", {
     day: "2-digit",
     month: "short",
-    year: "numeric",
+    year: "2-digit",
   })
 }
 
@@ -136,7 +137,7 @@ export function StatusTrackingClient() {
       accessorKey: "registrationNumber",
       header: "Reg #",
       cell: ({ row }) => (
-        <span className="font-medium font-mono text-[11px]">
+        <span className="font-medium font-mono text-[10px] whitespace-nowrap">
           {row.original.registrationNumber}
         </span>
       ),
@@ -145,77 +146,82 @@ export function StatusTrackingClient() {
       accessorKey: "client",
       header: "Customer",
       cell: ({ row }) => (
-        <span className="text-[11px]">{row.original.client}</span>
+        <span className="text-[10px] truncate max-w-[120px] block">{row.original.client}</span>
       ),
     },
     {
       accessorKey: "sampleTypes",
       header: "Type",
       cell: ({ row }) => (
-        <span className="text-[11px]">{row.original.sampleTypes}</span>
+        <span className="text-[10px] truncate max-w-[100px] block">{row.original.sampleTypes}</span>
       ),
     },
     {
       accessorKey: "sampleCount",
       header: "Qty",
       cell: ({ row }) => (
-        <span className="text-[11px] font-medium">{row.original.sampleCount}</span>
+        <span className="text-[10px] font-medium">{row.original.sampleCount}</span>
       ),
     },
     {
       accessorKey: "reference",
       header: "PO/Ref",
       cell: ({ row }) => (
-        <span className="text-[11px]">{row.original.reference || "-"}</span>
+        <span className="text-[10px] truncate max-w-[60px] block">{row.original.reference || "-"}</span>
       ),
     },
     {
       accessorKey: "testCount",
       header: "Tests",
       cell: ({ row }) => (
-        <span className="text-[11px] font-medium">{row.original.testCount}</span>
+        <span className="text-[10px] font-medium">{row.original.testCount}</span>
       ),
     },
     {
       accessorKey: "registeredAt",
       header: "Received",
-      cell: ({ row }) => <span className="text-[11px]">{formatDate(row.original.registeredAt)}</span>,
+      cell: ({ row }) => <span className="text-[10px] whitespace-nowrap">{formatDate(row.original.registeredAt)}</span>,
     },
     {
       accessorKey: "dueDate",
       header: "Due",
       cell: ({ row }) => {
         const due = row.original.dueDate
-        if (!due) return <span className="text-[11px]">-</span>
+        if (!due) return <span className="text-[10px]">-</span>
         const isOverdue = new Date(due) < new Date() && row.original.status !== "completed" && row.original.status !== "reported"
         return (
-          <span className={`text-[11px] ${isOverdue ? "text-destructive font-medium" : ""}`}>
+          <span className={`text-[10px] whitespace-nowrap ${isOverdue ? "text-destructive font-medium" : ""}`}>
             {formatDate(due)}
           </span>
         )
       },
     },
     {
-      accessorKey: "completionDate",
-      header: "Completed",
-      cell: ({ row }) => <span className="text-[11px]">{formatDate(row.original.completionDate)}</span>,
+      accessorKey: "testedDate",
+      header: "Tested",
+      cell: ({ row }) => <span className="text-[10px] whitespace-nowrap">{formatDate(row.original.testedDate)}</span>,
+    },
+    {
+      accessorKey: "releasedDate",
+      header: "Released",
+      cell: ({ row }) => <span className="text-[10px] whitespace-nowrap">{formatDate(row.original.releasedDate)}</span>,
     },
     {
       accessorKey: "hasProforma",
-      header: "Proforma",
+      header: "PF",
       cell: ({ row }) => (
         row.original.hasProforma
-          ? <Check className="h-3.5 w-3.5 text-green-600" />
-          : <X className="h-3.5 w-3.5 text-muted-foreground/40" />
+          ? <Check className="h-3 w-3 text-green-600" />
+          : <X className="h-3 w-3 text-muted-foreground/40" />
       ),
     },
     {
       accessorKey: "hasTaxInvoice",
-      header: "Invoiced",
+      header: "Inv",
       cell: ({ row }) => (
         row.original.hasTaxInvoice
-          ? <Check className="h-3.5 w-3.5 text-green-600" />
-          : <X className="h-3.5 w-3.5 text-muted-foreground/40" />
+          ? <Check className="h-3 w-3 text-green-600" />
+          : <X className="h-3 w-3 text-muted-foreground/40" />
       ),
     },
     {
@@ -337,6 +343,7 @@ export function StatusTrackingClient() {
           searchKey="registrationNumber"
           pageSize={20}
           hideSearch
+          compact
         />
       )}
     </div>
