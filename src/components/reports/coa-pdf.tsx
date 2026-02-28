@@ -901,7 +901,7 @@ export function COAPDF({
 
         {/* Page Number */}
         <Text
-          style={styles.pageNumber}
+          style={[styles.pageNumber, showHeaderFooter ? {} : { opacity: 0 }]}
           render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
           fixed
         />
@@ -1281,7 +1281,7 @@ function COAPageContent(props: COAPDFProps) {
 
       {/* Page Number */}
       <Text
-        style={styles.pageNumber}
+        style={[styles.pageNumber, showHeaderFooter ? {} : { opacity: 0 }]}
         render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
         fixed
       />
