@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { formatDate } from "@/lib/utils"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Eye, UserPlus, Loader2, QrCode, Printer, Search, Trash2 } from "lucide-react"
 import { toast } from "sonner"
@@ -295,7 +296,7 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
       accessorKey: "createdAt",
       header: "Date",
       cell: ({ row }) =>
-        new Date(row.original.createdAt).toLocaleDateString(),
+        formatDate(row.original.createdAt),
     },
     {
       id: "actions",

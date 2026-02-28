@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
+import { formatDate } from "@/lib/utils"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
   RotateCcw,
@@ -284,7 +285,7 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
       accessorKey: "createdAt",
       header: "Date",
       cell: ({ row }) =>
-        new Date(row.original.createdAt).toLocaleDateString(),
+        formatDate(row.original.createdAt),
     },
     {
       id: "actions",

@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { formatDate } from "@/lib/utils"
 import { ArrowLeft, Loader2, Plus, Trash2, Printer } from "lucide-react"
 import { toast } from "sonner"
 
@@ -383,7 +384,7 @@ export function EditSampleClient({
         <span>Registered by: <strong className="text-foreground">{sample.registeredBy?.name || "-"}</strong></span>
         <span>Collected by: <strong className="text-foreground">{sample.collectedBy?.name || "-"}</strong></span>
         <span>Assigned to: <strong className="text-foreground">{sample.assignedTo?.name || "Not assigned"}</strong></span>
-        <span>Date: <strong className="text-foreground">{existingDate ? new Date(existingDate).toLocaleDateString() : "-"}</strong></span>
+        <span>Date: <strong className="text-foreground">{existingDate ? formatDate(existingDate) : "-"}</strong></span>
       </div>
 
       {/* Job Details */}
@@ -551,7 +552,7 @@ export function EditSampleClient({
                       <TableCell className="text-xs py-1.5">{tr.specMax || "-"}</TableCell>
                       <TableCell className="text-xs py-1.5">{tr.tat ? `${tr.tat}d` : "-"}</TableCell>
                       <TableCell className="text-xs py-1.5">
-                        {tr.dueDate ? new Date(tr.dueDate).toLocaleDateString() : "-"}
+                        {tr.dueDate ? formatDate(tr.dueDate) : "-"}
                       </TableCell>
                       <TableCell className="py-1.5">
                         {tr.status === "pending" ? (

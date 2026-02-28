@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { PageHeader } from "@/components/shared/page-header"
 import {
   Card,
@@ -145,11 +145,14 @@ export function SettingsClient({ lab }: { lab: Lab | null }) {
 
   const zohoConfigured = !!(lab?.zohoClientId && lab?.zohoClientSecret && lab?.zohoRefreshToken && lab?.zohoOrgId)
 
-  const today = new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  })
+  const [today, setToday] = useState("")
+  useEffect(() => {
+    setToday(new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    }))
+  }, [])
 
   return (
     <div className="space-y-6">

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { formatDateTime } from "@/lib/utils"
 import { DataTable } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
@@ -84,16 +85,9 @@ interface Customer {
   company: string | null
 }
 
-function formatDate(dateStr: string | null): string {
+function formatDateLocal(dateStr: string | null): string {
   if (!dateStr) return "Never"
-  const date = new Date(dateStr)
-  return date.toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  return formatDateTime(dateStr)
 }
 
 export function UsersClient({
@@ -152,7 +146,7 @@ export function UsersClient({
         </Badge>
       ),
     },
-    { accessorKey: "lastLoginAt", header: "Last Login", cell: ({ row }) => formatDate(row.original.lastLoginAt) },
+    { accessorKey: "lastLoginAt", header: "Last Login", cell: ({ row }) => formatDateLocal(row.original.lastLoginAt) },
     {
       id: "actions",
       header: "",
@@ -197,7 +191,7 @@ export function UsersClient({
         </Badge>
       ),
     },
-    { accessorKey: "lastLogin", header: "Last Login", cell: ({ row }) => formatDate(row.original.lastLogin) },
+    { accessorKey: "lastLogin", header: "Last Login", cell: ({ row }) => formatDateLocal(row.original.lastLogin) },
     {
       id: "actions",
       header: "",

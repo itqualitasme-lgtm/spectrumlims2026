@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
+import { formatDate } from "@/lib/utils"
 import { ArrowLeft, Pencil, UserPlus, Loader2, Printer } from "lucide-react"
 import { toast } from "sonner"
 
@@ -270,7 +271,7 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
             <div>
               <p className="text-sm font-medium text-muted-foreground">Date</p>
               <p className="text-sm">
-                {new Date(sample.createdAt).toLocaleDateString()}
+                {formatDate(sample.createdAt)}
               </p>
             </div>
             {sample.reference && (
@@ -396,7 +397,7 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
                       <TableCell>{tr.specMin || "-"}</TableCell>
                       <TableCell>{tr.specMax || "-"}</TableCell>
                       <TableCell>{tr.tat ? `${tr.tat} day${tr.tat > 1 ? "s" : ""}` : "-"}</TableCell>
-                      <TableCell>{tr.dueDate ? new Date(tr.dueDate).toLocaleDateString() : "-"}</TableCell>
+                      <TableCell>{tr.dueDate ? formatDate(tr.dueDate) : "-"}</TableCell>
                       <TableCell>{testStatusBadge(tr.status)}</TableCell>
                     </TableRow>
                   ))}
@@ -445,7 +446,7 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
                         <Badge variant="secondary">{report.status}</Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(report.createdAt).toLocaleDateString()}
+                        {formatDate(report.createdAt)}
                       </TableCell>
                     </TableRow>
                   ))}

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useTransition, useRef, useEffect } from "react"
+import { formatDate } from "@/lib/utils"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -43,14 +44,6 @@ const statusColors: Record<string, string> = {
   mixed: "bg-gray-100 text-gray-700 dark:bg-gray-950 dark:text-gray-300",
 }
 
-function formatDate(iso: string | null) {
-  if (!iso) return "-"
-  return new Date(iso).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "2-digit",
-  })
-}
 
 export function StatusTrackingClient() {
   const [registrations, setRegistrations] = useState<RegistrationRow[]>([])
