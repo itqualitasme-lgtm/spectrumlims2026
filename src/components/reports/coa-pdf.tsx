@@ -73,6 +73,7 @@ interface SampleInfo {
   notes?: string | null
   samplingMethod?: string | null
   drawnBy?: string | null
+  deliveredBy?: string | null
   sheetNumber?: string | null
   client: CustomerInfo
   sampleType: SampleTypeInfo
@@ -623,27 +624,25 @@ export function COAPDF({
             </Text>
           </View>
 
-          {/* Sample Delivered By */}
-          {customer.contactPerson && (
-            <View style={styles.infoGrid}>
-              <View style={styles.infoGridLeft}>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoLabel}>Sample Delivered By</Text>
-                  <Text style={styles.infoSep}>:</Text>
-                  <Text style={styles.infoValue}>{customer.contactPerson}</Text>
-                </View>
-              </View>
-              <View style={styles.infoGridRight}>
-                <View style={styles.infoRow}>
-                  <Text style={styles.infoGridLabel}>Sample Drawn By</Text>
-                  <Text style={styles.infoSep}>:</Text>
-                  <Text style={styles.infoValue}>
-                    {sample.drawnBy || "NP & Spectrum"}
-                  </Text>
-                </View>
+          {/* Sample Delivered By & Sample Drawn By */}
+          <View style={styles.infoGrid}>
+            <View style={styles.infoGridLeft}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Sample Delivered By</Text>
+                <Text style={styles.infoSep}>:</Text>
+                <Text style={styles.infoValue}>{sample.deliveredBy || customer.contactPerson || customer.name}</Text>
               </View>
             </View>
-          )}
+            <View style={styles.infoGridRight}>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoGridLabel}>Sample Drawn By</Text>
+                <Text style={styles.infoSep}>:</Text>
+                <Text style={styles.infoValue}>
+                  {sample.drawnBy || "NP & Spectrum"}
+                </Text>
+              </View>
+            </View>
+          </View>
 
           {/* No. of Samples & Condition */}
           <View style={styles.infoGrid}>
@@ -830,7 +829,7 @@ export function COAPDF({
             {/* Lab Manager Signature (left) */}
             <View style={styles.signatureBlock}>
               <Text style={styles.signatureLabel}>LABORATORY OPERATIONS</Text>
-              {report.reviewedBy?.signatureUrl && (
+              {showHeaderFooter && report.reviewedBy?.signatureUrl && (
                 <Image style={styles.signatureImage} src={report.reviewedBy.signatureUrl} />
               )}
               <View style={styles.signatureLine} />
@@ -859,9 +858,9 @@ export function COAPDF({
               <View style={{ width: 75 }} />
             )}
 
-            {/* Company Seal (right) */}
+            {/* Company Seal (right) — hidden for letterhead */}
             <View style={styles.signatureBlock}>
-              {template?.sealUrl && (
+              {showHeaderFooter && template?.sealUrl && (
                 <Image
                   style={{ width: 110, height: 110, objectFit: "contain" as any }}
                   src={template.sealUrl}
@@ -1102,7 +1101,7 @@ function COAPageContent(props: COAPDFProps) {
         <View style={styles.infoRow}>
           <Text style={styles.infoLabel}>Sample Delivered By</Text>
           <Text style={styles.infoSep}>:</Text>
-          <Text style={styles.infoValue}>Client</Text>
+          <Text style={styles.infoValue}>{sample.deliveredBy || clientName}</Text>
         </View>
         {sample.samplingMethod && sample.samplingMethod !== "NP" && (
           <View style={styles.infoRow}>
@@ -1198,7 +1197,7 @@ function COAPageContent(props: COAPDFProps) {
         <View style={styles.signaturesRow}>
           {/* Tested By (Chemist) - left */}
           <View style={styles.signatureBlock}>
-            {report.createdBy.signatureUrl && (
+            {showHeaderFooter && report.createdBy.signatureUrl && (
               <Image style={styles.signatureImage} src={report.createdBy.signatureUrl} />
             )}
             <View style={styles.signatureLine} />
@@ -1211,7 +1210,7 @@ function COAPageContent(props: COAPDFProps) {
           {/* Authenticated By (Lab Manager) */}
           <View style={styles.signatureBlock}>
             <Text style={styles.signatureLabel}>LABORATORY OPERATIONS</Text>
-            {report.reviewedBy?.signatureUrl && (
+            {showHeaderFooter && report.reviewedBy?.signatureUrl && (
               <Image style={styles.signatureImage} src={report.reviewedBy.signatureUrl} />
             )}
             <View style={styles.signatureLine} />
@@ -1242,7 +1241,7 @@ function COAPageContent(props: COAPDFProps) {
 
           {/* Company Seal (right) */}
           <View style={styles.signatureBlock}>
-            {template?.sealUrl && (
+            {showHeaderFooter && template?.sealUrl && (
               <Image
                 style={{ width: 110, height: 110, objectFit: "contain" as any }}
                 src={template.sealUrl}

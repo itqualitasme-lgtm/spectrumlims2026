@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
               select: {
                 samplingMethod: true,
                 drawnBy: true,
+                deliveredBy: true,
                 sheetNumber: true,
                 _count: { select: { samples: { where: { deletedAt: null } } } },
               },
@@ -177,6 +178,7 @@ export async function GET(request: NextRequest) {
             notes: report.sample.notes,
             samplingMethod: report.sample.registration?.samplingMethod || null,
             drawnBy: report.sample.registration?.drawnBy || null,
+            deliveredBy: report.sample.registration?.deliveredBy || null,
             sheetNumber: report.sample.registration?.sheetNumber || null,
             client: report.sample.client,
             sampleType: report.sample.sampleType,

@@ -19,6 +19,7 @@ export async function createRegistration(data: {
   sampleCondition?: string
   samplingMethod?: string
   drawnBy?: string
+  deliveredBy?: string
   sheetNumber?: string
   notes?: string
   rows: {
@@ -83,6 +84,7 @@ export async function createRegistration(data: {
       registeredAt: recordDate,
       samplingMethod: data.samplingMethod || "NP",
       drawnBy: data.drawnBy || "NP & Spectrum",
+      deliveredBy: data.deliveredBy || null,
       sheetNumber: data.sheetNumber || null,
       notes: data.notes || null,
       labId,
@@ -745,6 +747,7 @@ export async function updateRegistration(
   data: {
     samplingMethod?: string
     drawnBy?: string
+    deliveredBy?: string
     sheetNumber?: string
     reference?: string
     collectionLocation?: string
@@ -764,6 +767,7 @@ export async function updateRegistration(
     data: {
       samplingMethod: data.samplingMethod || "NP",
       drawnBy: data.drawnBy !== undefined ? (data.drawnBy || "NP & Spectrum") : undefined,
+      deliveredBy: data.deliveredBy !== undefined ? (data.deliveredBy || null) : undefined,
       sheetNumber: data.sheetNumber !== undefined ? (data.sheetNumber || null) : undefined,
       reference: data.reference !== undefined ? (data.reference || null) : undefined,
       collectionLocation: data.collectionLocation !== undefined ? (data.collectionLocation || null) : undefined,

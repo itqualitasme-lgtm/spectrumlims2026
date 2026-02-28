@@ -116,7 +116,7 @@ type SampleData = {
   assignedTo: { name: string } | null
   collectedBy: { name: string } | null
   registeredBy: { name: string } | null
-  registration: { id: string; samplingMethod: string; drawnBy: string; sheetNumber: string | null } | null
+  registration: { id: string; samplingMethod: string; drawnBy: string; deliveredBy: string | null; sheetNumber: string | null } | null
   testResults: TestResult[]
 }
 
@@ -169,6 +169,7 @@ export function EditSampleClient({
   const [notes, setNotes] = useState(sample.notes || "")
   const [samplingMethod, setSamplingMethod] = useState(sample.registration?.samplingMethod || "NP")
   const [drawnBy, setDrawnBy] = useState(sample.registration?.drawnBy || "NP & Spectrum")
+  const [deliveredBy, setDeliveredBy] = useState(sample.registration?.deliveredBy || "")
   const [sheetNumber, setSheetNumber] = useState(sample.registration?.sheetNumber || "")
 
   // Add test dialog
@@ -279,6 +280,7 @@ export function EditSampleClient({
         promises.push(updateRegistration(sample.registration.id, {
           samplingMethod,
           drawnBy: drawnBy || undefined,
+          deliveredBy: deliveredBy || undefined,
           sheetNumber: sheetNumber || undefined,
           reference: reference || undefined,
           collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
@@ -490,6 +492,10 @@ export function EditSampleClient({
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Drawn By</Label>
               <Input className="h-9" value={drawnBy} onChange={(e) => setDrawnBy(e.target.value)} placeholder="NP & Spectrum" />
+            </div>
+            <div className="grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Delivered By</Label>
+              <Input className="h-9" value={deliveredBy} onChange={(e) => setDeliveredBy(e.target.value)} placeholder="Customer name" />
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sheet No.</Label>

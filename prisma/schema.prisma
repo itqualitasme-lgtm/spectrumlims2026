@@ -209,6 +209,7 @@ model Registration {
   registeredAt         DateTime?
   samplingMethod       String    @default("NP")
   drawnBy              String    @default("NP & Spectrum")
+  deliveredBy          String?
   sheetNumber          String?
   notes                String?
   labId                String

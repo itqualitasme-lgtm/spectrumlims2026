@@ -132,6 +132,7 @@ export function NewRegistrationClient({
   const [sampleCondition, setSampleCondition] = useState("Sealed")
   const [samplingMethod, setSamplingMethod] = useState("NP")
   const [drawnBy, setDrawnBy] = useState("NP & Spectrum")
+  const [deliveredBy, setDeliveredBy] = useState("")
   const [sheetNumber, setSheetNumber] = useState("")
 
   // Set date/time on client only to avoid hydration mismatch
@@ -155,8 +156,12 @@ export function NewRegistrationClient({
   const handleClientChange = async (id: string) => {
     setClientId(id)
     if (id) {
-      const address = await getCustomerAddress(id)
+      const [address, customer] = await Promise.all([
+        getCustomerAddress(id),
+        getCustomerById(id),
+      ])
       if (address) setCollectionLocation(address)
+      if (customer) setDeliveredBy(customer.label.split(" - ")[0])
     }
   }
 
@@ -379,6 +384,7 @@ export function NewRegistrationClient({
     setSampleCondition("Sealed")
     setSamplingMethod("NP")
     setDrawnBy("NP & Spectrum")
+    setDeliveredBy("")
     setSheetNumber("")
     setRegistrationNumber("")
     setRegistrationId("")
@@ -442,6 +448,7 @@ export function NewRegistrationClient({
         sampleCondition: sampleCondition || undefined,
         samplingMethod: samplingMethod || undefined,
         drawnBy: drawnBy || undefined,
+        deliveredBy: deliveredBy || undefined,
         sheetNumber: sheetNumber || undefined,
         rows: validSamples.map((s) => {
           const templateTests = getTestsForType(s.sampleTypeId)
@@ -677,8 +684,8 @@ export function NewRegistrationClient({
               </Select>
             </div>
           </div>
-          {/* Row 3: Sampling, Drawn By, Sheet No */}
-          <div className="grid grid-cols-2 md:grid-cols-[150px_200px_150px_1fr] gap-x-3 gap-y-1.5 mt-1.5">
+          {/* Row 3: Sampling, Drawn By, Delivered By, Sheet No */}
+          <div className="grid grid-cols-2 md:grid-cols-[150px_180px_200px_150px] gap-x-3 gap-y-1.5 mt-1.5">
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampling</Label>
               <Select value={samplingMethod} onValueChange={setSamplingMethod}>
@@ -696,6 +703,10 @@ export function NewRegistrationClient({
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Drawn By</Label>
               <Input className="h-9" value={drawnBy} onChange={(e) => setDrawnBy(e.target.value)} placeholder="NP & Spectrum" />
+            </div>
+            <div className="grid gap-0.5">
+              <Label className="text-xs text-muted-foreground">Delivered By</Label>
+              <Input className="h-9" value={deliveredBy} onChange={(e) => setDeliveredBy(e.target.value)} placeholder="Customer name" />
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sheet No.</Label>
