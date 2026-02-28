@@ -872,7 +872,7 @@ export function COAPDF({
         </View>
 
         {/* ===== FOOTER (fixed on every page) ===== */}
-        <View style={[styles.footer, showHeaderFooter ? {} : { opacity: 0 }]} fixed>
+        <View style={styles.footer} fixed>
           {/* Disclaimer text */}
           {footerLines.map((line, idx) => (
             <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
@@ -884,8 +884,8 @@ export function COAPDF({
             </Text>
           )}
 
-          {/* Red contact bar */}
-          <View style={styles.footerBar}>
+          {/* Red contact bar — hidden for letterhead printing */}
+          <View style={[styles.footerBar, showHeaderFooter ? {} : { opacity: 0 }]}>
             <Text style={styles.footerBarText}>
               {[
                 lab.phone && `Tel.: ${lab.phone}`,
@@ -901,7 +901,7 @@ export function COAPDF({
 
         {/* Page Number */}
         <Text
-          style={[styles.pageNumber, showHeaderFooter ? {} : { opacity: 0 }]}
+          style={styles.pageNumber}
           render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
           fixed
         />
@@ -1253,7 +1253,7 @@ function COAPageContent(props: COAPDFProps) {
       </View>
 
       {/* FOOTER (fixed on every page) */}
-      <View style={[styles.footer, showHeaderFooter ? {} : { opacity: 0 }]} fixed>
+      <View style={styles.footer} fixed>
         {footerLines.map((line, idx) => (
           <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
         ))}
@@ -1264,8 +1264,8 @@ function COAPageContent(props: COAPDFProps) {
           </Text>
         )}
 
-        {/* Red contact bar */}
-        <View style={styles.footerBar}>
+        {/* Red contact bar — hidden for letterhead printing */}
+        <View style={[styles.footerBar, showHeaderFooter ? {} : { opacity: 0 }]}>
           <Text style={styles.footerBarText}>
             {[
               lab.phone && `Tel.: ${lab.phone}`,
@@ -1281,7 +1281,7 @@ function COAPageContent(props: COAPDFProps) {
 
       {/* Page Number */}
       <Text
-        style={[styles.pageNumber, showHeaderFooter ? {} : { opacity: 0 }]}
+        style={styles.pageNumber}
         render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
         fixed
       />
