@@ -151,6 +151,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 35,
     color: TEXT_COLOR,
   },
+  pageLetterhead: {
+    fontFamily: "Helvetica",
+    fontSize: 9,
+    paddingTop: 120,
+    paddingBottom: 50,
+    paddingHorizontal: 35,
+    color: TEXT_COLOR,
+  },
 
   // ---- Header ----
   header: {
@@ -553,9 +561,10 @@ export function COAPDF({
       subject={reportTitle}
       creator="Spectrum LIMS"
     >
-      <Page size="A4" style={styles.page}>
+      <Page size="A4" style={showHeaderFooter ? styles.page : styles.pageLetterhead}>
         {/* ===== HEADER (fixed on every page) ===== */}
-        <View style={[styles.header, showHeaderFooter ? {} : { opacity: 0 }]} fixed>
+        {showHeaderFooter && (
+        <View style={styles.header} fixed>
           <View style={styles.headerRow}>
             {showLabLogo && logoUrl ? (
               <Image style={styles.headerLogo} src={logoUrl} />
@@ -590,6 +599,7 @@ export function COAPDF({
             </View>
           </View>
         </View>
+        )}
 
         {/* ===== TITLE ===== */}
         <View style={styles.titleSection}>
@@ -884,7 +894,8 @@ export function COAPDF({
           )}
 
           {/* Red contact bar — hidden for letterhead printing */}
-          <View style={[styles.footerBar, showHeaderFooter ? {} : { opacity: 0 }]}>
+          {showHeaderFooter && (
+          <View style={styles.footerBar}>
             <Text style={styles.footerBarText}>
               {[
                 lab.phone && `Tel.: ${lab.phone}`,
@@ -896,6 +907,7 @@ export function COAPDF({
                 .join("  |  ")}
             </Text>
           </View>
+          )}
         </View>
 
         {/* Page Number */}
@@ -989,9 +1001,10 @@ function COAPageContent(props: COAPDFProps) {
   }
 
   return (
-    <Page size="A4" style={styles.page}>
+    <Page size="A4" style={showHeaderFooter ? styles.page : styles.pageLetterhead}>
       {/* HEADER (fixed on every page) */}
-      <View style={[styles.header, showHeaderFooter ? {} : { opacity: 0 }]} fixed>
+      {showHeaderFooter && (
+      <View style={styles.header} fixed>
         <View style={styles.headerRow}>
           {showLabLogo && logoUrl ? (
             <Image style={styles.headerLogo} src={logoUrl} />
@@ -1026,6 +1039,7 @@ function COAPageContent(props: COAPDFProps) {
           </View>
         </View>
       </View>
+      )}
 
       {/* TITLE */}
       <View style={styles.titleSection}>
@@ -1264,7 +1278,8 @@ function COAPageContent(props: COAPDFProps) {
         )}
 
         {/* Red contact bar — hidden for letterhead printing */}
-        <View style={[styles.footerBar, showHeaderFooter ? {} : { opacity: 0 }]}>
+        {showHeaderFooter && (
+        <View style={styles.footerBar}>
           <Text style={styles.footerBarText}>
             {[
               lab.phone && `Tel.: ${lab.phone}`,
@@ -1276,6 +1291,7 @@ function COAPageContent(props: COAPDFProps) {
               .join("  |  ")}
           </Text>
         </View>
+        )}
       </View>
 
       {/* Page Number */}
