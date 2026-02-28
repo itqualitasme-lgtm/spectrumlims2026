@@ -603,13 +603,14 @@ export function COAPDF({
   const headerImageUrl = template?.headerImageUrl || null
   const footerImageUrl = template?.footerImageUrl || null
 
-  // Determine title — strip sample type suffix if already appended (e.g. "CERTIFICATE OF QUALITY - DIESEL")
+  // Determine title and subtitle
+  // If title contains " - ", split into title + subtitle (e.g. "CERTIFICATE OF QUALITY - GAS OIL")
+  // Otherwise use full title + sample type name as subtitle
   const rawTitle = report.title || "CERTIFICATE OF QUALITY"
   const sampleTypeName = sample.sampleType.name
-  const typeSuffix = ` - ${sampleTypeName}`
-  const reportTitle = rawTitle.toUpperCase().endsWith(typeSuffix.toUpperCase())
-    ? rawTitle.slice(0, -typeSuffix.length)
-    : rawTitle
+  const dashIdx = rawTitle.indexOf(" - ")
+  const reportTitle = dashIdx >= 0 ? rawTitle.slice(0, dashIdx) : rawTitle
+  const reportSubtitle = dashIdx >= 0 ? rawTitle.slice(dashIdx + 3) : sampleTypeName
 
   // Specification standard for table column header (e.g. "ISO 8217: 2024")
   const specStandard = sample.sampleType.specificationStandard || "Specification"
@@ -671,7 +672,7 @@ export function COAPDF({
         {/* ===== TITLE ===== */}
         <View style={styles.titleSection}>
           <Text style={styles.title}>{reportTitle.toUpperCase()}</Text>
-          <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
+          <Text style={styles.subtitle}>{reportSubtitle.toUpperCase()}</Text>
         </View>
 
         {/* ===== REPORT NO ===== */}
@@ -1015,10 +1016,9 @@ function COAPageContent(props: COAPDFProps) {
 
   const rawTitle2 = report.title || "CERTIFICATE OF QUALITY"
   const sampleTypeName = sample.sampleType.name
-  const typeSuffix2 = ` - ${sampleTypeName}`
-  const reportTitle = rawTitle2.toUpperCase().endsWith(typeSuffix2.toUpperCase())
-    ? rawTitle2.slice(0, -typeSuffix2.length)
-    : rawTitle2
+  const dashIdx2 = rawTitle2.indexOf(" - ")
+  const reportTitle = dashIdx2 >= 0 ? rawTitle2.slice(0, dashIdx2) : rawTitle2
+  const reportSubtitle = dashIdx2 >= 0 ? rawTitle2.slice(dashIdx2 + 3) : sampleTypeName
   const specStandard = sample.sampleType.specificationStandard || "Specification"
   const testedByName = testedBy?.name || "-"
 
@@ -1092,7 +1092,7 @@ function COAPageContent(props: COAPDFProps) {
       {/* TITLE */}
       <View style={styles.titleSection}>
         <Text style={styles.title}>{reportTitle.toUpperCase()}</Text>
-        <Text style={styles.subtitle}>{sampleTypeName.toUpperCase()}</Text>
+        <Text style={styles.subtitle}>{reportSubtitle.toUpperCase()}</Text>
       </View>
 
       {/* REPORT NO */}
