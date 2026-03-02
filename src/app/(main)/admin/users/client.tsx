@@ -41,6 +41,7 @@ import {
   createPortalUser,
   updatePortalUser,
   deletePortalUser,
+  backfillEmployeeCodes,
 } from "@/actions/users"
 
 interface User {
@@ -128,8 +129,6 @@ export function UsersClient({
     { accessorKey: "employeeCode", header: "Employee #", cell: ({ row }) => row.original.employeeCode || "-" },
     { accessorKey: "name", header: "Name" },
     { accessorKey: "username", header: "Username" },
-    { accessorKey: "email", header: "Email", cell: ({ row }) => row.original.email || "-" },
-    { accessorKey: "phone", header: "Phone", cell: ({ row }) => row.original.phone || "-" },
     {
       accessorKey: "role.name",
       header: "Role",
@@ -153,28 +152,35 @@ export function UsersClient({
       id: "actions",
       header: "",
       enableSorting: false,
-      cell: ({ row }) => (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
-            setEditingUser(row.original)
-            setUserRoleId(row.original.roleId)
-            setUserSignatureUrl(row.original.signatureUrl || "")
-            setUserDialogOpen(true)
-          }}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleToggleUserActive(row.original)}>
-            {row.original.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-          </Button>
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => {
-            setDeletingUserId(row.original.id)
-            setDeletingUserName(row.original.name)
-            setDeleteUserOpen(true)
-          }}>
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const isSuperAdmin = row.original.username === "admin"
+        return (
+          <div className="flex items-center gap-1">
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => {
+              setEditingUser(row.original)
+              setUserRoleId(row.original.roleId)
+              setUserSignatureUrl(row.original.signatureUrl || "")
+              setUserDialogOpen(true)
+            }}>
+              <Pencil className="h-4 w-4" />
+            </Button>
+            {!isSuperAdmin && (
+              <>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleToggleUserActive(row.original)}>
+                  {row.original.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                </Button>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => {
+                  setDeletingUserId(row.original.id)
+                  setDeletingUserName(row.original.name)
+                  setDeleteUserOpen(true)
+                }}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </div>
+        )
+      },
     },
   ]
 
@@ -358,6 +364,35 @@ export function UsersClient({
           }
         }}
       />
+
+      {/* Backfill banner for users missing employee codes */}
+      {users.some((u) => !u.employeeCode) && (
+        <div className="flex items-center justify-between gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-2">
+          <span className="text-sm text-amber-800">
+            {users.filter((u) => !u.employeeCode).length} user(s) do not have employee codes yet.
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            className="text-amber-800 border-amber-300 hover:bg-amber-100"
+            disabled={loading}
+            onClick={async () => {
+              setLoading(true)
+              try {
+                const result = await backfillEmployeeCodes()
+                toast.success(`Generated employee codes for ${result.count} user(s)`)
+                router.refresh()
+              } catch (error: any) {
+                toast.error(error.message || "Failed to generate codes")
+              } finally {
+                setLoading(false)
+              }
+            }}
+          >
+            {loading ? "Generating..." : "Generate Employee Codes"}
+          </Button>
+        </div>
+      )}
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>

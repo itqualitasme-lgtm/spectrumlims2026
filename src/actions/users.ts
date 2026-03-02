@@ -6,14 +6,34 @@ import { logAudit } from "@/lib/audit"
 import { revalidatePath } from "next/cache"
 import { hash } from "bcryptjs"
 
-async function generateEmployeeCode(labId: string): Promise<string> {
+function getRolePrefix(roleName: string): string {
+  const name = roleName.trim().toUpperCase()
+  // Common role abbreviations
+  if (name.includes("ADMIN")) return "ADM"
+  if (name.includes("LAB MANAGER") || name.includes("LABORATORY MANAGER")) return "LMG"
+  if (name.includes("MANAGER")) return "MGR"
+  if (name.includes("CHEMIST")) return "CHM"
+  if (name.includes("TECHNICIAN")) return "TCH"
+  if (name.includes("SUPERVISOR")) return "SPV"
+  if (name.includes("QUALITY")) return "QAC"
+  if (name.includes("RECEPTIONIST") || name.includes("RECEPTION")) return "RCP"
+  if (name.includes("ACCOUNTANT") || name.includes("ACCOUNT")) return "ACC"
+  // Fallback: first 3 consonants or first 3 letters
+  const consonants = name.replace(/[^A-Z]/g, "").replace(/[AEIOU]/g, "")
+  if (consonants.length >= 3) return consonants.slice(0, 3)
+  return name.replace(/[^A-Z]/g, "").slice(0, 3) || "EMP"
+}
+
+async function generateEmployeeCode(labId: string, roleName: string): Promise<string> {
+  const prefix = getRolePrefix(roleName)
+  const module = `employee_${prefix}`
   const formatId = await db.formatID.upsert({
-    where: { labId_module: { labId, module: "employee" } },
+    where: { labId_module: { labId, module } },
     update: { lastNumber: { increment: 1 } },
-    create: { labId, module: "employee", prefix: "EMP", lastNumber: 1 },
+    create: { labId, module, prefix, lastNumber: 1 },
   })
   const num = String(formatId.lastNumber).padStart(3, "0")
-  return `${formatId.prefix}-${num}`
+  return `${prefix}-${num}`
 }
 
 export async function getUsers() {
@@ -86,7 +106,8 @@ export async function createUser(data: {
   }
 
   const passwordHash = await hash(data.password, 12)
-  const employeeCode = await generateEmployeeCode(user.labId)
+  const role = await db.role.findUnique({ where: { id: data.roleId } })
+  const employeeCode = await generateEmployeeCode(user.labId, role?.name || "Employee")
 
   const newUser = await db.user.create({
     data: {
@@ -137,6 +158,11 @@ export async function updateUser(
   const existing = await db.user.findFirst({ where: { id, labId: user.labId } })
   if (!existing) throw new Error("User not found")
 
+  // Prevent deactivating the superadmin account
+  if (existing.username === "admin" && data.isActive === false) {
+    throw new Error("Cannot deactivate the super admin account")
+  }
+
   const updateData: any = {
     name: data.name,
     username: data.username || undefined,
@@ -183,6 +209,11 @@ export async function deleteUser(id: string) {
   // Verify user belongs to this lab
   const target = await db.user.findFirst({ where: { id, labId: user.labId } })
   if (!target) throw new Error("User not found")
+
+  // Prevent deleting the superadmin account
+  if (target.username === "admin") {
+    throw new Error("Cannot delete the super admin account")
+  }
 
   // Check REQUIRED associations that would prevent deletion (cannot be nullified)
   const [reportCreatedCount, invoiceCount, quotationCount, contractCount] = await Promise.all([
@@ -409,13 +440,14 @@ export async function backfillEmployeeCodes() {
 
   const usersWithoutCode = await db.user.findMany({
     where: { labId, employeeCode: null },
+    include: { role: { select: { name: true } } },
     orderBy: { createdAt: "asc" },
   })
 
   if (usersWithoutCode.length === 0) return { count: 0 }
 
   for (const u of usersWithoutCode) {
-    const code = await generateEmployeeCode(labId)
+    const code = await generateEmployeeCode(labId, u.role.name)
     await db.user.update({
       where: { id: u.id },
       data: { employeeCode: code },
