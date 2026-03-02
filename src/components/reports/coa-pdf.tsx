@@ -83,6 +83,7 @@ interface SampleInfo {
 interface UserInfo {
   id: string
   name: string
+  employeeCode?: string | null
   designation?: string | null
   signatureUrl?: string | null
 }
@@ -90,6 +91,7 @@ interface UserInfo {
 interface TestedByInfo {
   id: string
   name: string
+  employeeCode?: string | null
 }
 
 interface ReportInfo {
@@ -617,7 +619,9 @@ export function COAPDF({
   const specStandard = sample.sampleType.specificationStandard || "Specification"
 
   // Chemist / tested by name
-  const testedByName = testedBy?.name || "-"
+  const testedByName = testedBy?.employeeCode
+    ? `${testedBy.name} (${testedBy.employeeCode})`
+    : testedBy?.name || "-"
 
   return (
     <Document
@@ -862,7 +866,7 @@ export function COAPDF({
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Report prepared by</Text>
             <Text style={styles.metaSep}>:</Text>
-            <Text style={styles.metaValue}>{report.createdBy.name}</Text>
+            <Text style={styles.metaValue}>{report.createdBy.employeeCode ? `${report.createdBy.name} (${report.createdBy.employeeCode})` : report.createdBy.name}</Text>
           </View>
           <Text style={styles.metaNote}>
             The above test results are only applicable to the sample(s) referred above
@@ -1021,7 +1025,9 @@ function COAPageContent(props: COAPDFProps) {
   const reportTitle = dashIdx2 >= 0 ? rawTitle2.slice(0, dashIdx2) : rawTitle2
   const reportSubtitle = dashIdx2 >= 0 ? rawTitle2.slice(dashIdx2 + 3) : sampleTypeName
   const specStandard = sample.sampleType.specificationStandard || "Specification"
-  const testedByName = testedBy?.name || "-"
+  const testedByName = testedBy?.employeeCode
+    ? `${testedBy.name} (${testedBy.employeeCode})`
+    : testedBy?.name || "-"
 
   const clientName = sample.client.company || sample.client.name
   const collectionDateStr = sample.collectionDate
@@ -1258,7 +1264,7 @@ function COAPageContent(props: COAPDFProps) {
         <View style={styles.metaRow}>
           <Text style={styles.metaLabel}>Report prepared by</Text>
           <Text style={styles.metaSep}>:</Text>
-          <Text style={styles.metaValue}>{report.createdBy.name}</Text>
+          <Text style={styles.metaValue}>{report.createdBy.employeeCode ? `${report.createdBy.name} (${report.createdBy.employeeCode})` : report.createdBy.name}</Text>
         </View>
         <Text style={styles.metaNote}>
           The above test results are only applicable to the sample(s) referred above

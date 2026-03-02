@@ -149,10 +149,32 @@ export async function getTestResults(sampleId: string) {
   return testResults
 }
 
+export async function updateTestUnit(testResultId: string, unit: string) {
+  const session = await requirePermission("process", "edit")
+  const user = session.user as any
+
+  const testResult = await db.testResult.findUnique({
+    where: { id: testResultId },
+    include: { sample: { select: { labId: true } } },
+  })
+  if (!testResult || testResult.sample.labId !== user.labId) {
+    throw new Error("Test result not found")
+  }
+
+  await db.testResult.update({
+    where: { id: testResultId },
+    data: { unit: unit.trim() || null },
+  })
+
+  revalidatePath("/process/registration")
+  revalidatePath("/process/test-results")
+}
+
 export async function batchUpdateTestResults(
   sampleId: string,
   results: { id: string; resultValue: string }[],
-  remarks?: string
+  remarks?: string,
+  unitUpdates?: { id: string; unit: string }[]
 ) {
   const session = await requirePermission("process", "edit")
   const user = session.user as any
@@ -181,6 +203,16 @@ export async function batchUpdateTestResults(
         enteredAt: new Date(),
       },
     })
+  }
+
+  // Update units if provided
+  if (unitUpdates && unitUpdates.length > 0) {
+    for (const u of unitUpdates) {
+      await db.testResult.update({
+        where: { id: u.id },
+        data: { unit: u.unit || null },
+      })
+    }
   }
 
   // Check if all test results for this sample are now completed

@@ -55,6 +55,7 @@ interface User {
   lastLoginAt: string | null
   createdAt: string
   updatedAt: string
+  employeeCode: string | null
   designation: string | null
   signatureUrl: string | null
   role: { name: string }
@@ -225,6 +226,7 @@ export function UsersClient({
     const password = (fd.get("password") as string)?.trim()
     const email = fd.get("email") as string
     const phone = fd.get("phone") as string
+    const employeeCode = (fd.get("employeeCode") as string)?.trim()
     const designation = (fd.get("designation") as string)?.trim()
 
     if (!name) { toast.error("Name is required"); return }
@@ -238,6 +240,7 @@ export function UsersClient({
         await updateUser(editingUser.id, {
           name, username, email: email || undefined, phone: phone || undefined,
           roleId: userRoleId, password: password || undefined,
+          employeeCode: employeeCode || undefined,
           designation: designation || undefined,
           signatureUrl: userSignatureUrl || undefined,
         })
@@ -246,6 +249,7 @@ export function UsersClient({
         await createUser({
           name, email: email || undefined, username, password: password!,
           phone: phone || undefined, roleId: userRoleId,
+          employeeCode: employeeCode || undefined,
           designation: designation || undefined,
           signatureUrl: userSignatureUrl || undefined,
         })
@@ -398,6 +402,10 @@ export function UsersClient({
               <div className="grid gap-2">
                 <Label>Phone</Label>
                 <Input name="phone" defaultValue={editingUser?.phone || ""} placeholder="Phone number" />
+              </div>
+              <div className="grid gap-2">
+                <Label>Employee Code</Label>
+                <Input name="employeeCode" defaultValue={editingUser?.employeeCode || ""} placeholder="e.g. EMP-001" />
               </div>
               <div className="grid gap-2">
                 <Label>Role *</Label>

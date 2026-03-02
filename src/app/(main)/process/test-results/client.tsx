@@ -166,6 +166,7 @@ function getTestMethod(test: TestParam): string {
 }
 
 const STATUS_FILTER_OPTIONS = [
+  { value: "active", label: "Active (Exc. Completed)" },
   { value: "all", label: "All" },
   { value: "revision", label: "Revision Required" },
   { value: "registered", label: "Registered" },
@@ -178,7 +179,7 @@ const STATUS_FILTER_OPTIONS = [
 
 export function TestResultsClient({ samples }: { samples: Sample[] }) {
   const router = useRouter()
-  const [statusFilter, setStatusFilter] = useState("all")
+  const [statusFilter, setStatusFilter] = useState("active")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null)
   const [collapsedRegs, setCollapsedRegs] = useState<Set<string>>(new Set())
@@ -189,6 +190,15 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
     samples.forEach((s) => {
       s.testResults.forEach((tr) => {
         values[tr.id] = tr.resultValue || ""
+      })
+    })
+    return values
+  })
+  const [unitValues, setUnitValues] = useState<Record<string, string>>(() => {
+    const values: Record<string, string> = {}
+    samples.forEach((s) => {
+      s.testResults.forEach((tr) => {
+        values[tr.id] = tr.unit || ""
       })
     })
     return values
@@ -270,7 +280,9 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
   // Filtered samples
   const filteredSamples = useMemo(() => {
     let result = samples
-    if (statusFilter !== "all") {
+    if (statusFilter === "active") {
+      result = result.filter((s) => s.status !== "completed")
+    } else if (statusFilter !== "all") {
       if (statusFilter === "revision") {
         result = result.filter((s) => s.reports.length > 0 && s.reports[0].status === "revision")
       } else {
@@ -304,6 +316,10 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
     setResultValues((prev) => ({ ...prev, [testResultId]: value }))
   }
 
+  const handleUnitChange = (testResultId: string, value: string) => {
+    setUnitValues((prev) => ({ ...prev, [testResultId]: value }))
+  }
+
   const handleSaveSample = async (sample: Sample) => {
     const results = sample.testResults
       .filter((tr) => resultValues[tr.id]?.trim())
@@ -312,14 +328,22 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
         resultValue: resultValues[tr.id].trim(),
       }))
 
-    if (results.length === 0 && !remarksText.trim()) {
-      toast.error("Please enter at least one result value or remarks")
+    // Collect unit changes (where value differs from original)
+    const unitUpdates = sample.testResults
+      .filter((tr) => (unitValues[tr.id] || "") !== (tr.unit || ""))
+      .map((tr) => ({
+        id: tr.id,
+        unit: unitValues[tr.id]?.trim() || "",
+      }))
+
+    if (results.length === 0 && !remarksText.trim() && unitUpdates.length === 0) {
+      toast.error("Please enter at least one result value, unit change, or remarks")
       return
     }
 
     setSavingIds((prev) => new Set(prev).add(sample.id))
     try {
-      await batchUpdateTestResults(sample.id, results, remarksText.trim() || undefined)
+      await batchUpdateTestResults(sample.id, results, remarksText.trim() || undefined, unitUpdates.length > 0 ? unitUpdates : undefined)
       toast.success(`Saved ${results.length} result(s) for ${sample.sampleNumber}`)
       router.refresh()
     } catch (error: any) {
@@ -361,6 +385,9 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
     ? selectedSample.testResults.some(
         (tr) => tr.status === "pending" && resultValues[tr.id]?.trim()
       ) || remarksText.trim().length > 0
+      || selectedSample.testResults.some(
+        (tr) => (unitValues[tr.id] || "") !== (tr.unit || "")
+      )
     : false
 
   return (
@@ -545,6 +572,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                               const hasRevision = sample.reports.length > 0 && sample.reports[0].status === "revision"
                               const shortNum = sample.sampleNumber
                               // Build detail line: sample point, description, bottle size
+                              const clientName = sample.client.company || sample.client.name
                               const details = [
                                 sample.samplePoint,
                                 sample.description,
@@ -587,11 +615,10 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                       )}
                                     </div>
                                   </div>
-                                  {!reg.regNumber && (
-                                    <div className="text-[10px] text-muted-foreground truncate mt-0.5">
-                                      {sample.sampleType.name}
-                                    </div>
-                                  )}
+                                  <div className="text-[10px] text-muted-foreground truncate mt-0.5">
+                                    {clientName}
+                                    {!reg.regNumber && <> · {sample.sampleType.name}</>}
+                                  </div>
                                 </button>
                               )
                             })}
@@ -739,7 +766,14 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                 {tr.parameter}
                               </TableCell>
                               <TableCell className="text-[10px] py-1">{tr.testMethod || "-"}</TableCell>
-                              <TableCell className="text-[10px] py-1">{tr.unit || "-"}</TableCell>
+                              <TableCell className="py-1">
+                                <Input
+                                  value={unitValues[tr.id] || ""}
+                                  onChange={(e) => handleUnitChange(tr.id, e.target.value)}
+                                  placeholder="-"
+                                  className="h-6 text-[10px] w-[70px] px-1.5"
+                                />
+                              </TableCell>
                               <TableCell className="py-1">
                                 <div className="flex items-center gap-1">
                                   <Input

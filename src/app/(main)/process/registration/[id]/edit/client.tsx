@@ -43,7 +43,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 
 import { updateSample, updateRegistration, searchCustomers, getCustomerById } from "@/actions/registrations"
-import { addTestsToSample, deleteTestResult } from "@/actions/test-results"
+import { addTestsToSample, deleteTestResult, updateTestUnit } from "@/actions/test-results"
 
 type TestParam = {
   parameter: string
@@ -477,7 +477,7 @@ export function EditSampleClient({
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampling</Label>
               <Select value={samplingMethod} onValueChange={setSamplingMethod}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NP">NP</SelectItem>
                   <SelectItem value="Running Sample">Running Sample</SelectItem>
@@ -586,7 +586,19 @@ export function EditSampleClient({
                     <TableRow key={tr.id}>
                       <TableCell className="font-medium text-xs py-1.5">{tr.parameter}</TableCell>
                       <TableCell className="text-xs py-1.5">{tr.testMethod || "-"}</TableCell>
-                      <TableCell className="text-xs py-1.5">{tr.unit || "-"}</TableCell>
+                      <TableCell className="py-1.5">
+                        <Input
+                          defaultValue={tr.unit || ""}
+                          className="h-6 text-xs w-[70px] px-1.5"
+                          placeholder="-"
+                          onBlur={(e) => {
+                            const newUnit = e.target.value.trim()
+                            if (newUnit !== (tr.unit || "")) {
+                              updateTestUnit(tr.id, newUnit).catch(() => toast.error("Failed to update unit"))
+                            }
+                          }}
+                        />
+                      </TableCell>
                       <TableCell className="text-xs py-1.5">
                         {tr.resultValue ? (
                           <span className="font-mono">{tr.resultValue}</span>

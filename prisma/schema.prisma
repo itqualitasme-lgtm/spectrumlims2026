@@ -91,6 +91,7 @@ model User {
   username       String    @unique
   passwordHash   String
   phone          String?
+  employeeCode   String?
   designation    String?
   signatureUrl   String?
   roleId         String

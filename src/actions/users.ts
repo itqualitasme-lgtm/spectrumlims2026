@@ -60,6 +60,7 @@ export async function createUser(data: {
   password: string
   phone?: string
   roleId: string
+  employeeCode?: string
   designation?: string
   signatureUrl?: string
 }) {
@@ -86,6 +87,7 @@ export async function createUser(data: {
       phone: data.phone || null,
       roleId: data.roleId,
       labId: user.labId,
+      employeeCode: data.employeeCode || null,
       designation: data.designation || null,
       signatureUrl: data.signatureUrl || null,
     },
@@ -114,6 +116,7 @@ export async function updateUser(
     roleId?: string
     isActive?: boolean
     password?: string
+    employeeCode?: string
     designation?: string
     signatureUrl?: string
   }
@@ -132,6 +135,7 @@ export async function updateUser(
     phone: data.phone || null,
     roleId: data.roleId,
     isActive: data.isActive,
+    employeeCode: data.employeeCode !== undefined ? (data.employeeCode || null) : undefined,
     designation: data.designation !== undefined ? (data.designation || null) : undefined,
     signatureUrl: data.signatureUrl !== undefined ? (data.signatureUrl || null) : undefined,
   }

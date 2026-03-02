@@ -689,7 +689,7 @@ export function NewRegistrationClient({
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sampling</Label>
               <Select value={samplingMethod} onValueChange={setSamplingMethod}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9 w-full"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="NP">NP</SelectItem>
                   <SelectItem value="Running Sample">Running Sample</SelectItem>
