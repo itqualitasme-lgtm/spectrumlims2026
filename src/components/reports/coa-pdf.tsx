@@ -555,7 +555,7 @@ function formatDateTime(date: Date | string | null | undefined): string {
   if (!date) return "N/A"
   try {
     const d = typeof date === "string" ? new Date(date) : date
-    return format(d, "dd-MM-yyyy HH:mm")
+    return format(d, "dd-MM-yyyy")
   } catch {
     return "N/A"
   }
@@ -1036,14 +1036,14 @@ function COAPageContent(props: COAPDFProps) {
 
   const clientName = sample.client.company || sample.client.name
   const collectionDateStr = sample.collectionDate
-    ? format(new Date(sample.collectionDate), "dd MMM yyyy HH:mm")
+    ? format(new Date(sample.collectionDate), "dd MMM yyyy")
     : "-"
   const registeredAtStr = sample.registeredAt
-    ? format(new Date(sample.registeredAt), "dd MMM yyyy HH:mm")
+    ? format(new Date(sample.registeredAt), "dd MMM yyyy")
     : collectionDateStr
   const reportDateStr = report.reviewedAt
-    ? format(new Date(report.reviewedAt), "dd MMM yyyy HH:mm")
-    : format(new Date(report.createdAt), "dd MMM yyyy HH:mm")
+    ? format(new Date(report.reviewedAt), "dd MMM yyyy")
+    : format(new Date(report.createdAt), "dd MMM yyyy")
 
   const completedResults = testResults.filter(
     (r) => r.status === "completed" && r.resultValue
