@@ -10,6 +10,8 @@ import {
   RotateCcw,
   Loader2,
   Eye,
+  Undo2,
+  AlertTriangle,
 } from "lucide-react"
 import { toast } from "sonner"
 
@@ -47,6 +49,7 @@ import {
   submitReport,
   approveReport,
   requestRevision,
+  revertReportToRegistration,
 } from "@/actions/reports"
 
 type TestResultInfo = {
@@ -163,12 +166,14 @@ export function AuthenticationClient({
 
   // Dialog states
   const [revisionOpen, setRevisionOpen] = useState(false)
+  const [revertRegOpen, setRevertRegOpen] = useState(false)
   const [viewResultsOpen, setViewResultsOpen] = useState(false)
   const [loading, setLoading] = useState(false)
 
   // Selected report for actions
   const [selectedReport, setSelectedReport] = useState<Report | null>(null)
   const [revisionReason, setRevisionReason] = useState("")
+  const [revertRegReason, setRevertRegReason] = useState("")
   const [selectedTemplateId, setSelectedTemplateId] = useState("")
 
   const filteredReports = useMemo(() => {
@@ -230,6 +235,32 @@ export function AuthenticationClient({
     }
   }
 
+  const handleOpenRevertReg = (report: Report) => {
+    setSelectedReport(report)
+    setRevertRegReason("")
+    setRevertRegOpen(true)
+  }
+
+  const handleRevertToRegistration = async () => {
+    if (!selectedReport || !revertRegReason.trim()) {
+      toast.error("Please provide a reason for reverting")
+      return
+    }
+
+    setLoading(true)
+    try {
+      await revertReportToRegistration(selectedReport.id, revertRegReason.trim())
+      toast.success(`${selectedReport.reportNumber} reverted to registration`)
+      setRevertRegOpen(false)
+      setRevertRegReason("")
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to revert to registration")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const columns: ColumnDef<Report, any>[] = [
     {
       accessorKey: "reportNumber",
@@ -258,7 +289,18 @@ export function AuthenticationClient({
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => statusBadge(row.original.status),
+      cell: ({ row }) => {
+        const report = row.original
+        const isRevised = report.status === "draft" && report.summary?.startsWith("[Revision")
+        return (
+          <div className="flex items-center gap-1">
+            {statusBadge(report.status)}
+            {isRevised && (
+              <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100 text-[9px] px-1 py-0">Revised</Badge>
+            )}
+          </div>
+        )
+      },
     },
     {
       id: "chemist",
@@ -312,6 +354,15 @@ export function AuthenticationClient({
                 >
                   <RotateCcw className="h-4 w-4" />
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                  onClick={() => handleOpenRevertReg(report)}
+                  title="Revert to Registration"
+                >
+                  <Undo2 className="h-4 w-4" />
+                </Button>
               </>
             )}
 
@@ -335,6 +386,15 @@ export function AuthenticationClient({
                   title="Revert to Chemist"
                 >
                   <RotateCcw className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                  onClick={() => handleOpenRevertReg(report)}
+                  title="Revert to Registration"
+                >
+                  <Undo2 className="h-4 w-4" />
                 </Button>
               </>
             )}
@@ -395,6 +455,17 @@ export function AuthenticationClient({
               {selectedReport?.sample.client.company || selectedReport?.sample.client.name} — {selectedReport?.sample.sampleType.name}
             </DialogDescription>
           </DialogHeader>
+
+          {/* Revision info banner */}
+          {selectedReport?.summary?.startsWith("[Revision") && (
+            <div className="flex items-start gap-2 p-3 rounded-md bg-amber-50 dark:bg-amber-950/30 border border-amber-200">
+              <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+              <div className="text-xs">
+                <span className="font-medium text-amber-800 dark:text-amber-400">Previous Revision Note</span>
+                <p className="text-amber-700 dark:text-amber-500 mt-0.5">{selectedReport.summary}</p>
+              </div>
+            </div>
+          )}
 
           {/* Registration & Sample Details */}
           {selectedReport && (
@@ -532,6 +603,17 @@ export function AuthenticationClient({
             {selectedReport && (selectedReport.status === "draft" || selectedReport.status === "review") && (
               <>
                 <Button
+                  variant="outline"
+                  className="text-red-600 hover:text-red-700 border-red-200"
+                  onClick={() => {
+                    setViewResultsOpen(false)
+                    handleOpenRevertReg(selectedReport)
+                  }}
+                >
+                  <Undo2 className="mr-1 h-4 w-4" />
+                  Revert to Registration
+                </Button>
+                <Button
                   variant="destructive"
                   onClick={() => {
                     setViewResultsOpen(false)
@@ -606,6 +688,53 @@ export function AuthenticationClient({
                 </>
               ) : (
                 "Send for Revision"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revert to Registration Dialog */}
+      <Dialog open={revertRegOpen} onOpenChange={setRevertRegOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>Revert to Registration</DialogTitle>
+            <DialogDescription>
+              Send report {selectedReport?.reportNumber} back to registration.
+              All test results will be cleared, the sample will be unassigned and returned to registered status.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Reason for Revert *</Label>
+              <Textarea
+                value={revertRegReason}
+                onChange={(e) => setRevertRegReason(e.target.value)}
+                placeholder="e.g. Wrong sample type selected, need to add extra parameters..."
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRevertRegOpen(false)}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRevertToRegistration}
+              disabled={loading || !revertRegReason.trim()}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Reverting...
+                </>
+              ) : (
+                "Revert to Registration"
               )}
             </Button>
           </DialogFooter>

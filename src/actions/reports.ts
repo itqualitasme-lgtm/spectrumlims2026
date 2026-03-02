@@ -285,7 +285,7 @@ export async function requestRevision(reportId: string, reason: string) {
     where: { id: reportId },
     data: {
       status: "revision",
-      summary: reason,
+      summary: `[Revision by ${user.name}]: ${reason}`,
       reviewedById: null,
       reviewedAt: null,
     },
@@ -318,6 +318,72 @@ export async function requestRevision(reportId: string, reason: string) {
   revalidatePath("/process/registration")
 
   return report
+}
+
+export async function revertReportToRegistration(reportId: string, reason: string) {
+  const session = await requirePermission("process", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const existing = await db.report.findFirst({
+    where: { id: reportId, labId },
+    include: { sample: true },
+  })
+  if (!existing) throw new Error("Report not found")
+
+  const sampleId = existing.sampleId
+
+  // Update report status to revision with registration revert note
+  await db.report.update({
+    where: { id: reportId },
+    data: {
+      status: "revision",
+      summary: `[Reverted to Registration by ${user.name}]: ${reason}`,
+      reviewedById: null,
+      reviewedAt: null,
+    },
+  })
+
+  // Reset sample to registered, clear assignment
+  const existingNotes = existing.sample.notes || ""
+  const revertNote = `[Reverted to Registration by ${user.name}: ${reason}]`
+  const updatedNotes = existingNotes ? `${existingNotes}\n${revertNote}` : revertNote
+
+  await db.sample.update({
+    where: { id: sampleId },
+    data: {
+      status: "registered",
+      assignedToId: null,
+      notes: updatedNotes,
+    },
+  })
+
+  // Reset all test results to pending and clear entered values
+  await db.testResult.updateMany({
+    where: { sampleId },
+    data: {
+      status: "pending",
+      resultValue: null,
+      enteredById: null,
+      enteredAt: null,
+    },
+  })
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "process",
+    "edit",
+    `Reverted report ${existing.reportNumber} to registration: ${reason}`
+  )
+
+  revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
+  revalidatePath("/process/test-results")
+  revalidatePath("/process/registration")
+
+  return existing
 }
 
 export async function publishReport(reportId: string) {

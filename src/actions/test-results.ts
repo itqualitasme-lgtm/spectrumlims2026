@@ -42,10 +42,11 @@ export async function getSamplesForTestEntry() {
         orderBy: { sortOrder: "asc" },
       },
       reports: {
-        where: { status: "revision" },
+        where: { status: "revision", deletedAt: null },
         select: {
           summary: true,
           status: true,
+          createdById: true,
           reviewedBy: { select: { name: true } },
         },
         take: 1,
@@ -53,6 +54,16 @@ export async function getSamplesForTestEntry() {
     },
     orderBy: { createdAt: "desc" },
   })
+
+  // For chemists, filter out revision samples that aren't assigned to or created by them
+  if (roleName === "Chemist") {
+    return samples.filter((s) => {
+      const revisionReport = s.reports.find((r) => r.status === "revision")
+      if (!revisionReport) return true // Not a revision — show normally
+      // Only show revision samples to the assigned user or the report creator
+      return s.assignedToId === user.id || revisionReport.createdById === user.id
+    })
+  }
 
   return samples
 }

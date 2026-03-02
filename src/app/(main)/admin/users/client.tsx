@@ -125,6 +125,7 @@ export function UsersClient({
   const [deletingPortalName, setDeletingPortalName] = useState("")
 
   const userColumns: ColumnDef<User, any>[] = [
+    { accessorKey: "employeeCode", header: "Employee #", cell: ({ row }) => row.original.employeeCode || "-" },
     { accessorKey: "name", header: "Name" },
     { accessorKey: "username", header: "Username" },
     { accessorKey: "email", header: "Email", cell: ({ row }) => row.original.email || "-" },
@@ -226,7 +227,6 @@ export function UsersClient({
     const password = (fd.get("password") as string)?.trim()
     const email = fd.get("email") as string
     const phone = fd.get("phone") as string
-    const employeeCode = (fd.get("employeeCode") as string)?.trim()
     const designation = (fd.get("designation") as string)?.trim()
 
     if (!name) { toast.error("Name is required"); return }
@@ -240,7 +240,6 @@ export function UsersClient({
         await updateUser(editingUser.id, {
           name, username, email: email || undefined, phone: phone || undefined,
           roleId: userRoleId, password: password || undefined,
-          employeeCode: employeeCode || undefined,
           designation: designation || undefined,
           signatureUrl: userSignatureUrl || undefined,
         })
@@ -249,7 +248,6 @@ export function UsersClient({
         await createUser({
           name, email: email || undefined, username, password: password!,
           phone: phone || undefined, roleId: userRoleId,
-          employeeCode: employeeCode || undefined,
           designation: designation || undefined,
           signatureUrl: userSignatureUrl || undefined,
         })
@@ -403,10 +401,12 @@ export function UsersClient({
                 <Label>Phone</Label>
                 <Input name="phone" defaultValue={editingUser?.phone || ""} placeholder="Phone number" />
               </div>
-              <div className="grid gap-2">
-                <Label>Employee Code</Label>
-                <Input name="employeeCode" defaultValue={editingUser?.employeeCode || ""} placeholder="e.g. EMP-001" />
-              </div>
+              {editingUser && (
+                <div className="grid gap-2">
+                  <Label>Employee Code</Label>
+                  <Input value={editingUser.employeeCode || "Auto-generated"} readOnly className="bg-muted/50" />
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label>Role *</Label>
                 <Select value={userRoleId} onValueChange={setUserRoleId}>

@@ -6,6 +6,16 @@ import { logAudit } from "@/lib/audit"
 import { revalidatePath } from "next/cache"
 import { hash } from "bcryptjs"
 
+async function generateEmployeeCode(labId: string): Promise<string> {
+  const formatId = await db.formatID.upsert({
+    where: { labId_module: { labId, module: "employee" } },
+    update: { lastNumber: { increment: 1 } },
+    create: { labId, module: "employee", prefix: "EMP", lastNumber: 1 },
+  })
+  const num = String(formatId.lastNumber).padStart(3, "0")
+  return `${formatId.prefix}-${num}`
+}
+
 export async function getUsers() {
   const session = await requirePermission("admin", "view")
   const user = session.user as any
@@ -60,7 +70,6 @@ export async function createUser(data: {
   password: string
   phone?: string
   roleId: string
-  employeeCode?: string
   designation?: string
   signatureUrl?: string
 }) {
@@ -77,6 +86,7 @@ export async function createUser(data: {
   }
 
   const passwordHash = await hash(data.password, 12)
+  const employeeCode = await generateEmployeeCode(user.labId)
 
   const newUser = await db.user.create({
     data: {
@@ -87,7 +97,7 @@ export async function createUser(data: {
       phone: data.phone || null,
       roleId: data.roleId,
       labId: user.labId,
-      employeeCode: data.employeeCode || null,
+      employeeCode,
       designation: data.designation || null,
       signatureUrl: data.signatureUrl || null,
     },
@@ -116,7 +126,6 @@ export async function updateUser(
     roleId?: string
     isActive?: boolean
     password?: string
-    employeeCode?: string
     designation?: string
     signatureUrl?: string
   }
@@ -135,7 +144,6 @@ export async function updateUser(
     phone: data.phone || null,
     roleId: data.roleId,
     isActive: data.isActive,
-    employeeCode: data.employeeCode !== undefined ? (data.employeeCode || null) : undefined,
     designation: data.designation !== undefined ? (data.designation || null) : undefined,
     signatureUrl: data.signatureUrl !== undefined ? (data.signatureUrl || null) : undefined,
   }
@@ -392,4 +400,37 @@ export async function updateUserMenuAccess(userId: string, hiddenItems: string[]
   )
 
   revalidatePath("/admin/menu-access")
+}
+
+export async function backfillEmployeeCodes() {
+  const session = await requirePermission("admin", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const usersWithoutCode = await db.user.findMany({
+    where: { labId, employeeCode: null },
+    orderBy: { createdAt: "asc" },
+  })
+
+  if (usersWithoutCode.length === 0) return { count: 0 }
+
+  for (const u of usersWithoutCode) {
+    const code = await generateEmployeeCode(labId)
+    await db.user.update({
+      where: { id: u.id },
+      data: { employeeCode: code },
+    })
+  }
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "admin",
+    "update",
+    `Backfilled employee codes for ${usersWithoutCode.length} user(s)`
+  )
+
+  revalidatePath("/admin/users")
+  return { count: usersWithoutCode.length }
 }
