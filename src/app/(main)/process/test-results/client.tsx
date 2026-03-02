@@ -14,6 +14,8 @@ import {
   Search,
   MessageSquare,
   X,
+  Clock,
+  Zap,
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -89,6 +91,7 @@ type Sample = {
   subSampleNumber: number | null
   sampleGroup: string | null
   status: string
+  priority: string
   samplePoint: string | null
   description: string | null
   quantity: string | null
@@ -135,6 +138,21 @@ function isDueSoon(dueDate: string | null): "overdue" | "due-today" | "due-soon"
   if (diffDays < 1) return "due-today"
   if (diffDays < 2) return "due-soon"
   return null
+}
+
+function getEarliestDueDate(testResults: TestResult[]): string | null {
+  const pendingDueDates = testResults
+    .filter((tr) => tr.status === "pending" && tr.dueDate)
+    .map((tr) => new Date(tr.dueDate!).getTime())
+  if (pendingDueDates.length === 0) {
+    // Fall back to all due dates if none pending
+    const allDueDates = testResults
+      .filter((tr) => tr.dueDate)
+      .map((tr) => new Date(tr.dueDate!).getTime())
+    if (allDueDates.length === 0) return null
+    return new Date(Math.min(...allDueDates)).toISOString()
+  }
+  return new Date(Math.min(...pendingDueDates)).toISOString()
 }
 
 const sampleStatusBadge = (status: string) => {
@@ -571,6 +589,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                               const sTotalTests = sample.testResults.length
                               const hasRevision = sample.reports.length > 0 && sample.reports[0].status === "revision"
                               const shortNum = sample.sampleNumber
+                              const isUrgent = sample.priority === "urgent" || sample.priority === "rush"
                               // Build detail line: sample point, description, bottle size
                               const clientName = sample.client.company || sample.client.name
                               const details = [
@@ -578,6 +597,10 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                 sample.description,
                                 sample.quantity ? `${sample.quantity}` : null,
                               ].filter(Boolean).join(" · ")
+
+                              // Earliest due date for the sample
+                              const earliestDue = getEarliestDueDate(sample.testResults)
+                              const sampleDueStatus = isDueSoon(earliestDue)
 
                               const statusDot = sample.status === "completed"
                                 ? "bg-green-500"
@@ -591,9 +614,11 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                 <button
                                   key={sample.id}
                                   type="button"
-                                  className={`w-full text-left px-2.5 py-1 hover:bg-muted/50 transition-colors border-b ${
+                                  className={`w-full text-left px-2.5 py-1.5 hover:bg-muted/50 transition-colors border-b ${
                                     isSelected ? "bg-muted border-l-2 border-l-primary" : ""
-                                  } ${hasRevision ? "border-l-2 border-l-amber-500" : ""}`}
+                                  } ${hasRevision ? "border-l-2 border-l-amber-500" : ""} ${
+                                    isUrgent && !isSelected && !hasRevision ? "border-l-2 border-l-red-500" : ""
+                                  }`}
                                   onClick={() => setSelectedSampleId(sample.id)}
                                 >
                                   <div className="flex items-center justify-between gap-1.5">
@@ -607,6 +632,16 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                       )}
                                     </div>
                                     <div className="flex items-center gap-1.5 shrink-0">
+                                      {isUrgent && (
+                                        <Badge className={`text-[9px] px-1 py-0 ${
+                                          sample.priority === "rush"
+                                            ? "bg-red-100 text-red-800 hover:bg-red-100"
+                                            : "bg-orange-100 text-orange-800 hover:bg-orange-100"
+                                        }`}>
+                                          <Zap className="h-2.5 w-2.5 mr-0.5" />
+                                          {sample.priority === "rush" ? "Rush" : "Urgent"}
+                                        </Badge>
+                                      )}
                                       {hasRevision && (
                                         <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1 py-0">Rev</Badge>
                                       )}
@@ -615,9 +650,24 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                       )}
                                     </div>
                                   </div>
-                                  <div className="text-[10px] text-muted-foreground truncate mt-0.5">
-                                    {clientName}
-                                    {!reg.regNumber && <> · {sample.sampleType.name}</>}
+                                  {/* Due date and client info line */}
+                                  <div className="flex items-center justify-between mt-0.5">
+                                    <div className="text-[10px] text-muted-foreground truncate">
+                                      {clientName}
+                                      {!reg.regNumber && <> · {sample.sampleType.name}</>}
+                                    </div>
+                                    {earliestDue && sample.status !== "completed" && (
+                                      <span className={`text-[9px] flex items-center gap-0.5 shrink-0 ml-2 ${
+                                        sampleDueStatus === "overdue" ? "text-red-600 font-semibold" :
+                                        sampleDueStatus === "due-today" ? "text-orange-600 font-medium" :
+                                        sampleDueStatus === "due-soon" ? "text-yellow-600" :
+                                        "text-muted-foreground"
+                                      }`}>
+                                        <Clock className="h-2.5 w-2.5" />
+                                        {format(new Date(earliestDue), "dd MMM")}
+                                        {sampleDueStatus === "overdue" && " !"}
+                                      </span>
+                                    )}
                                   </div>
                                 </button>
                               )
@@ -652,6 +702,16 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="font-mono text-sm font-semibold">{selectedSample.sampleNumber}</span>
                   {sampleStatusBadge(selectedSample.status)}
+                  {(selectedSample.priority === "urgent" || selectedSample.priority === "rush") && (
+                    <Badge className={`text-[10px] px-1.5 py-0 ${
+                      selectedSample.priority === "rush"
+                        ? "bg-red-100 text-red-800 hover:bg-red-100"
+                        : "bg-orange-100 text-orange-800 hover:bg-orange-100"
+                    }`}>
+                      <Zap className="h-3 w-3 mr-0.5" />
+                      {selectedSample.priority === "rush" ? "Rush" : "Urgent"}
+                    </Badge>
+                  )}
                   <span className="text-xs text-muted-foreground truncate">
                     {selectedSample.sampleType.name}
                   </span>
