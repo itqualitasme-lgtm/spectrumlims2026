@@ -551,16 +551,6 @@ const styles = StyleSheet.create({
 
 // ============= HELPERS =============
 
-function formatDate(date: Date | string | null | undefined): string {
-  if (!date) return "N/A"
-  try {
-    const d = typeof date === "string" ? new Date(date) : date
-    return format(d, "dd-MM-yyyy")
-  } catch {
-    return "N/A"
-  }
-}
-
 function formatDateTime(date: Date | string | null | undefined): string {
   if (!date) return "N/A"
   try {
@@ -777,7 +767,7 @@ export function COAPDF({
               <Text style={styles.infoGridLabel}>Date Received</Text>
               <Text style={styles.infoGridSep}>:</Text>
               <Text style={styles.infoGridValue}>
-                {formatDate(sample.registeredAt || sample.collectionDate)}
+                {formatDateTime(sample.registeredAt || sample.collectionDate)}
               </Text>
             </View>
             <View style={styles.infoGridRight}>
@@ -795,7 +785,7 @@ export function COAPDF({
               <Text style={styles.infoGridLabel}>Date Tested</Text>
               <Text style={styles.infoGridSep}>:</Text>
               <Text style={styles.infoGridValue}>
-                {formatDate(report.createdAt)}
+                {formatDateTime(report.createdAt)}
               </Text>
             </View>
             <View style={styles.infoGridRight}>
@@ -883,7 +873,7 @@ export function COAPDF({
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Report prepared by</Text>
             <Text style={styles.metaSep}>:</Text>
-            <Text style={styles.metaValue}>{report.createdBy.employeeCode || report.createdBy.name}</Text>
+            <Text style={styles.metaValue}>{report.reviewedBy?.employeeCode || report.reviewedBy?.name || report.createdBy.employeeCode || report.createdBy.name}</Text>
           </View>
           <Text style={styles.metaNote}>
             The above test results are only applicable to the sample(s) referred above
@@ -1046,10 +1036,10 @@ function COAPageContent(props: COAPDFProps) {
 
   const clientName = sample.client.company || sample.client.name
   const collectionDateStr = sample.collectionDate
-    ? format(new Date(sample.collectionDate), "dd MMM yyyy")
+    ? format(new Date(sample.collectionDate), "dd MMM yyyy HH:mm")
     : "-"
   const registeredAtStr = sample.registeredAt
-    ? format(new Date(sample.registeredAt), "dd MMM yyyy")
+    ? format(new Date(sample.registeredAt), "dd MMM yyyy HH:mm")
     : collectionDateStr
   const reportDateStr = report.reviewedAt
     ? format(new Date(report.reviewedAt), "dd MMM yyyy HH:mm")
@@ -1205,7 +1195,7 @@ function COAPageContent(props: COAPDFProps) {
           <View style={styles.infoGridLeft}>
             <Text style={styles.infoGridLabel}>Date Tested</Text>
             <Text style={styles.infoGridSep}>:</Text>
-            <Text style={styles.infoGridValue}>{formatDate(report.createdAt)}</Text>
+            <Text style={styles.infoGridValue}>{formatDateTime(report.createdAt)}</Text>
           </View>
           <View style={styles.infoGridRight}>
             <Text style={styles.infoGridLabel}>Sample No</Text>
@@ -1279,7 +1269,7 @@ function COAPageContent(props: COAPDFProps) {
         <View style={styles.metaRow}>
           <Text style={styles.metaLabel}>Report prepared by</Text>
           <Text style={styles.metaSep}>:</Text>
-          <Text style={styles.metaValue}>{report.createdBy.employeeCode || report.createdBy.name}</Text>
+          <Text style={styles.metaValue}>{report.reviewedBy?.employeeCode || report.reviewedBy?.name || report.createdBy.employeeCode || report.createdBy.name}</Text>
         </View>
         <Text style={styles.metaNote}>
           The above test results are only applicable to the sample(s) referred above
