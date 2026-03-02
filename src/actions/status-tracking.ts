@@ -35,6 +35,7 @@ export async function getStatusTrackingData(filters: {
   clientId?: string
   sampleNumber?: string
   status?: string
+  priority?: string
 }) {
   const session = await requirePermission("process", "view")
   const user = session.user as any
@@ -54,6 +55,10 @@ export async function getStatusTrackingData(filters: {
     ]
   }
 
+  if (filters.priority && filters.priority !== "all") {
+    regWhere.priority = filters.priority
+  }
+
   if (filters.from || filters.to) {
     regWhere.createdAt = {}
     if (filters.from) regWhere.createdAt.gte = new Date(filters.from)
@@ -64,6 +69,8 @@ export async function getStatusTrackingData(filters: {
     where: regWhere,
     include: {
       client: { select: { name: true, company: true } },
+      collectedBy: { select: { name: true } },
+      registeredBy: { select: { name: true } },
       samples: {
         where: { deletedAt: null },
         include: {
@@ -73,7 +80,7 @@ export async function getStatusTrackingData(filters: {
           },
           reports: {
             where: { deletedAt: null },
-            select: { status: true, publishedAt: true },
+            select: { status: true, publishedAt: true, reviewedBy: { select: { name: true } } },
           },
           invoiceItems: {
             select: {
@@ -89,7 +96,7 @@ export async function getStatusTrackingData(filters: {
     orderBy: { createdAt: "desc" },
   })
 
-  return {
+  const result = {
     registrations: registrations.map((reg) => {
       // Aggregate sample types
       const typeMap = new Map<string, number>()
@@ -152,6 +159,12 @@ export async function getStatusTrackingData(filters: {
       const hasProforma = activeInvoices.some((inv) => inv.invoiceType === "proforma")
       const hasTaxInvoice = activeInvoices.some((inv) => inv.invoiceType === "tax")
 
+      // Reported by: reviewer of the latest published report
+      const publishedReports = allReports.filter((r) => r.status === "published" && r.reviewedBy)
+      const reportedByName = publishedReports.length > 0
+        ? publishedReports[publishedReports.length - 1].reviewedBy?.name || null
+        : null
+
       return {
         id: reg.id,
         registrationNumber: reg.registrationNumber,
@@ -159,6 +172,7 @@ export async function getStatusTrackingData(filters: {
         sampleTypes,
         sampleCount: reg.samples.length,
         reference: reg.reference || null,
+        priority: reg.priority,
         status: overallStatus,
         testCount: totalTests,
         registeredAt: reg.registeredAt?.toISOString() || reg.createdAt.toISOString(),
@@ -173,7 +187,17 @@ export async function getStatusTrackingData(filters: {
         collectionLocation: reg.samples[0]?.collectionLocation || null,
         hasProforma,
         hasTaxInvoice,
+        samplerName: reg.collectedBy?.name || null,
+        registeredByName: reg.registeredBy?.name || null,
+        reportedByName,
       }
     }),
   }
+
+  // Post-filter by status if specified (status is computed, not a DB field)
+  if (filters.status && filters.status !== "all") {
+    result.registrations = result.registrations.filter((r) => r.status === filters.status)
+  }
+
+  return result
 }

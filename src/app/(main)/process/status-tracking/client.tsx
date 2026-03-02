@@ -10,7 +10,14 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { DataTable } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header"
-import { Search, RotateCcw, Loader2, Check, X } from "lucide-react"
+import { Search, RotateCcw, Loader2, Check, X, Download } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   getStatusTrackingData,
   searchCustomersForTracking,
@@ -23,6 +30,7 @@ type RegistrationRow = {
   sampleTypes: string
   sampleCount: number
   reference: string | null
+  priority: string
   status: string
   testCount: number
   registeredAt: string
@@ -37,6 +45,9 @@ type RegistrationRow = {
   collectionLocation: string | null
   hasProforma: boolean
   hasTaxInvoice: boolean
+  samplerName: string | null
+  registeredByName: string | null
+  reportedByName: string | null
 }
 
 type CustomerOption = { id: string; name: string }
@@ -57,6 +68,8 @@ export function StatusTrackingClient() {
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
   const [sampleNumber, setSampleNumber] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [priorityFilter, setPriorityFilter] = useState("all")
   const [isPending, startTransition] = useTransition()
 
   // Customer search
@@ -114,6 +127,8 @@ export function StatusTrackingClient() {
         sampleNumber: sampleNumber.trim() || undefined,
         from: fromDate || undefined,
         to: toDate || undefined,
+        status: statusFilter !== "all" ? statusFilter : undefined,
+        priority: priorityFilter !== "all" ? priorityFilter : undefined,
       })
       setRegistrations(result.registrations)
       setHasSearched(true)
@@ -124,6 +139,8 @@ export function StatusTrackingClient() {
     setFromDate("")
     setToDate("")
     setSampleNumber("")
+    setStatusFilter("all")
+    setPriorityFilter("all")
     setCustomerQuery("")
     setSelectedCustomer(null)
     setCustomerOptions([])
@@ -246,6 +263,44 @@ export function StatusTrackingClient() {
       cell: ({ row }) => <span className="text-[10px] whitespace-nowrap">{formatDate(row.original.releasedDate)}</span>,
     },
     {
+      accessorKey: "samplerName",
+      header: "Sampler",
+      cell: ({ row }) => (
+        <span className="text-[10px] truncate max-w-[80px] block">{row.original.samplerName || "-"}</span>
+      ),
+    },
+    {
+      accessorKey: "registeredByName",
+      header: "Reg. By",
+      cell: ({ row }) => (
+        <span className="text-[10px] truncate max-w-[80px] block">{row.original.registeredByName || "-"}</span>
+      ),
+    },
+    {
+      accessorKey: "reportedByName",
+      header: "Reported By",
+      cell: ({ row }) => (
+        <span className="text-[10px] truncate max-w-[80px] block">{row.original.reportedByName || "-"}</span>
+      ),
+    },
+    {
+      accessorKey: "priority",
+      header: "Priority",
+      cell: ({ row }) => {
+        const p = row.original.priority
+        const colors: Record<string, string> = {
+          urgent: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
+          rush: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+        }
+        if (p === "normal") return <span className="text-[10px]">Normal</span>
+        return (
+          <Badge className={`text-[9px] px-1.5 py-0 ${colors[p] || ""}`} variant="outline">
+            {p.charAt(0).toUpperCase() + p.slice(1)}
+          </Badge>
+        )
+      },
+    },
+    {
       accessorKey: "hasProforma",
       header: "PF",
       cell: ({ row }) => (
@@ -276,6 +331,61 @@ export function StatusTrackingClient() {
       },
     },
   ]
+
+  function handleExportCSV() {
+    const headers = [
+      "Reg #", "Customer", "Type", "Qty", "PO/Ref", "Sheet#", "Sampling",
+      "Drawn By", "Delivered By", "Collected", "Location", "Tests", "Received",
+      "Due", "Tested", "Released", "Sampler", "Registered By", "Reported By",
+      "Priority", "Proforma", "Invoice", "Status",
+    ]
+    const rows = registrations.map((r) => [
+      r.registrationNumber,
+      r.client,
+      r.sampleTypes,
+      r.sampleCount,
+      r.reference || "",
+      r.sheetNumber || "",
+      r.samplingMethod || "",
+      r.drawnBy || "",
+      r.deliveredBy || "",
+      formatDate(r.collectionDate),
+      r.collectionLocation || "",
+      r.testCount,
+      formatDate(r.registeredAt),
+      formatDate(r.dueDate),
+      formatDate(r.testedDate),
+      formatDate(r.releasedDate),
+      r.samplerName || "",
+      r.registeredByName || "",
+      r.reportedByName || "",
+      r.priority.charAt(0).toUpperCase() + r.priority.slice(1),
+      r.hasProforma ? "Yes" : "No",
+      r.hasTaxInvoice ? "Yes" : "No",
+      r.status.charAt(0).toUpperCase() + r.status.slice(1),
+    ])
+
+    const escapeCsv = (val: string | number) => {
+      const s = String(val)
+      if (s.includes(",") || s.includes('"') || s.includes("\n")) {
+        return `"${s.replace(/"/g, '""')}"`
+      }
+      return s
+    }
+
+    const csvContent = [
+      headers.map(escapeCsv).join(","),
+      ...rows.map((row) => row.map(escapeCsv).join(",")),
+    ].join("\n")
+
+    const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `status-tracking-${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
 
   const hasFilters = !!selectedCustomer || !!sampleNumber.trim() || !!fromDate || !!toDate
 
@@ -348,15 +458,55 @@ export function StatusTrackingClient() {
               />
             </div>
 
+            <div className="space-y-0.5">
+              <Label className="text-[10px]">Status</Label>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-7 w-[110px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="registered">Registered</SelectItem>
+                  <SelectItem value="assigned">Assigned</SelectItem>
+                  <SelectItem value="testing">Testing</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="reported">Reported</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-0.5">
+              <Label className="text-[10px]">Priority</Label>
+              <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                <SelectTrigger className="h-7 w-[100px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="normal">Normal</SelectItem>
+                  <SelectItem value="urgent">Urgent</SelectItem>
+                  <SelectItem value="rush">Rush</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button size="sm" className="h-7 text-xs" onClick={handleSearch} disabled={isPending || !hasFilters}>
               <Search className="mr-1 h-3 w-3" />
               {isPending ? "..." : "Search"}
             </Button>
             {hasSearched && (
-              <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleReset}>
-                <RotateCcw className="mr-1 h-3 w-3" />
-                Clear
-              </Button>
+              <>
+                <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={handleReset}>
+                  <RotateCcw className="mr-1 h-3 w-3" />
+                  Clear
+                </Button>
+                {registrations.length > 0 && (
+                  <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportCSV}>
+                    <Download className="mr-1 h-3 w-3" />
+                    Export
+                  </Button>
+                )}
+              </>
             )}
           </div>
         </CardContent>
