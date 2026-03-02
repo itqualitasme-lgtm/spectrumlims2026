@@ -151,7 +151,7 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
     fontSize: 9,
     paddingTop: 30,
-    paddingBottom: 80,
+    paddingBottom: 45,
     paddingHorizontal: 35,
     color: TEXT_COLOR,
   },
@@ -490,7 +490,18 @@ const styles = StyleSheet.create({
     marginTop: 1,
   },
 
-  // ---- Footer ----
+  // ---- Disclaimer (in content flow, below signatures) ----
+  disclaimerSection: {
+    marginTop: 10,
+  },
+  disclaimerText: {
+    fontSize: 5.5,
+    color: GRAY_TEXT,
+    marginBottom: 1,
+    lineHeight: 1.4,
+  },
+
+  // ---- Footer (fixed at bottom — contact bar only) ----
   footer: {
     position: "absolute",
     bottom: 18,
@@ -510,7 +521,6 @@ const styles = StyleSheet.create({
     backgroundColor: RED_BRAND,
     paddingVertical: 5,
     paddingHorizontal: 8,
-    marginTop: 3,
   },
   footerBarText: {
     fontSize: 6,
@@ -920,22 +930,22 @@ export function COAPDF({
           </View>
         </View>
 
-        {/* ===== FOOTER (fixed on every page) ===== */}
-        <View style={showHeaderFooter ? styles.footer : styles.footerLetterhead} fixed>
-          {/* Disclaimer text */}
+        {/* ===== DISCLAIMER (below signatures, in content flow) ===== */}
+        <View style={styles.disclaimerSection}>
           {footerLines.map((line, idx) => (
-            <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
+            <Text key={idx} style={styles.disclaimerText}>{line}</Text>
           ))}
-
           {verificationUrl && (
-            <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
+            <Text style={[styles.disclaimerText, { marginTop: 1 }]}>
               Verify this report: {verificationUrl}
             </Text>
           )}
+        </View>
 
-          {/* Footer bar — image or red contact bar */}
+        {/* ===== FOOTER (fixed on every page — contact bar only) ===== */}
+        <View style={showHeaderFooter ? styles.footer : styles.footerLetterhead} fixed>
           {showHeaderFooter && footerImageUrl ? (
-            <Image src={footerImageUrl} style={{ width: "100%", marginTop: 3, objectFit: "contain" as any }} />
+            <Image src={footerImageUrl} style={{ width: "100%", objectFit: "contain" as any }} />
           ) : showHeaderFooter ? (
           <View style={styles.footerBar}>
             <Text style={styles.footerBarText}>
@@ -1327,22 +1337,22 @@ function COAPageContent(props: COAPDFProps) {
         </View>
       </View>
 
-      {/* FOOTER (fixed on every page) */}
-      <View style={showHeaderFooter ? styles.footer : styles.footerLetterhead} fixed>
+      {/* DISCLAIMER (below signatures, in content flow) */}
+      <View style={styles.disclaimerSection}>
         {footerLines.map((line, idx) => (
-          <Text key={idx} style={styles.footerDisclaimer}>{line}</Text>
+          <Text key={idx} style={styles.disclaimerText}>{line}</Text>
         ))}
-
         {verificationUrl && (
-          <Text style={[styles.footerDisclaimer, { marginTop: 1 }]}>
+          <Text style={[styles.disclaimerText, { marginTop: 1 }]}>
             Verify this report: {verificationUrl}
           </Text>
         )}
+      </View>
 
-        {/* Red contact bar — hidden for letterhead printing */}
-        {/* Footer bar — image or red contact bar */}
+      {/* FOOTER (fixed on every page — contact bar only) */}
+      <View style={showHeaderFooter ? styles.footer : styles.footerLetterhead} fixed>
         {showHeaderFooter && footerImageUrl ? (
-          <Image src={footerImageUrl} style={{ width: "100%", marginTop: 3, objectFit: "contain" as any }} />
+          <Image src={footerImageUrl} style={{ width: "100%", objectFit: "contain" as any }} />
         ) : showHeaderFooter ? (
         <View style={styles.footerBar}>
           <Text style={styles.footerBarText}>
