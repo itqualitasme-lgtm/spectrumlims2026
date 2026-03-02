@@ -27,10 +27,14 @@ const styles = StyleSheet.create({
     marginBottom: 30,
   },
   headerLeft: {
-    flex: 1,
+    width: "45%",
+  },
+  headerRight: {
+    width: "50%",
+    alignItems: "flex-end",
   },
   labName: {
-    fontSize: 18,
+    fontSize: 14,
     fontFamily: "Helvetica-Bold",
     color: NAVY,
     marginBottom: 4,
@@ -41,7 +45,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   invoiceTitle: {
-    fontSize: 28,
+    fontSize: 22,
     fontFamily: "Helvetica-Bold",
     color: NAVY,
     textAlign: "right",
@@ -326,7 +330,7 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
               <Text style={styles.labDetail}>TRN: {invoice.lab.trn}</Text>
             )}
           </View>
-          <View>
+          <View style={styles.headerRight}>
             <Text style={styles.invoiceTitle}>{titleText}</Text>
             <View style={styles.invoiceInfoRow}>
               <Text style={styles.invoiceInfoLabel}>Invoice No:</Text>
