@@ -150,8 +150,8 @@ const styles = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
     fontSize: 9,
-    paddingTop: 30,
-    paddingBottom: 45,
+    paddingTop: 25,
+    paddingBottom: 40,
     paddingHorizontal: 35,
     color: TEXT_COLOR,
   },
@@ -166,8 +166,8 @@ const styles = StyleSheet.create({
 
   // ---- Header ----
   header: {
-    marginBottom: 6,
-    paddingBottom: 5,
+    marginBottom: 4,
+    paddingBottom: 3,
     borderBottomWidth: 2,
     borderBottomColor: RED_BRAND,
   },
@@ -177,8 +177,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   headerLogo: {
-    width: 150,
-    height: 90,
+    width: 130,
+    height: 70,
     objectFit: "contain" as any,
   },
   headerCenter: {
@@ -193,13 +193,13 @@ const styles = StyleSheet.create({
     marginBottom: 1,
   },
   accreditationLogo: {
-    width: 75,
-    height: 75,
+    width: 60,
+    height: 60,
     objectFit: "contain" as any,
   },
   isoLogo: {
-    width: 55,
-    height: 55,
+    width: 45,
+    height: 45,
     objectFit: "contain" as any,
   },
   labName: {
@@ -213,19 +213,19 @@ const styles = StyleSheet.create({
   // ---- Title ----
   titleSection: {
     textAlign: "center",
-    marginTop: 6,
-    marginBottom: 4,
+    marginTop: 3,
+    marginBottom: 3,
   },
   title: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
     textAlign: "center",
     textDecoration: "underline",
-    marginBottom: 2,
+    marginBottom: 1,
   },
   subtitle: {
-    fontSize: 12,
+    fontSize: 11,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
     textAlign: "center",
@@ -236,7 +236,7 @@ const styles = StyleSheet.create({
   reportNoRow: {
     flexDirection: "row",
     justifyContent: "flex-end",
-    marginBottom: 4,
+    marginBottom: 2,
   },
   reportNoText: {
     fontSize: 8,
@@ -246,7 +246,7 @@ const styles = StyleSheet.create({
 
   // ---- Info Section ----
   infoSection: {
-    marginBottom: 6,
+    marginBottom: 4,
     borderWidth: 1,
     borderColor: BORDER,
   },
@@ -254,7 +254,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 0.5,
     borderBottomColor: BORDER,
-    minHeight: 14,
+    minHeight: 12,
     alignItems: "center",
   },
   infoLabel: {
@@ -286,7 +286,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    minHeight: 14,
+    minHeight: 12,
   },
   infoGridRight: {
     flex: 1,
@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderLeftWidth: 0.5,
     borderLeftColor: BORDER,
-    minHeight: 14,
+    minHeight: 12,
   },
   infoGridLabel: {
     width: 100,
@@ -319,17 +319,17 @@ const styles = StyleSheet.create({
 
   // ---- Test Results Header ----
   testResultsTitle: {
-    fontSize: 10,
+    fontSize: 9,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
     textAlign: "center",
-    marginBottom: 3,
+    marginBottom: 2,
     textDecoration: "underline",
   },
 
   // ---- Table ----
   table: {
-    marginBottom: 6,
+    marginBottom: 4,
     borderTopWidth: 1,
     borderBottomWidth: 1,
     borderLeftWidth: 1,
@@ -343,11 +343,11 @@ const styles = StyleSheet.create({
     borderBottomColor: BORDER,
   },
   tableHeaderCell: {
-    fontSize: 8,
+    fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
     textAlign: "center",
-    paddingVertical: 4,
+    paddingVertical: 3,
     paddingHorizontal: 2,
     borderRightWidth: 0.5,
     borderRightColor: BORDER,
@@ -361,10 +361,10 @@ const styles = StyleSheet.create({
     backgroundColor: GRAY_BG,
   },
   tableCell: {
-    fontSize: 7.5,
+    fontSize: 7,
     color: BLACK,
     textAlign: "center",
-    paddingVertical: 2.5,
+    paddingVertical: 2,
     paddingHorizontal: 2,
     borderRightWidth: 0.5,
     borderRightColor: BORDER,
@@ -379,8 +379,8 @@ const styles = StyleSheet.create({
 
   // ---- Meta section (below table) ----
   metaSection: {
-    marginTop: 4,
-    marginBottom: 6,
+    marginTop: 2,
+    marginBottom: 4,
     borderWidth: 1,
     borderColor: BORDER,
   },
@@ -388,48 +388,48 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     borderBottomWidth: 0.5,
     borderBottomColor: BORDER,
-    minHeight: 14,
+    minHeight: 11,
     alignItems: "center",
   },
   metaLabel: {
-    fontSize: 8,
+    fontSize: 7.5,
     fontFamily: "Helvetica-Bold",
-    width: 145,
+    width: 135,
     color: BLACK,
     paddingLeft: 4,
-    paddingVertical: 2,
+    paddingVertical: 1,
   },
   metaSep: {
-    fontSize: 8,
+    fontSize: 7.5,
     width: 10,
     color: BLACK,
   },
   metaValue: {
-    fontSize: 8,
-    color: BLACK,
-    paddingVertical: 2,
-  },
-  metaNote: {
     fontSize: 7.5,
     color: BLACK,
+    paddingVertical: 1,
+  },
+  metaNote: {
+    fontSize: 7,
+    color: BLACK,
     paddingHorizontal: 4,
-    paddingVertical: 3,
+    paddingVertical: 2,
   },
 
   // ---- Reported By + Signatures ----
   reportedBySection: {
-    marginTop: 8,
+    marginTop: 4,
   },
   reportedByLabel: {
-    fontSize: 9,
+    fontSize: 8,
     fontFamily: "Helvetica-Bold",
     color: BLACK,
-    marginBottom: 3,
+    marginBottom: 2,
   },
   signaturesRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 4,
+    marginTop: 2,
     alignItems: "flex-end",
   },
   signatureBlock: {
@@ -437,10 +437,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   signatureImage: {
-    width: 55,
-    height: 24,
+    width: 50,
+    height: 20,
     objectFit: "contain" as any,
-    marginBottom: 2,
+    marginBottom: 1,
   },
   signatureLine: {
     width: "100%",
@@ -473,8 +473,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   qrImage: {
-    width: 60,
-    height: 60,
+    width: 50,
+    height: 50,
   },
   qrLabel: {
     fontSize: 5,
@@ -492,7 +492,7 @@ const styles = StyleSheet.create({
 
   // ---- Disclaimer (in content flow, below signatures) ----
   disclaimerSection: {
-    marginTop: 10,
+    marginTop: 4,
   },
   disclaimerText: {
     fontSize: 5.5,
@@ -504,7 +504,7 @@ const styles = StyleSheet.create({
   // ---- Footer (fixed at bottom — contact bar only) ----
   footer: {
     position: "absolute",
-    bottom: 18,
+    bottom: 15,
     left: 35,
     right: 35,
   },
@@ -641,7 +641,7 @@ export function COAPDF({
       <Page size="A4" style={showHeaderFooter ? styles.page : styles.pageLetterhead}>
         {/* ===== HEADER (fixed on every page) ===== */}
         {showHeaderFooter && headerImageUrl ? (
-        <View style={{ marginBottom: 6 }} fixed>
+        <View style={{ marginBottom: 4 }} fixed>
           <Image src={headerImageUrl} style={{ width: "100%", objectFit: "contain" as any }} />
         </View>
         ) : showHeaderFooter ? (
@@ -931,7 +931,7 @@ export function COAPDF({
             <View style={styles.signatureBlock}>
               {showHeaderFooter && template?.sealUrl && (
                 <Image
-                  style={{ width: 110, height: 110, objectFit: "contain" as any }}
+                  style={{ width: 80, height: 80, objectFit: "contain" as any }}
                   src={template.sealUrl}
                 />
               )}
@@ -1070,7 +1070,7 @@ function COAPageContent(props: COAPDFProps) {
     <Page size="A4" style={showHeaderFooter ? styles.page : styles.pageLetterhead}>
       {/* HEADER (fixed on every page) */}
       {showHeaderFooter && headerImageUrl ? (
-      <View style={{ marginBottom: 6 }} fixed>
+      <View style={{ marginBottom: 4 }} fixed>
         <Image src={headerImageUrl} style={{ width: "100%", objectFit: "contain" as any }} />
       </View>
       ) : showHeaderFooter ? (
@@ -1216,7 +1216,7 @@ function COAPageContent(props: COAPDFProps) {
       </View>
 
       {/* TEST RESULTS TABLE */}
-      <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", marginBottom: 4, marginTop: 6 }}>
+      <Text style={{ fontSize: 9, fontFamily: "Helvetica-Bold", marginBottom: 2, marginTop: 3 }}>
         TEST RESULTS
       </Text>
       <View style={styles.table}>
@@ -1338,7 +1338,7 @@ function COAPageContent(props: COAPDFProps) {
           <View style={styles.signatureBlock}>
             {showHeaderFooter && template?.sealUrl && (
               <Image
-                style={{ width: 110, height: 110, objectFit: "contain" as any }}
+                style={{ width: 80, height: 80, objectFit: "contain" as any }}
                 src={template.sealUrl}
               />
             )}

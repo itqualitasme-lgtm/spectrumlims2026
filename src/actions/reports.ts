@@ -252,10 +252,94 @@ export async function approveReport(reportId: string, templateId?: string) {
   })
 
   // Also update sample status to "reported"
-  await db.sample.update({
+  const sample = await db.sample.update({
     where: { id: report.sampleId },
     data: { status: "reported" },
+    include: {
+      sampleType: { select: { name: true, defaultTests: true } },
+      testResults: {
+        select: { parameter: true, testMethod: true },
+        orderBy: { sortOrder: "asc" },
+      },
+    },
   })
+
+  // Auto-create draft proforma invoice for approved report
+  const existingProformaItem = await db.invoiceItem.findFirst({
+    where: { reportId: report.id },
+  })
+  if (!existingProformaItem) {
+    try {
+      let defaultTests: Array<{ parameter: string; method?: string; price?: number }> = []
+      try {
+        const parsed = JSON.parse(sample.sampleType.defaultTests || "[]")
+        if (Array.isArray(parsed)) defaultTests = parsed
+      } catch { /* ignore */ }
+
+      const items = sample.testResults.map((tr) => {
+        const match = defaultTests.find(
+          (dt) => dt.parameter.toLowerCase() === tr.parameter.toLowerCase()
+        )
+        const unitPrice = match?.price || 0
+        const desc = tr.testMethod ? `${tr.parameter} (${tr.testMethod})` : tr.parameter
+        return {
+          description: desc,
+          quantity: 1,
+          unitPrice,
+          discount: 0,
+          sampleId: sample.id,
+          reportId: report.id,
+        }
+      })
+
+      if (items.length > 0) {
+        const { formatted: proformaNumber } = await generateNextNumber(labId, "proforma", "PRF")
+        const subtotal = items.reduce((sum, i) => sum + i.unitPrice, 0)
+        const taxRate = 5
+        const taxAmount = subtotal * taxRate / 100
+        const total = subtotal + taxAmount
+
+        const proforma = await db.invoice.create({
+          data: {
+            invoiceNumber: proformaNumber,
+            invoiceType: "proforma",
+            clientId: sample.clientId,
+            subtotal,
+            discountTotal: 0,
+            additionalCharges: 0,
+            taxRate,
+            taxAmount,
+            total,
+            status: "draft",
+            createdById: user.id,
+            labId,
+            items: {
+              create: items.map((item) => ({
+                description: item.description,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                discount: item.discount,
+                total: item.unitPrice,
+                sampleId: item.sampleId,
+                reportId: item.reportId,
+              })),
+            },
+          },
+        })
+
+        await logAudit(
+          labId,
+          user.id,
+          user.name,
+          "accounts",
+          "create",
+          `Auto-created proforma ${proformaNumber} for report ${report.reportNumber}`
+        )
+      }
+    } catch {
+      // Don't fail report approval if proforma creation fails
+    }
+  }
 
   await logAudit(
     labId,
@@ -269,6 +353,7 @@ export async function approveReport(reportId: string, templateId?: string) {
   revalidatePath("/process/reports")
   revalidatePath("/process/authentication")
   revalidatePath("/process/registration")
+  revalidatePath("/accounts/proforma")
 
   return report
 }

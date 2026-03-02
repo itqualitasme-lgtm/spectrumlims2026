@@ -369,11 +369,12 @@ model Invoice {
   invoiceNumber String    @unique
   invoiceType   String    @default("tax")
   clientId      String
-  subtotal      Float     @default(0)
-  discountTotal Float     @default(0)
-  taxRate       Float     @default(5)
-  taxAmount     Float     @default(0)
-  total         Float     @default(0)
+  subtotal          Float     @default(0)
+  discountTotal     Float     @default(0)
+  additionalCharges Float     @default(0)
+  taxRate           Float     @default(5)
+  taxAmount         Float     @default(0)
+  total             Float     @default(0)
   status        String    @default("draft")
   dueDate       DateTime?
   paidDate      DateTime?

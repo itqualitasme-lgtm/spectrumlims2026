@@ -61,6 +61,7 @@ type Invoice = {
   clientId: string
   subtotal: number
   discountTotal: number
+  additionalCharges: number
   taxRate: number
   taxAmount: number
   total: number
@@ -237,7 +238,7 @@ export function ProformaClient({ invoices }: { invoices: Invoice[] }) {
   }
 
   const isSelectable = (invoice: Invoice) =>
-    invoice.status !== "converted" && invoice.status !== "consolidated" && invoice.status !== "cancelled"
+    invoice.status !== "consolidated" && invoice.status !== "cancelled"
 
   const columns: ColumnDef<Invoice, any>[] = [
     {
@@ -517,6 +518,12 @@ export function ProformaClient({ invoices }: { invoices: Invoice[] }) {
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Discount</span>
                           <span className="text-red-600">-{formatCurrency(invoiceDetail.discountTotal)}</span>
+                        </div>
+                      )}
+                      {invoiceDetail.additionalCharges > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Additional Charges</span>
+                          <span>{formatCurrency(invoiceDetail.additionalCharges)}</span>
                         </div>
                       )}
                       <div className="flex justify-between text-sm">

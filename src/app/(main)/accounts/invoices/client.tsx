@@ -57,6 +57,7 @@ type Invoice = {
   clientId: string
   subtotal: number
   discountTotal: number
+  additionalCharges: number
   taxRate: number
   taxAmount: number
   total: number
@@ -233,6 +234,42 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => statusBadge(row.original.status, row.original.dueDate),
+    },
+    {
+      id: "paymentStatus",
+      header: "Payment",
+      cell: ({ row }) => {
+        const inv = row.original
+        if (inv.status === "paid") {
+          return (
+            <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
+              Paid {inv.paidDate ? format(new Date(inv.paidDate), "dd MMM") : ""}
+            </Badge>
+          )
+        }
+        if (inv.status === "cancelled") {
+          return <span className="text-xs text-muted-foreground">-</span>
+        }
+        if (inv.dueDate && new Date(inv.dueDate) < new Date()) {
+          return (
+            <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+              Overdue
+            </Badge>
+          )
+        }
+        if (inv.status === "sent") {
+          return (
+            <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+              Pending
+            </Badge>
+          )
+        }
+        return (
+          <Badge variant="secondary">
+            Unpaid
+          </Badge>
+        )
+      },
     },
     {
       accessorKey: "dueDate",
@@ -454,6 +491,12 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                         <div className="flex justify-between text-sm">
                           <span className="text-muted-foreground">Discount</span>
                           <span className="text-red-600">-{formatCurrency(invoiceDetail.discountTotal)}</span>
+                        </div>
+                      )}
+                      {invoiceDetail.additionalCharges > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Additional Charges</span>
+                          <span>{formatCurrency(invoiceDetail.additionalCharges)}</span>
                         </div>
                       )}
                       <div className="flex justify-between text-sm">

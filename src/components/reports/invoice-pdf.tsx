@@ -266,6 +266,7 @@ interface InvoicePDFProps {
     status: string
     subtotal: number
     discountTotal?: number
+    additionalCharges?: number
     taxRate: number
     taxAmount: number
     total: number
@@ -458,6 +459,14 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
                 <Text style={styles.summaryLabel}>Discount</Text>
                 <Text style={[styles.summaryValue, { color: "#dc2626" }]}>
                   -{formatCurrency(discountTotal)}
+                </Text>
+              </View>
+            )}
+            {(invoice.additionalCharges || 0) > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Additional Charges</Text>
+                <Text style={styles.summaryValue}>
+                  {formatCurrency(invoice.additionalCharges || 0)}
                 </Text>
               </View>
             )}

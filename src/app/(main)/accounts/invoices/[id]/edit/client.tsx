@@ -63,6 +63,7 @@ type InvoiceData = {
   clientId: string
   subtotal: number
   discountTotal: number
+  additionalCharges: number
   taxRate: number
   taxAmount: number
   total: number
@@ -165,6 +166,7 @@ export function EditInvoiceClient({
     invoice.dueDate ? format(new Date(invoice.dueDate), "yyyy-MM-dd") : ""
   )
   const [notes, setNotes] = useState(invoice.notes || "")
+  const [additionalCharges, setAdditionalCharges] = useState(invoice.additionalCharges || 0)
 
   // Computed totals
   const subtotal = useMemo(
@@ -175,7 +177,7 @@ export function EditInvoiceClient({
     () => lineItems.reduce((sum, item) => sum + item.discount, 0),
     [lineItems]
   )
-  const afterDiscount = subtotal - discountTotal
+  const afterDiscount = subtotal - discountTotal + additionalCharges
   const taxAmount = afterDiscount * taxRate / 100
   const grandTotal = afterDiscount + taxAmount
 
@@ -284,9 +286,10 @@ export function EditInvoiceClient({
         dueDate: dueDate || undefined,
         notes: notes.trim() || undefined,
         taxRate,
+        additionalCharges: additionalCharges || undefined,
       })
       toast.success("Invoice updated")
-      router.push("/accounts/invoices")
+      router.push(invoice.invoiceType === "proforma" ? "/accounts/proforma" : "/accounts/invoices")
     } catch (error: any) {
       toast.error(error.message || "Failed to update invoice")
     } finally {
@@ -550,6 +553,18 @@ export function EditInvoiceClient({
                       <span className="font-mono">-{formatCurrency(discountTotal)}</span>
                     </div>
                   )}
+                  <div className="flex justify-between items-center">
+                    <span className="text-muted-foreground">Additional Charges</span>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min={0}
+                      value={additionalCharges || ""}
+                      onChange={(e) => setAdditionalCharges(parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
+                      className="h-7 text-xs w-[120px] text-right font-mono"
+                    />
+                  </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Tax ({taxRate}%)</span>
                     <span className="font-mono">{formatCurrency(taxAmount)}</span>

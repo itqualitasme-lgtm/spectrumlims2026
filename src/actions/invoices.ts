@@ -172,6 +172,7 @@ export async function createInvoice(data: {
   dueDate?: string
   notes?: string
   taxRate?: number
+  additionalCharges?: number
 }) {
   const session = await requirePermission("accounts", "create")
   const user = session.user as any
@@ -179,6 +180,7 @@ export async function createInvoice(data: {
 
   const taxRate = data.taxRate ?? 5
   const invoiceType = data.invoiceType || "tax"
+  const additionalCharges = data.additionalCharges || 0
 
   const module = invoiceType === "proforma" ? "proforma" : "invoice"
   const prefix = invoiceType === "proforma" ? "PRF" : "INV"
@@ -192,7 +194,7 @@ export async function createInvoice(data: {
     (sum, item) => sum + (item.discount || 0),
     0
   )
-  const afterDiscount = subtotal - discountTotal
+  const afterDiscount = subtotal - discountTotal + additionalCharges
   const taxAmount = afterDiscount * taxRate / 100
   const total = afterDiscount + taxAmount
 
@@ -204,6 +206,7 @@ export async function createInvoice(data: {
         clientId: data.clientId,
         subtotal,
         discountTotal,
+        additionalCharges,
         taxRate,
         taxAmount,
         total,
@@ -241,6 +244,7 @@ export async function createInvoice(data: {
   )
 
   revalidatePath("/accounts/invoices")
+  revalidatePath("/accounts/proforma")
 
   return invoice
 }
@@ -260,6 +264,7 @@ export async function updateInvoice(
     dueDate?: string
     notes?: string
     taxRate?: number
+    additionalCharges?: number
   }
 ) {
   const session = await requirePermission("accounts", "edit")
@@ -274,6 +279,7 @@ export async function updateInvoice(
   }
 
   const taxRate = data.taxRate ?? existing.taxRate
+  const additionalCharges = data.additionalCharges ?? existing.additionalCharges
   const subtotal = data.items.reduce(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0
@@ -282,7 +288,7 @@ export async function updateInvoice(
     (sum, item) => sum + (item.discount || 0),
     0
   )
-  const afterDiscount = subtotal - discountTotal
+  const afterDiscount = subtotal - discountTotal + additionalCharges
   const taxAmount = afterDiscount * taxRate / 100
   const total = afterDiscount + taxAmount
 
@@ -295,6 +301,7 @@ export async function updateInvoice(
         clientId: data.clientId,
         subtotal,
         discountTotal,
+        additionalCharges,
         taxRate,
         taxAmount,
         total,
@@ -329,6 +336,7 @@ export async function updateInvoice(
   )
 
   revalidatePath("/accounts/invoices")
+  revalidatePath("/accounts/proforma")
 
   return invoice
 }
@@ -347,6 +355,21 @@ export async function updateInvoiceStatus(id: string, status: string) {
     updateData.paidDate = new Date()
   }
 
+  // When cancelling a tax invoice, revert any linked proformas back to their previous state
+  if (status === "cancelled" && existing.invoiceType === "tax") {
+    // Find proformas that were converted/consolidated into this invoice
+    const linkedNote = existing.notes || ""
+    if (linkedNote.startsWith("Consolidated from:")) {
+      const proformaNumbers = linkedNote.replace("Consolidated from: ", "").split(", ").map(s => s.trim())
+      if (proformaNumbers.length > 0) {
+        await db.invoice.updateMany({
+          where: { invoiceNumber: { in: proformaNumbers }, labId },
+          data: { status: "sent" },
+        })
+      }
+    }
+  }
+
   const invoice = await db.invoice.update({
     where: { id },
     data: updateData,
@@ -362,6 +385,7 @@ export async function updateInvoiceStatus(id: string, status: string) {
   )
 
   revalidatePath("/accounts/invoices")
+  revalidatePath("/accounts/proforma")
 
   return invoice
 }
@@ -389,6 +413,7 @@ export async function deleteInvoice(id: string) {
   )
 
   revalidatePath("/accounts/invoices")
+  revalidatePath("/accounts/proforma")
 
   return { success: true }
 }
@@ -407,8 +432,9 @@ export async function convertProformaToTax(proformaId: string) {
   if (proforma.invoiceType !== "proforma") {
     throw new Error("Can only convert proforma invoices")
   }
-  if (proforma.status === "converted" || proforma.status === "consolidated") {
-    throw new Error("This proforma has already been converted")
+  // Allow re-conversion if previously converted invoice was cancelled
+  if (proforma.status === "consolidated") {
+    throw new Error("This proforma has already been consolidated")
   }
 
   const { formatted: invoiceNumber } = await generateNextNumber(labId, "invoice", "INV")
@@ -421,6 +447,7 @@ export async function convertProformaToTax(proformaId: string) {
         clientId: proforma.clientId,
         subtotal: proforma.subtotal,
         discountTotal: proforma.discountTotal,
+        additionalCharges: proforma.additionalCharges,
         taxRate: proforma.taxRate,
         taxAmount: proforma.taxAmount,
         total: proforma.total,
@@ -463,6 +490,7 @@ export async function convertProformaToTax(proformaId: string) {
   )
 
   revalidatePath("/accounts/invoices")
+  revalidatePath("/accounts/proforma")
 
   return taxInvoice
 }
@@ -494,8 +522,8 @@ export async function consolidateProformas(proformaIds: string[]) {
     if (p.invoiceType !== "proforma") {
       throw new Error(`Invoice ${p.invoiceNumber} is not a proforma`)
     }
-    if (p.status === "converted" || p.status === "consolidated") {
-      throw new Error(`Proforma ${p.invoiceNumber} has already been converted`)
+    if (p.status === "consolidated") {
+      throw new Error(`Proforma ${p.invoiceNumber} has already been consolidated`)
     }
   }
 
@@ -503,7 +531,8 @@ export async function consolidateProformas(proformaIds: string[]) {
   const taxRate = proformas[0].taxRate
   const subtotal = allItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
   const discountTotal = allItems.reduce((sum, item) => sum + item.discount, 0)
-  const afterDiscount = subtotal - discountTotal
+  const additionalCharges = proformas.reduce((sum, p) => sum + p.additionalCharges, 0)
+  const afterDiscount = subtotal - discountTotal + additionalCharges
   const taxAmount = afterDiscount * taxRate / 100
   const total = afterDiscount + taxAmount
 
@@ -517,6 +546,7 @@ export async function consolidateProformas(proformaIds: string[]) {
         clientId: proformas[0].clientId,
         subtotal,
         discountTotal,
+        additionalCharges,
         taxRate,
         taxAmount,
         total,
@@ -558,6 +588,7 @@ export async function consolidateProformas(proformaIds: string[]) {
   )
 
   revalidatePath("/accounts/invoices")
+  revalidatePath("/accounts/proforma")
 
   return taxInvoice
 }
