@@ -17,6 +17,7 @@ import {
   Activity,
   Menu,
   FileClock,
+  CreditCard,
   type LucideIcon,
 } from "lucide-react"
 
@@ -94,12 +95,6 @@ export const menuGroups: MenuGroup[] = [
         icon: Trash2,
         permission: "process:delete",
       },
-      {
-        title: "Deleted Reports",
-        href: "/process/trash/reports",
-        icon: Trash2,
-        permission: "process:delete",
-      },
     ],
   },
   {
@@ -127,6 +122,12 @@ export const menuGroups: MenuGroup[] = [
         title: "Invoices",
         href: "/accounts/invoices",
         icon: Receipt,
+        permission: "accounts:view",
+      },
+      {
+        title: "Payments",
+        href: "/accounts/payments",
+        icon: CreditCard,
         permission: "accounts:view",
       },
       {

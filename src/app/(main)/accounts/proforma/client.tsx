@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
   Send,
-  Trash2,
   Eye,
   Pencil,
   FileText,
@@ -18,7 +17,6 @@ import { format } from "date-fns"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { DataTable } from "@/components/shared/data-table"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
@@ -48,7 +46,6 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   updateInvoiceStatus,
-  deleteInvoice,
   getInvoice,
   convertProformaToTax,
   consolidateProformas,
@@ -134,8 +131,6 @@ export function ProformaClient({ invoices }: { invoices: Invoice[] }) {
   const router = useRouter()
 
   const [detailOpen, setDetailOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [invoiceDetail, setInvoiceDetail] = useState<InvoiceDetail | null>(null)
 
@@ -219,21 +214,6 @@ export function ProformaClient({ invoices }: { invoices: Invoice[] }) {
       setSelectedIds(new Set())
     } else {
       setSelectedIds(new Set(selectableIds))
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!selectedInvoice) return
-    setLoading(true)
-    try {
-      await deleteInvoice(selectedInvoice.id)
-      toast.success(`Proforma ${selectedInvoice.invoiceNumber} deleted`)
-      setDeleteOpen(false)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete proforma")
-    } finally {
-      setLoading(false)
     }
   }
 
@@ -376,16 +356,6 @@ export function ProformaClient({ invoices }: { invoices: Invoice[] }) {
                     </Button>
                   </TooltipTrigger>
                   <TooltipContent>Cancel</TooltipContent>
-                </Tooltip>
-              )}
-              {isActive && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => { setSelectedInvoice(invoice); setDeleteOpen(true) }}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Delete</TooltipContent>
                 </Tooltip>
               )}
             </div>
@@ -564,16 +534,6 @@ export function ProformaClient({ invoices }: { invoices: Invoice[] }) {
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Delete Proforma"
-        description={`Are you sure you want to delete proforma ${selectedInvoice?.invoiceNumber}? This action cannot be undone.`}
-        onConfirm={handleDelete}
-        confirmLabel="Delete"
-        destructive
-        loading={loading}
-      />
     </div>
   )
 }

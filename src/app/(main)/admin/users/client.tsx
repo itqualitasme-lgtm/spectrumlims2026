@@ -6,6 +6,7 @@ import { DataTable } from "@/components/shared/data-table"
 import { PageHeader } from "@/components/shared/page-header"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { ImageUpload } from "@/components/shared/image-upload"
+import { SearchableSelect } from "@/components/shared/searchable-select"
 import {
   Dialog,
   DialogContent,
@@ -522,12 +523,13 @@ export function UsersClient({
                   </div>
                   <div className="grid gap-2">
                     <Label>Customer *</Label>
-                    <Select value={portalCustomerId} onValueChange={setPortalCustomerId}>
-                      <SelectTrigger className="w-full"><SelectValue placeholder="Select a customer" /></SelectTrigger>
-                      <SelectContent>
-                        {customers.map((c) => (<SelectItem key={c.id} value={c.id}>{c.company || c.name} ({c.code})</SelectItem>))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      options={customers.map((c) => ({ value: c.id, label: `${c.company || c.name} (${c.code})` }))}
+                      value={portalCustomerId}
+                      onValueChange={setPortalCustomerId}
+                      placeholder="Select a customer..."
+                      searchPlaceholder="Search customers..."
+                    />
                   </div>
                 </>
               )}

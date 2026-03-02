@@ -376,6 +376,38 @@ export async function requestRevision(reportId: string, reason: string) {
     },
   })
 
+  // Cancel any draft proforma invoices auto-created for this report
+  const linkedItems = await db.invoiceItem.findMany({
+    where: { reportId },
+    select: { invoiceId: true },
+  })
+  const invoiceIds = [...new Set(linkedItems.map((i) => i.invoiceId))]
+  if (invoiceIds.length > 0) {
+    // Only cancel draft proformas — don't touch sent/converted ones
+    await db.invoice.updateMany({
+      where: {
+        id: { in: invoiceIds },
+        invoiceType: "proforma",
+        status: "draft",
+      },
+      data: { status: "cancelled" },
+    })
+    // Delete invoice items linked to this report from cancelled drafts
+    // so a fresh proforma can be auto-created on re-approval
+    const cancelledInvoices = await db.invoice.findMany({
+      where: { id: { in: invoiceIds }, status: "cancelled" },
+      select: { id: true },
+    })
+    if (cancelledInvoices.length > 0) {
+      await db.invoiceItem.deleteMany({
+        where: {
+          reportId,
+          invoiceId: { in: cancelledInvoices.map((i) => i.id) },
+        },
+      })
+    }
+  }
+
   // Set sample back to "testing" so chemist can correct results
   await db.sample.update({
     where: { id: report.sampleId },
@@ -401,6 +433,7 @@ export async function requestRevision(reportId: string, reason: string) {
   revalidatePath("/process/authentication")
   revalidatePath("/process/test-results")
   revalidatePath("/process/registration")
+  revalidatePath("/accounts/proforma")
 
   return report
 }
@@ -428,6 +461,35 @@ export async function revertReportToRegistration(reportId: string, reason: strin
       reviewedAt: null,
     },
   })
+
+  // Cancel any draft proforma invoices auto-created for this report
+  const linkedItems = await db.invoiceItem.findMany({
+    where: { reportId },
+    select: { invoiceId: true },
+  })
+  const revertInvoiceIds = [...new Set(linkedItems.map((i) => i.invoiceId))]
+  if (revertInvoiceIds.length > 0) {
+    await db.invoice.updateMany({
+      where: {
+        id: { in: revertInvoiceIds },
+        invoiceType: "proforma",
+        status: "draft",
+      },
+      data: { status: "cancelled" },
+    })
+    const cancelledInvoices = await db.invoice.findMany({
+      where: { id: { in: revertInvoiceIds }, status: "cancelled" },
+      select: { id: true },
+    })
+    if (cancelledInvoices.length > 0) {
+      await db.invoiceItem.deleteMany({
+        where: {
+          reportId,
+          invoiceId: { in: cancelledInvoices.map((i) => i.id) },
+        },
+      })
+    }
+  }
 
   // Reset sample to registered, clear assignment
   const existingNotes = existing.sample.notes || ""
@@ -467,6 +529,7 @@ export async function revertReportToRegistration(reportId: string, reason: strin
   revalidatePath("/process/authentication")
   revalidatePath("/process/test-results")
   revalidatePath("/process/registration")
+  revalidatePath("/accounts/proforma")
 
   return existing
 }

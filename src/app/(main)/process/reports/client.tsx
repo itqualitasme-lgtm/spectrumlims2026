@@ -11,7 +11,6 @@ import {
   Loader2,
   Printer,
   Eye,
-  Trash2,
   ChevronDown,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -49,7 +48,6 @@ import {
 import {
   requestRevision,
   publishReport,
-  deleteReport,
 } from "@/actions/reports"
 
 type TestResultInfo = {
@@ -213,17 +211,6 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
     }
   }
 
-  const handleDeleteReport = async (report: Report) => {
-    if (!confirm(`Delete report ${report.reportNumber}? This action cannot be undone.`)) return
-    try {
-      await deleteReport(report.id)
-      toast.success(`Deleted report ${report.reportNumber}`)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete report")
-    }
-  }
-
   const columns: ColumnDef<Report, any>[] = [
     {
       id: "select",
@@ -358,16 +345,6 @@ export function ReportsClient({ reports }: { reports: Report[] }) {
               <RotateCcw className="h-4 w-4" />
             </Button>
 
-            {/* Delete */}
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0 text-destructive hover:text-destructive"
-              onClick={() => handleDeleteReport(report)}
-              title="Delete Report"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
           </div>
         )
       },

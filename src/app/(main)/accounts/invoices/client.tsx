@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
   Send,
-  CheckCircle,
   XCircle,
   Trash2,
   Eye,
@@ -333,16 +332,6 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                     <TooltipContent>Mark as Sent</TooltipContent>
                   </Tooltip>
                 </>
-              )}
-              {invoice.status === "sent" && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleStatusChange(invoice, "paid")}>
-                      <CheckCircle className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Mark as Paid</TooltipContent>
-                </Tooltip>
               )}
               {(invoice.status === "draft" || invoice.status === "sent") && (
                 <Tooltip>
