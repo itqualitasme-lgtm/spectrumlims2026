@@ -126,18 +126,22 @@ const styles = StyleSheet.create({
     width: "6%",
   },
   colDesc: {
-    width: "44%",
+    width: "36%",
   },
   colQty: {
-    width: "12%",
+    width: "10%",
     textAlign: "center",
   },
   colPrice: {
-    width: "19%",
+    width: "16%",
+    textAlign: "right",
+  },
+  colDiscount: {
+    width: "14%",
     textAlign: "right",
   },
   colTotal: {
-    width: "19%",
+    width: "18%",
     textAlign: "right",
   },
   summaryContainer: {
@@ -257,6 +261,7 @@ interface InvoicePDFProps {
     invoiceType?: string
     status: string
     subtotal: number
+    discountTotal?: number
     taxRate: number
     taxAmount: number
     total: number
@@ -284,6 +289,7 @@ interface InvoicePDFProps {
       description: string
       quantity: number
       unitPrice: number
+      discount?: number
       total: number
       sample: { sampleNumber: string } | null
     }>
@@ -293,6 +299,8 @@ interface InvoicePDFProps {
 export function InvoicePDF({ invoice }: InvoicePDFProps) {
   const statusStyle = getStatusStyle(invoice.status)
   const titleText = invoice.invoiceType === "proforma" ? "PROFORMA INVOICE" : "TAX INVOICE"
+  const hasDiscount = invoice.items.some((item) => (item.discount || 0) > 0)
+  const discountTotal = invoice.discountTotal || 0
 
   return (
     <Document>
@@ -383,14 +391,19 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
         <View style={styles.table}>
           <View style={styles.tableHeader}>
             <Text style={[styles.tableHeaderText, styles.colNum]}>#</Text>
-            <Text style={[styles.tableHeaderText, styles.colDesc]}>
+            <Text style={[styles.tableHeaderText, hasDiscount ? styles.colDesc : { width: "44%" }]}>
               Description
             </Text>
             <Text style={[styles.tableHeaderText, styles.colQty]}>Qty</Text>
-            <Text style={[styles.tableHeaderText, styles.colPrice]}>
+            <Text style={[styles.tableHeaderText, hasDiscount ? styles.colPrice : { width: "19%", textAlign: "right" as const }]}>
               Unit Price
             </Text>
-            <Text style={[styles.tableHeaderText, styles.colTotal]}>
+            {hasDiscount && (
+              <Text style={[styles.tableHeaderText, styles.colDiscount]}>
+                Discount
+              </Text>
+            )}
+            <Text style={[styles.tableHeaderText, hasDiscount ? styles.colTotal : { width: "19%", textAlign: "right" as const }]}>
               Total
             </Text>
           </View>
@@ -405,17 +418,22 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
               <Text style={[styles.tableCell, styles.colNum]}>
                 {index + 1}
               </Text>
-              <Text style={[styles.tableCell, styles.colDesc]}>
+              <Text style={[styles.tableCell, hasDiscount ? styles.colDesc : { width: "44%" }]}>
                 {item.description}
                 {item.sample ? ` (${item.sample.sampleNumber})` : ""}
               </Text>
               <Text style={[styles.tableCell, styles.colQty]}>
                 {item.quantity}
               </Text>
-              <Text style={[styles.tableCell, styles.colPrice]}>
+              <Text style={[styles.tableCell, hasDiscount ? styles.colPrice : { width: "19%", textAlign: "right" as const }]}>
                 {formatCurrency(item.unitPrice)}
               </Text>
-              <Text style={[styles.tableCell, styles.colTotal]}>
+              {hasDiscount && (
+                <Text style={[styles.tableCell, styles.colDiscount]}>
+                  {(item.discount || 0) > 0 ? formatCurrency(item.discount || 0) : "-"}
+                </Text>
+              )}
+              <Text style={[styles.tableCell, hasDiscount ? styles.colTotal : { width: "19%", textAlign: "right" as const }]}>
                 {formatCurrency(item.total)}
               </Text>
             </View>
@@ -431,6 +449,14 @@ export function InvoicePDF({ invoice }: InvoicePDFProps) {
                 {formatCurrency(invoice.subtotal)}
               </Text>
             </View>
+            {discountTotal > 0 && (
+              <View style={styles.summaryRow}>
+                <Text style={styles.summaryLabel}>Discount</Text>
+                <Text style={[styles.summaryValue, { color: "#dc2626" }]}>
+                  -{formatCurrency(discountTotal)}
+                </Text>
+              </View>
+            )}
             <View style={styles.summaryRow}>
               <Text style={styles.summaryLabel}>
                 Tax ({invoice.taxRate}%)

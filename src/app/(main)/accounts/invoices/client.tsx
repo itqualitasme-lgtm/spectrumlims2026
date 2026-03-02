@@ -12,9 +12,6 @@ import {
   Pencil,
   FileText,
   ArrowRightLeft,
-  Loader2,
-  Plus,
-  X,
   Layers,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -22,18 +19,13 @@ import { format } from "date-fns"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { DataTable } from "@/components/shared/data-table"
-import { SearchableSelect } from "@/components/shared/searchable-select"
 import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -57,19 +49,8 @@ import {
 
 import { Checkbox } from "@/components/ui/checkbox"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  createInvoice,
-  updateInvoice,
   updateInvoiceStatus,
   deleteInvoice,
-  getCustomersForInvoice,
-  getSamplesForInvoice,
   getInvoice,
   convertProformaToTax,
   consolidateProformas,
@@ -81,6 +62,7 @@ type Invoice = {
   invoiceType: string
   clientId: string
   subtotal: number
+  discountTotal: number
   taxRate: number
   taxAmount: number
   total: number
@@ -116,17 +98,13 @@ type InvoiceDetail = Invoice & {
     description: string
     quantity: number
     unitPrice: number
+    discount: number
     total: number
     sampleId: string | null
+    reportId: string | null
     sample: { sampleNumber: string } | null
+    report: { reportNumber: string } | null
   }>
-}
-
-type LineItem = {
-  description: string
-  quantity: number
-  unitPrice: number
-  sampleId: string
 }
 
 const formatCurrency = (amount: number) => {
@@ -136,13 +114,7 @@ const formatCurrency = (amount: number) => {
   })}`
 }
 
-const isOverdue = (invoice: { status: string; dueDate: string | null }) => {
-  if (invoice.status !== "sent" || !invoice.dueDate) return false
-  return new Date(invoice.dueDate) < new Date()
-}
-
 const statusBadge = (status: string, dueDate?: string | null) => {
-  // Auto-detect overdue for sent invoices
   if (status === "sent" && dueDate && new Date(dueDate) < new Date()) {
     return (
       <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
@@ -193,12 +165,9 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
   const router = useRouter()
 
   // Dialog states
-  const [createOpen, setCreateOpen] = useState(false)
-  const [editOpen, setEditOpen] = useState(false)
   const [detailOpen, setDetailOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null)
 
   // Selected invoice for actions
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
@@ -206,210 +175,6 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
 
   // Selection for consolidation
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
-
-  // Create form state
-  const [invoiceType, setInvoiceType] = useState("tax")
-  const [clientId, setClientId] = useState("")
-  const [customers, setCustomers] = useState<
-    { value: string; label: string }[]
-  >([])
-  const [samples, setSamples] = useState<
-    { value: string; label: string }[]
-  >([])
-  const [lineItems, setLineItems] = useState<LineItem[]>([
-    { description: "", quantity: 1, unitPrice: 0, sampleId: "" },
-  ])
-  const [taxRate, setTaxRate] = useState(5)
-  const [dueDate, setDueDate] = useState("")
-  const [notes, setNotes] = useState("")
-
-  // Calculated totals
-  const subtotal = useMemo(
-    () => lineItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0),
-    [lineItems]
-  )
-  const taxAmount = useMemo(() => subtotal * taxRate / 100, [subtotal, taxRate])
-  const total = useMemo(() => subtotal + taxAmount, [subtotal, taxAmount])
-
-  const handleOpenCreate = async () => {
-    try {
-      const custs = await getCustomersForInvoice()
-      setCustomers(
-        custs.map((c) => ({
-          value: c.id,
-          label: c.company ? `${c.company} (${c.name})` : c.name,
-        }))
-      )
-      setInvoiceType("tax")
-      setClientId("")
-      setSamples([])
-      setLineItems([{ description: "", quantity: 1, unitPrice: 0, sampleId: "" }])
-      setTaxRate(5)
-      setDueDate("")
-      setNotes("")
-      setCreateOpen(true)
-    } catch {
-      toast.error("Failed to load customers")
-    }
-  }
-
-  const handleClientChange = async (value: string) => {
-    setClientId(value)
-    if (value) {
-      try {
-        const smpls = await getSamplesForInvoice(value)
-        setSamples(
-          smpls.map((s) => ({
-            value: s.id,
-            label: `${s.sampleNumber} - ${s.typeName}`,
-          }))
-        )
-      } catch {
-        setSamples([])
-      }
-    } else {
-      setSamples([])
-    }
-  }
-
-  const addLineItem = () => {
-    setLineItems([
-      ...lineItems,
-      { description: "", quantity: 1, unitPrice: 0, sampleId: "" },
-    ])
-  }
-
-  const removeLineItem = (index: number) => {
-    if (lineItems.length === 1) return
-    setLineItems(lineItems.filter((_, i) => i !== index))
-  }
-
-  const updateLineItem = (
-    index: number,
-    field: keyof LineItem,
-    value: string | number
-  ) => {
-    const updated = [...lineItems]
-    updated[index] = { ...updated[index], [field]: value }
-    setLineItems(updated)
-  }
-
-  const handleCreate = async () => {
-    if (!clientId) {
-      toast.error("Please select a customer")
-      return
-    }
-
-    const validItems = lineItems.filter(
-      (item) => item.description.trim() && item.quantity > 0 && item.unitPrice > 0
-    )
-
-    if (validItems.length === 0) {
-      toast.error("Please add at least one valid line item")
-      return
-    }
-
-    setLoading(true)
-    try {
-      const invoice = await createInvoice({
-        clientId,
-        invoiceType,
-        items: validItems.map((item) => ({
-          description: item.description.trim(),
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          sampleId: item.sampleId || undefined,
-        })),
-        dueDate: dueDate || undefined,
-        notes: notes.trim() || undefined,
-        taxRate,
-      })
-      toast.success(`Invoice ${invoice.invoiceNumber} created successfully`)
-      setCreateOpen(false)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to create invoice")
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleOpenEdit = async (invoice: Invoice) => {
-    try {
-      const detail = await getInvoice(invoice.id)
-      if (!detail) {
-        toast.error("Invoice not found")
-        return
-      }
-      setEditingInvoice(invoice)
-      const custs = await getCustomersForInvoice()
-      setCustomers(
-        custs.map((c) => ({
-          value: c.id,
-          label: c.company ? `${c.company} (${c.name})` : c.name,
-        }))
-      )
-      setClientId(invoice.clientId)
-      const smpls = await getSamplesForInvoice(invoice.clientId)
-      setSamples(
-        smpls.map((s) => ({
-          value: s.id,
-          label: `${s.sampleNumber} - ${s.typeName}`,
-        }))
-      )
-      setLineItems(
-        (detail as any).items.map((item: any) => ({
-          description: item.description,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          sampleId: item.sampleId || "",
-        }))
-      )
-      setTaxRate(invoice.taxRate)
-      setDueDate(invoice.dueDate ? invoice.dueDate.split("T")[0] : "")
-      setNotes(invoice.notes || "")
-      setEditOpen(true)
-    } catch {
-      toast.error("Failed to load invoice for editing")
-    }
-  }
-
-  const handleEdit = async () => {
-    if (!editingInvoice || !clientId) return
-
-    const validItems = lineItems.filter(
-      (item) => item.description.trim() && item.quantity > 0 && item.unitPrice > 0
-    )
-
-    if (validItems.length === 0) {
-      toast.error("Please add at least one valid line item")
-      return
-    }
-
-    setLoading(true)
-    try {
-      await updateInvoice(editingInvoice.id, {
-        clientId,
-        items: validItems.map((item) => ({
-          description: item.description.trim(),
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          sampleId: item.sampleId || undefined,
-        })),
-        dueDate: dueDate || undefined,
-        notes: notes.trim() || undefined,
-        taxRate,
-      })
-      toast.success(`Invoice ${editingInvoice.invoiceNumber} updated`)
-      setEditOpen(false)
-      setEditingInvoice(null)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to update invoice")
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleViewDetail = async (invoice: Invoice) => {
     try {
@@ -487,14 +252,6 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       setLoading(false)
     }
   }
-
-  // Proformas that can be consolidated (not already converted/consolidated)
-  const consolidatable = invoices.filter(
-    (inv) =>
-      inv.invoiceType === "proforma" &&
-      inv.status !== "converted" &&
-      inv.status !== "consolidated"
-  )
 
   const columns: ColumnDef<Invoice, any>[] = [
     {
@@ -622,7 +379,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0"
-                        onClick={() => handleOpenEdit(invoice)}
+                        onClick={() => router.push(`/accounts/invoices/${invoice.id}/edit`)}
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -720,7 +477,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
         title="Invoices"
         description="Create and manage invoices for lab services"
         actionLabel="Create Invoice"
-        onAction={handleOpenCreate}
+        actionHref="/accounts/invoices/new"
       />
 
       {selectedIds.size > 0 && (
@@ -742,444 +499,6 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
         searchPlaceholder="Search invoices..."
         searchKey="invoiceNumber"
       />
-
-      {/* Create Invoice Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Invoice</DialogTitle>
-            <DialogDescription>
-              Create a new invoice for a customer.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-6 py-4">
-            {/* Invoice Type */}
-            <div className="grid gap-2">
-              <Label>Invoice Type *</Label>
-              <Select value={invoiceType} onValueChange={setInvoiceType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="tax">Tax Invoice</SelectItem>
-                  <SelectItem value="proforma">Proforma Invoice</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Customer Selection */}
-            <div className="grid gap-2">
-              <Label>Customer *</Label>
-              <SearchableSelect
-                options={customers}
-                value={clientId}
-                onValueChange={handleClientChange}
-                placeholder="Select a customer..."
-                searchPlaceholder="Search customers..."
-                emptyMessage="No active customers found."
-              />
-            </div>
-
-            {/* Line Items */}
-            <div className="grid gap-3">
-              <div className="flex items-center justify-between">
-                <Label>Line Items *</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addLineItem}
-                >
-                  <Plus className="mr-1 h-4 w-4" />
-                  Add Item
-                </Button>
-              </div>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[40%]">Description</TableHead>
-                      <TableHead className="w-[15%]">Sample</TableHead>
-                      <TableHead className="w-[12%]">Qty</TableHead>
-                      <TableHead className="w-[15%]">Unit Price</TableHead>
-                      <TableHead className="w-[13%]">Total</TableHead>
-                      <TableHead className="w-[5%]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {lineItems.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>
-                          <Input
-                            value={item.description}
-                            onChange={(e) =>
-                              updateLineItem(index, "description", e.target.value)
-                            }
-                            placeholder="Item description..."
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {samples.length > 0 ? (
-                            <SearchableSelect
-                              options={[
-                                { value: "", label: "None" },
-                                ...samples,
-                              ]}
-                              value={item.sampleId}
-                              onValueChange={(val) =>
-                                updateLineItem(index, "sampleId", val)
-                              }
-                              placeholder="Link sample"
-                              searchPlaceholder="Search samples..."
-                              emptyMessage="No samples found."
-                            />
-                          ) : (
-                            <span className="text-sm text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={item.quantity}
-                            onChange={(e) =>
-                              updateLineItem(
-                                index,
-                                "quantity",
-                                parseInt(e.target.value) || 1
-                              )
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={item.unitPrice}
-                            onChange={(e) =>
-                              updateLineItem(
-                                index,
-                                "unitPrice",
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm font-medium">
-                            {formatCurrency(item.quantity * item.unitPrice)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeLineItem(index)}
-                            disabled={lineItems.length === 1}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Totals and Additional Fields */}
-            <div className="grid grid-cols-2 gap-6">
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label>Due Date</Label>
-                  <Input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Notes</Label>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Additional notes..."
-                    rows={3}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-3">
-                <div className="grid gap-2">
-                  <Label>Tax Rate (%)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.5}
-                    value={taxRate}
-                    onChange={(e) =>
-                      setTaxRate(parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatCurrency(subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Tax ({taxRate}%)
-                    </span>
-                    <span>{formatCurrency(taxAmount)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-semibold text-lg">
-                    <span>Total</span>
-                    <span>{formatCurrency(total)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setCreateOpen(false)}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleCreate} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
-              ) : (
-                "Create Invoice"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Invoice Dialog */}
-      <Dialog open={editOpen} onOpenChange={(open) => { setEditOpen(open); if (!open) setEditingInvoice(null) }}>
-        <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Edit Invoice {editingInvoice?.invoiceNumber}</DialogTitle>
-            <DialogDescription>
-              Update invoice details and line items.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-6 py-4">
-            {/* Customer Selection */}
-            <div className="grid gap-2">
-              <Label>Customer *</Label>
-              <SearchableSelect
-                options={customers}
-                value={clientId}
-                onValueChange={handleClientChange}
-                placeholder="Select a customer..."
-                searchPlaceholder="Search customers..."
-                emptyMessage="No active customers found."
-              />
-            </div>
-
-            {/* Line Items */}
-            <div className="grid gap-3">
-              <div className="flex items-center justify-between">
-                <Label>Line Items *</Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addLineItem}
-                >
-                  <Plus className="mr-1 h-4 w-4" />
-                  Add Item
-                </Button>
-              </div>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[40%]">Description</TableHead>
-                      <TableHead className="w-[15%]">Sample</TableHead>
-                      <TableHead className="w-[12%]">Qty</TableHead>
-                      <TableHead className="w-[15%]">Unit Price</TableHead>
-                      <TableHead className="w-[13%]">Total</TableHead>
-                      <TableHead className="w-[5%]"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {lineItems.map((item, index) => (
-                      <TableRow key={index}>
-                        <TableCell>
-                          <Input
-                            value={item.description}
-                            onChange={(e) =>
-                              updateLineItem(index, "description", e.target.value)
-                            }
-                            placeholder="Item description..."
-                          />
-                        </TableCell>
-                        <TableCell>
-                          {samples.length > 0 ? (
-                            <SearchableSelect
-                              options={[
-                                { value: "", label: "None" },
-                                ...samples,
-                              ]}
-                              value={item.sampleId}
-                              onValueChange={(val) =>
-                                updateLineItem(index, "sampleId", val)
-                              }
-                              placeholder="Link sample"
-                              searchPlaceholder="Search samples..."
-                              emptyMessage="No samples found."
-                            />
-                          ) : (
-                            <span className="text-sm text-muted-foreground">-</span>
-                          )}
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min={1}
-                            value={item.quantity}
-                            onChange={(e) =>
-                              updateLineItem(
-                                index,
-                                "quantity",
-                                parseInt(e.target.value) || 1
-                              )
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Input
-                            type="number"
-                            min={0}
-                            step={0.01}
-                            value={item.unitPrice}
-                            onChange={(e) =>
-                              updateLineItem(
-                                index,
-                                "unitPrice",
-                                parseFloat(e.target.value) || 0
-                              )
-                            }
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <span className="text-sm font-medium">
-                            {formatCurrency(item.quantity * item.unitPrice)}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeLineItem(index)}
-                            disabled={lineItems.length === 1}
-                          >
-                            <X className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Totals and Additional Fields */}
-            <div className="grid grid-cols-2 gap-6">
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label>Due Date</Label>
-                  <Input
-                    type="date"
-                    value={dueDate}
-                    onChange={(e) => setDueDate(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label>Notes</Label>
-                  <Textarea
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Additional notes..."
-                    rows={3}
-                  />
-                </div>
-              </div>
-              <div className="grid gap-3">
-                <div className="grid gap-2">
-                  <Label>Tax Rate (%)</Label>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.5}
-                    value={taxRate}
-                    onChange={(e) =>
-                      setTaxRate(parseFloat(e.target.value) || 0)
-                    }
-                  />
-                </div>
-                <Separator />
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span>{formatCurrency(subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      Tax ({taxRate}%)
-                    </span>
-                    <span>{formatCurrency(taxAmount)}</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between font-semibold text-lg">
-                    <span>Total</span>
-                    <span>{formatCurrency(total)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => { setEditOpen(false); setEditingInvoice(null) }}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button onClick={handleEdit} disabled={loading}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* View Details Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
@@ -1208,6 +527,10 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                       <span className="font-medium">
                         {invoiceDetail.invoiceNumber}
                       </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Type</span>
+                      <span className="capitalize">{invoiceDetail.invoiceType}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Status</span>
@@ -1296,14 +619,15 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-[5%]">#</TableHead>
-                          <TableHead className="w-[45%]">
+                          <TableHead className="w-[37%]">
                             Description
                           </TableHead>
-                          <TableHead className="w-[10%]">Qty</TableHead>
-                          <TableHead className="w-[20%]">
+                          <TableHead className="w-[8%]">Qty</TableHead>
+                          <TableHead className="w-[18%]">
                             Unit Price
                           </TableHead>
-                          <TableHead className="w-[20%]">Total</TableHead>
+                          <TableHead className="w-[14%]">Discount</TableHead>
+                          <TableHead className="w-[18%]">Total</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -1318,11 +642,19 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                                     ({item.sample.sampleNumber})
                                   </span>
                                 )}
+                                {item.report && (
+                                  <span className="ml-1 text-xs text-muted-foreground">
+                                    [{item.report.reportNumber}]
+                                  </span>
+                                )}
                               </div>
                             </TableCell>
                             <TableCell>{item.quantity}</TableCell>
                             <TableCell>
                               {formatCurrency(item.unitPrice)}
+                            </TableCell>
+                            <TableCell>
+                              {item.discount > 0 ? formatCurrency(item.discount) : "-"}
                             </TableCell>
                             <TableCell className="font-medium">
                               {formatCurrency(item.total)}
@@ -1340,6 +672,12 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                         <span className="text-muted-foreground">Subtotal</span>
                         <span>{formatCurrency(invoiceDetail.subtotal)}</span>
                       </div>
+                      {invoiceDetail.discountTotal > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Discount</span>
+                          <span className="text-red-600">-{formatCurrency(invoiceDetail.discountTotal)}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between text-sm">
                         <span className="text-muted-foreground">
                           Tax ({invoiceDetail.taxRate}%)

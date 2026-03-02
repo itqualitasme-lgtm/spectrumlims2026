@@ -275,6 +275,12 @@ export async function batchUpdateTestResults(
         "create",
         `Auto-created report ${reportNumber} for completed sample ${sample?.sampleNumber || sampleId}`
       )
+    } else if (existingReport.status === "revision") {
+      // Reset revision report back to draft for re-authentication
+      await db.report.update({
+        where: { id: existingReport.id },
+        data: { status: "draft", reviewedById: null, reviewedAt: null },
+      })
     }
   } else {
     // Still has pending results - set to "testing" if it was "assigned" or "registered"
@@ -309,6 +315,7 @@ export async function batchUpdateTestResults(
   revalidatePath("/process/test-results")
   revalidatePath("/process/registration")
   revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
 
   return { success: true }
 }

@@ -40,6 +40,7 @@ export async function getInvoice(id: string) {
       items: {
         include: {
           sample: true,
+          report: { select: { reportNumber: true } },
         },
       },
     },
@@ -55,7 +56,7 @@ export async function getCustomersForInvoice() {
 
   const customers = await db.customer.findMany({
     where: { labId, status: "active" },
-    select: { id: true, name: true, company: true },
+    select: { id: true, name: true, company: true, paymentTerm: true },
     orderBy: { name: "asc" },
   })
 
@@ -63,6 +64,7 @@ export async function getCustomersForInvoice() {
     id: c.id,
     name: c.name,
     company: c.company,
+    paymentTerm: c.paymentTerm,
   }))
 }
 
@@ -86,6 +88,71 @@ export async function getSamplesForInvoice(clientId: string) {
   }))
 }
 
+export async function getReportsForInvoice(clientId: string) {
+  const session = await getSession()
+  const user = session.user as any
+  const labId = user.labId
+
+  const reports = await db.report.findMany({
+    where: {
+      labId,
+      deletedAt: null,
+      status: { in: ["approved", "published"] },
+      sample: {
+        clientId,
+        deletedAt: null,
+      },
+    },
+    include: {
+      sample: {
+        include: {
+          sampleType: {
+            select: { id: true, name: true, defaultTests: true },
+          },
+          testResults: {
+            select: {
+              id: true,
+              parameter: true,
+              testMethod: true,
+              unit: true,
+            },
+            orderBy: { sortOrder: "asc" },
+          },
+        },
+      },
+      invoiceItems: {
+        select: { id: true },
+      },
+    },
+    orderBy: { reportNumber: "asc" },
+  })
+
+  return reports.map((r) => {
+    let defaultTests: Array<{ parameter: string; method?: string; unit?: string; price?: number }> = []
+    try {
+      const parsed = JSON.parse(r.sample.sampleType.defaultTests || "[]")
+      if (Array.isArray(parsed)) defaultTests = parsed
+    } catch { /* ignore */ }
+
+    return {
+      id: r.id,
+      reportNumber: r.reportNumber,
+      sampleId: r.sample.id,
+      sampleNumber: r.sample.sampleNumber,
+      sampleTypeName: r.sample.sampleType.name,
+      sampleQuantity: r.sample.quantity,
+      alreadyInvoiced: r.invoiceItems.length > 0,
+      testResults: r.sample.testResults.map((tr) => ({
+        id: tr.id,
+        parameter: tr.parameter,
+        testMethod: tr.testMethod,
+        unit: tr.unit,
+      })),
+      defaultTests,
+    }
+  })
+}
+
 export async function createInvoice(data: {
   clientId: string
   invoiceType?: string
@@ -93,7 +160,9 @@ export async function createInvoice(data: {
     description: string
     quantity: number
     unitPrice: number
+    discount?: number
     sampleId?: string
+    reportId?: string
   }>
   dueDate?: string
   notes?: string
@@ -106,7 +175,6 @@ export async function createInvoice(data: {
   const taxRate = data.taxRate ?? 5
   const invoiceType = data.invoiceType || "tax"
 
-  // Use different prefix/module for proforma vs tax
   const module = invoiceType === "proforma" ? "proforma" : "invoice"
   const prefix = invoiceType === "proforma" ? "PRF" : "INV"
   const { formatted: invoiceNumber } = await generateNextNumber(labId, module, prefix)
@@ -115,8 +183,13 @@ export async function createInvoice(data: {
     (sum, item) => sum + item.quantity * item.unitPrice,
     0
   )
-  const taxAmount = subtotal * taxRate / 100
-  const total = subtotal + taxAmount
+  const discountTotal = data.items.reduce(
+    (sum, item) => sum + (item.discount || 0),
+    0
+  )
+  const afterDiscount = subtotal - discountTotal
+  const taxAmount = afterDiscount * taxRate / 100
+  const total = afterDiscount + taxAmount
 
   const invoice = await db.$transaction(async (tx) => {
     const inv = await tx.invoice.create({
@@ -125,6 +198,7 @@ export async function createInvoice(data: {
         invoiceType,
         clientId: data.clientId,
         subtotal,
+        discountTotal,
         taxRate,
         taxAmount,
         total,
@@ -140,10 +214,12 @@ export async function createInvoice(data: {
       data: data.items.map((item) => ({
         invoiceId: inv.id,
         sampleId: item.sampleId || null,
+        reportId: item.reportId || null,
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        total: item.quantity * item.unitPrice,
+        discount: item.discount || 0,
+        total: (item.quantity * item.unitPrice) - (item.discount || 0),
       })),
     })
 
@@ -172,7 +248,9 @@ export async function updateInvoice(
       description: string
       quantity: number
       unitPrice: number
+      discount?: number
       sampleId?: string
+      reportId?: string
     }>
     dueDate?: string
     notes?: string
@@ -195,19 +273,23 @@ export async function updateInvoice(
     (sum, item) => sum + item.quantity * item.unitPrice,
     0
   )
-  const taxAmount = subtotal * taxRate / 100
-  const total = subtotal + taxAmount
+  const discountTotal = data.items.reduce(
+    (sum, item) => sum + (item.discount || 0),
+    0
+  )
+  const afterDiscount = subtotal - discountTotal
+  const taxAmount = afterDiscount * taxRate / 100
+  const total = afterDiscount + taxAmount
 
   const invoice = await db.$transaction(async (tx) => {
-    // Delete existing items
     await tx.invoiceItem.deleteMany({ where: { invoiceId: id } })
 
-    // Update invoice
     const inv = await tx.invoice.update({
       where: { id },
       data: {
         clientId: data.clientId,
         subtotal,
+        discountTotal,
         taxRate,
         taxAmount,
         total,
@@ -216,15 +298,16 @@ export async function updateInvoice(
       },
     })
 
-    // Create new items
     await tx.invoiceItem.createMany({
       data: data.items.map((item) => ({
         invoiceId: id,
         sampleId: item.sampleId || null,
+        reportId: item.reportId || null,
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
-        total: item.quantity * item.unitPrice,
+        discount: item.discount || 0,
+        total: (item.quantity * item.unitPrice) - (item.discount || 0),
       })),
     })
 
@@ -286,7 +369,6 @@ export async function deleteInvoice(id: string) {
   const invoice = await db.invoice.findFirst({ where: { id, labId } })
   if (!invoice) throw new Error("Invoice not found")
 
-  // Soft delete - any status can be deleted
   await db.invoice.update({
     where: { id },
     data: { deletedAt: new Date(), deletedById: user.id },
@@ -333,6 +415,7 @@ export async function convertProformaToTax(proformaId: string) {
         invoiceType: "tax",
         clientId: proforma.clientId,
         subtotal: proforma.subtotal,
+        discountTotal: proforma.discountTotal,
         taxRate: proforma.taxRate,
         taxAmount: proforma.taxAmount,
         total: proforma.total,
@@ -348,9 +431,11 @@ export async function convertProformaToTax(proformaId: string) {
       data: proforma.items.map((item) => ({
         invoiceId: inv.id,
         sampleId: item.sampleId || null,
+        reportId: item.reportId || null,
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        discount: item.discount,
         total: item.total,
       })),
     })
@@ -395,7 +480,6 @@ export async function consolidateProformas(proformaIds: string[]) {
     throw new Error("Some proforma invoices were not found")
   }
 
-  // Verify all are proformas and same client
   const clientIds = new Set(proformas.map((p) => p.clientId))
   if (clientIds.size > 1) {
     throw new Error("All proforma invoices must be from the same client")
@@ -410,12 +494,13 @@ export async function consolidateProformas(proformaIds: string[]) {
     }
   }
 
-  // Combine all items
   const allItems = proformas.flatMap((p) => p.items)
   const taxRate = proformas[0].taxRate
-  const subtotal = allItems.reduce((sum, item) => sum + item.total, 0)
-  const taxAmount = subtotal * taxRate / 100
-  const total = subtotal + taxAmount
+  const subtotal = allItems.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0)
+  const discountTotal = allItems.reduce((sum, item) => sum + item.discount, 0)
+  const afterDiscount = subtotal - discountTotal
+  const taxAmount = afterDiscount * taxRate / 100
+  const total = afterDiscount + taxAmount
 
   const { formatted: invoiceNumber } = await generateNextNumber(labId, "invoice", "INV")
 
@@ -426,6 +511,7 @@ export async function consolidateProformas(proformaIds: string[]) {
         invoiceType: "tax",
         clientId: proformas[0].clientId,
         subtotal,
+        discountTotal,
         taxRate,
         taxAmount,
         total,
@@ -440,14 +526,15 @@ export async function consolidateProformas(proformaIds: string[]) {
       data: allItems.map((item) => ({
         invoiceId: inv.id,
         sampleId: item.sampleId || null,
+        reportId: item.reportId || null,
         description: item.description,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
+        discount: item.discount,
         total: item.total,
       })),
     })
 
-    // Mark all source proformas as consolidated
     await tx.invoice.updateMany({
       where: { id: { in: proformaIds } },
       data: { status: "consolidated" },
