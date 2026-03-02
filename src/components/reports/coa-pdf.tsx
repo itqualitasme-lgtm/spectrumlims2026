@@ -701,19 +701,28 @@ export function COAPDF({
           <View style={styles.infoRow}>
             <Text style={styles.infoLabel}>Client</Text>
             <Text style={styles.infoSep}>:</Text>
-            <Text style={[styles.infoValue, { fontFamily: "Helvetica-Bold" }]}>
-              {customer.company || customer.name}{customer.address ? `, ${customer.address}` : ""}
-            </Text>
+            <View style={{ flex: 1, paddingVertical: 2, paddingRight: 4 }}>
+              <Text style={{ fontSize: 8, color: BLACK, fontFamily: "Helvetica-Bold" }}>
+                {customer.company || customer.name}
+              </Text>
+              {customer.address && (
+                <Text style={{ fontSize: 7, color: BLACK }}>{customer.address}</Text>
+              )}
+            </View>
           </View>
 
-          {/* Sample Description */}
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLabel}>Sample Description</Text>
-            <Text style={styles.infoSep}>:</Text>
-            <Text style={styles.infoValue}>
-              {sample.description || sampleTypeName}
-              {sample.samplePoint ? ` | ${sample.samplePoint}` : ""}
-            </Text>
+          {/* Sample Description & Sample Point */}
+          <View style={styles.infoGrid}>
+            <View style={styles.infoGridLeft}>
+              <Text style={styles.infoGridLabel}>Sample Description</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>{sample.description || sampleTypeName || "N/P"}</Text>
+            </View>
+            <View style={styles.infoGridRight}>
+              <Text style={styles.infoGridLabel}>Sample Point</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>{sample.samplePoint || "N/P"}</Text>
+            </View>
           </View>
 
           {/* Sample Delivered By & Sample Drawn By */}
