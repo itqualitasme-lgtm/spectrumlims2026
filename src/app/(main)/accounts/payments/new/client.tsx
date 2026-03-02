@@ -58,6 +58,16 @@ export function NewPaymentClient({ invoices }: { invoices: UnpaidInvoice[] }) {
   const [notes, setNotes] = useState("")
   const [saving, setSaving] = useState(false)
 
+  // Cheque fields
+  const [chequeNumber, setChequeNumber] = useState("")
+  const [chequeDate, setChequeDate] = useState("")
+  const [chequeBankName, setChequeBankName] = useState("")
+
+  // Bank transfer fields
+  const [bankName, setBankName] = useState("")
+  const [bankAccountNumber, setBankAccountNumber] = useState("")
+  const [transactionId, setTransactionId] = useState("")
+
   const selectedInvoice = invoices.find((inv) => inv.id === invoiceId)
 
   const invoiceOptions = invoices.map((inv) => ({
@@ -90,6 +100,11 @@ export function NewPaymentClient({ invoices }: { invoices: UnpaidInvoice[] }) {
         amount: parseFloat(amount),
         paymentMethod,
         referenceNumber: referenceNumber || undefined,
+        chequeNumber: paymentMethod === "cheque" ? chequeNumber || undefined : undefined,
+        chequeDate: paymentMethod === "cheque" && chequeDate ? chequeDate : undefined,
+        bankName: paymentMethod === "cheque" ? chequeBankName || undefined : paymentMethod === "bank_transfer" ? bankName || undefined : undefined,
+        bankAccountNumber: paymentMethod === "bank_transfer" ? bankAccountNumber || undefined : undefined,
+        transactionId: paymentMethod === "bank_transfer" ? transactionId || undefined : undefined,
         notes: notes || undefined,
         paymentDate,
       })
@@ -151,7 +166,7 @@ export function NewPaymentClient({ invoices }: { invoices: UnpaidInvoice[] }) {
             </div>
           )}
 
-          {/* Payment Fields */}
+          {/* Core Payment Fields */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="grid gap-1.5">
               <Label>Amount (AED) *</Label>
@@ -188,13 +203,14 @@ export function NewPaymentClient({ invoices }: { invoices: UnpaidInvoice[] }) {
             </div>
           </div>
 
+          {/* Receipt Book Reference */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="grid gap-1.5">
-              <Label>Reference / Cheque Number</Label>
+              <Label>Receipt Book Reference No.</Label>
               <Input
                 value={referenceNumber}
                 onChange={(e) => setReferenceNumber(e.target.value)}
-                placeholder="e.g. CHQ-12345 or TXN-67890"
+                placeholder="Manual receipt book number (optional)"
               />
             </div>
             <div className="grid gap-1.5">
@@ -207,6 +223,72 @@ export function NewPaymentClient({ invoices }: { invoices: UnpaidInvoice[] }) {
               />
             </div>
           </div>
+
+          {/* Cheque Details */}
+          {paymentMethod === "cheque" && (
+            <div className="rounded-lg border p-4 space-y-4">
+              <h4 className="text-sm font-medium">Cheque Details</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid gap-1.5">
+                  <Label>Cheque Number</Label>
+                  <Input
+                    value={chequeNumber}
+                    onChange={(e) => setChequeNumber(e.target.value)}
+                    placeholder="e.g. 000456"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Cheque Date</Label>
+                  <Input
+                    type="date"
+                    value={chequeDate}
+                    onChange={(e) => setChequeDate(e.target.value)}
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Bank Name</Label>
+                  <Input
+                    value={chequeBankName}
+                    onChange={(e) => setChequeBankName(e.target.value)}
+                    placeholder="e.g. Emirates NBD"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Bank Transfer Details */}
+          {paymentMethod === "bank_transfer" && (
+            <div className="rounded-lg border p-4 space-y-4">
+              <h4 className="text-sm font-medium">Bank Transfer Details</h4>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="grid gap-1.5">
+                  <Label>Bank Name</Label>
+                  <Input
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    placeholder="e.g. Emirates NBD"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Account Number</Label>
+                  <Input
+                    value={bankAccountNumber}
+                    onChange={(e) => setBankAccountNumber(e.target.value)}
+                    placeholder="e.g. 1234567890"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label>Transaction ID</Label>
+                  <Input
+                    value={transactionId}
+                    onChange={(e) => setTransactionId(e.target.value)}
+                    placeholder="e.g. TXN-2026-001"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t">

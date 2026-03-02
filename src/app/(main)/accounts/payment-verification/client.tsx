@@ -4,18 +4,20 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
+  CheckCircle,
+  XCircle,
   Eye,
   FileText,
-  Trash2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 
 import { PageHeader } from "@/components/shared/page-header"
 import { DataTable } from "@/components/shared/data-table"
-import { ConfirmDialog } from "@/components/shared/confirm-dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Card,
   CardContent,
@@ -31,7 +33,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-import { deletePayment, getPayment } from "@/actions/payments"
+import { verifyPayment, rejectPayment, getPayment } from "@/actions/payments"
 
 type Payment = {
   id: string
@@ -46,8 +48,6 @@ type Payment = {
   notes: string | null
   paymentDate: string
   verificationStatus: string
-  verifiedAt: string | null
-  verificationNotes: string | null
   createdAt: string
   invoice: {
     invoiceNumber: string
@@ -61,7 +61,6 @@ type Payment = {
     }
   }
   createdBy: { name: string }
-  verifiedBy: { name: string } | null
 }
 
 type PaymentDetail = Payment & {
@@ -114,26 +113,15 @@ const methodBadge = (method: string) => {
   }
 }
 
-const verificationBadge = (status: string) => {
-  switch (status) {
-    case "verified":
-      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Verified</Badge>
-    case "rejected":
-      return <Badge className="bg-red-100 text-red-800 hover:bg-red-100">Rejected</Badge>
-    case "pending":
-    default:
-      return <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">Pending</Badge>
-  }
-}
-
-export function PaymentsClient({ payments }: { payments: Payment[] }) {
+export function PaymentVerificationClient({ payments }: { payments: Payment[] }) {
   const router = useRouter()
 
   const [detailOpen, setDetailOpen] = useState(false)
-  const [deleteOpen, setDeleteOpen] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [rejectOpen, setRejectOpen] = useState(false)
+  const [rejectReason, setRejectReason] = useState("")
   const [selectedPayment, setSelectedPayment] = useState<Payment | null>(null)
   const [paymentDetail, setPaymentDetail] = useState<PaymentDetail | null>(null)
+  const [loading, setLoading] = useState(false)
 
   const handleViewDetail = async (payment: Payment) => {
     try {
@@ -149,16 +137,36 @@ export function PaymentsClient({ payments }: { payments: Payment[] }) {
     }
   }
 
-  const handleDelete = async () => {
-    if (!selectedPayment) return
-    setLoading(true)
+  const handleVerify = async (payment: Payment) => {
     try {
-      await deletePayment(selectedPayment.id)
-      toast.success(`Payment ${selectedPayment.receiptNumber} deleted`)
-      setDeleteOpen(false)
+      await verifyPayment(payment.id)
+      toast.success(`Payment ${payment.receiptNumber} verified`)
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete payment")
+      toast.error(error.message || "Failed to verify payment")
+    }
+  }
+
+  const handleOpenReject = (payment: Payment) => {
+    setSelectedPayment(payment)
+    setRejectReason("")
+    setRejectOpen(true)
+  }
+
+  const handleReject = async () => {
+    if (!selectedPayment) return
+    if (!rejectReason.trim()) {
+      toast.error("Please provide a reason for rejection")
+      return
+    }
+    setLoading(true)
+    try {
+      await rejectPayment(selectedPayment.id, rejectReason)
+      toast.success(`Payment ${selectedPayment.receiptNumber} rejected`)
+      setRejectOpen(false)
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reject payment")
     } finally {
       setLoading(false)
     }
@@ -196,14 +204,12 @@ export function PaymentsClient({ payments }: { payments: Payment[] }) {
       cell: ({ row }) => methodBadge(row.original.paymentMethod),
     },
     {
-      accessorKey: "referenceNumber",
+      id: "reference",
       header: "Reference",
-      cell: ({ row }) => row.original.referenceNumber || row.original.chequeNumber || row.original.transactionId || "-",
-    },
-    {
-      id: "verification",
-      header: "Verification",
-      cell: ({ row }) => verificationBadge(row.original.verificationStatus),
+      cell: ({ row }) => {
+        const p = row.original
+        return p.referenceNumber || p.chequeNumber || p.transactionId || "-"
+      },
     },
     {
       accessorKey: "paymentDate",
@@ -213,7 +219,7 @@ export function PaymentsClient({ payments }: { payments: Payment[] }) {
     },
     {
       accessorKey: "createdBy.name",
-      header: "Received By",
+      header: "Recorded By",
     },
     {
       id: "actions",
@@ -242,11 +248,19 @@ export function PaymentsClient({ payments }: { payments: Payment[] }) {
               </Tooltip>
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => { setSelectedPayment(payment); setDeleteOpen(true) }}>
-                    <Trash2 className="h-4 w-4" />
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-green-600 hover:text-green-700" onClick={() => handleVerify(payment)}>
+                    <CheckCircle className="h-4 w-4" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>Delete</TooltipContent>
+                <TooltipContent>Verify Payment</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleOpenReject(payment)}>
+                    <XCircle className="h-4 w-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Reject Payment</TooltipContent>
               </Tooltip>
             </div>
           </TooltipProvider>
@@ -258,25 +272,31 @@ export function PaymentsClient({ payments }: { payments: Payment[] }) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Payments Received"
-        description="Record and manage payment receipts"
-        actionLabel="Record Payment"
-        actionHref="/accounts/payments/new"
+        title="Payment Verification"
+        description="Verify and audit payment records collected by receptionists"
       />
 
-      <DataTable
-        columns={columns}
-        data={payments}
-        searchPlaceholder="Search payments..."
-        searchKey="receiptNumber"
-      />
+      {payments.length === 0 ? (
+        <Card>
+          <CardContent className="py-12 text-center text-muted-foreground">
+            No pending payments to verify. All payments have been processed.
+          </CardContent>
+        </Card>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={payments}
+          searchPlaceholder="Search payments..."
+          searchKey="receiptNumber"
+        />
+      )}
 
       {/* View Details Dialog */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Payment Receipt {paymentDetail?.receiptNumber}</DialogTitle>
-            <DialogDescription>Payment details</DialogDescription>
+            <DialogTitle>Payment {paymentDetail?.receiptNumber}</DialogTitle>
+            <DialogDescription>Review payment details before verification</DialogDescription>
           </DialogHeader>
           {paymentDetail && (
             <div className="space-y-4 py-4">
@@ -287,10 +307,6 @@ export function PaymentsClient({ payments }: { payments: Payment[] }) {
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Receipt #</span>
-                      <span className="font-medium">{paymentDetail.receiptNumber}</span>
-                    </div>
-                    <div className="flex justify-between">
                       <span className="text-muted-foreground">Amount</span>
                       <span className="font-semibold">{formatCurrency(paymentDetail.amount)}</span>
                     </div>
@@ -300,7 +316,7 @@ export function PaymentsClient({ payments }: { payments: Payment[] }) {
                     </div>
                     {paymentDetail.referenceNumber && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Reference</span>
+                        <span className="text-muted-foreground">Ref. No.</span>
                         <span>{paymentDetail.referenceNumber}</span>
                       </div>
                     )}
@@ -318,7 +334,7 @@ export function PaymentsClient({ payments }: { payments: Payment[] }) {
                     )}
                     {paymentDetail.transactionId && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Transaction ID</span>
+                        <span className="text-muted-foreground">Txn ID</span>
                         <span>{paymentDetail.transactionId}</span>
                       </div>
                     )}
@@ -327,25 +343,9 @@ export function PaymentsClient({ payments }: { payments: Payment[] }) {
                       <span>{format(new Date(paymentDetail.paymentDate), "dd MMM yyyy")}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Received By</span>
+                      <span className="text-muted-foreground">Recorded By</span>
                       <span>{paymentDetail.createdBy.name}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Verification</span>
-                      {verificationBadge(paymentDetail.verificationStatus)}
-                    </div>
-                    {paymentDetail.verifiedBy && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Verified By</span>
-                        <span>{paymentDetail.verifiedBy.name}</span>
-                      </div>
-                    )}
-                    {paymentDetail.verificationNotes && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Verification Note</span>
-                        <span className="text-right max-w-[200px]">{paymentDetail.verificationNotes}</span>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
                 <Card>
@@ -365,12 +365,6 @@ export function PaymentsClient({ payments }: { payments: Payment[] }) {
                       <span className="text-muted-foreground">Invoice Total</span>
                       <span>{formatCurrency(paymentDetail.invoice.total)}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Status</span>
-                      <Badge className={paymentDetail.invoice.status === "paid" ? "bg-green-100 text-green-800 hover:bg-green-100" : "bg-yellow-100 text-yellow-800 hover:bg-yellow-100"}>
-                        {paymentDetail.invoice.status === "paid" ? "Paid" : "Partial"}
-                      </Badge>
-                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -387,28 +381,52 @@ export function PaymentsClient({ payments }: { payments: Payment[] }) {
               )}
             </div>
           )}
-          <DialogFooter>
+          <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDetailOpen(false)}>Close</Button>
             {paymentDetail && (
-              <Button onClick={() => window.open(`/api/payments/${paymentDetail.id}/print`, "_blank")}>
-                <FileText className="mr-2 h-4 w-4" />
-                Print Receipt
-              </Button>
+              <>
+                <Button variant="destructive" onClick={() => { setDetailOpen(false); handleOpenReject(paymentDetail as any) }}>
+                  <XCircle className="mr-2 h-4 w-4" />
+                  Reject
+                </Button>
+                <Button className="bg-green-600 hover:bg-green-700" onClick={() => { handleVerify(paymentDetail as any); setDetailOpen(false) }}>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Verify
+                </Button>
+              </>
             )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <ConfirmDialog
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title="Delete Payment"
-        description={`Are you sure you want to delete payment ${selectedPayment?.receiptNumber}? This will revert the invoice payment status.`}
-        onConfirm={handleDelete}
-        confirmLabel="Delete"
-        destructive
-        loading={loading}
-      />
+      {/* Reject Dialog */}
+      <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>Reject Payment</DialogTitle>
+            <DialogDescription>
+              Reject payment {selectedPayment?.receiptNumber} of {selectedPayment ? formatCurrency(selectedPayment.amount) : ""}. This will revert the invoice payment status.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="grid gap-1.5">
+              <Label>Reason for Rejection *</Label>
+              <Textarea
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                placeholder="Explain why this payment is being rejected..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectOpen(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={handleReject} disabled={loading || !rejectReason.trim()}>
+              {loading ? "Rejecting..." : "Reject Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

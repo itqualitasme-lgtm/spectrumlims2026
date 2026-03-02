@@ -119,6 +119,7 @@ model User {
   regsCollected           Registration[] @relation("RegCollectedBy")
   regsRegistered          Registration[] @relation("RegRegisteredBy")
   paymentsCreated         Payment[]      @relation("PaymentCreatedBy")
+  paymentsVerified        Payment[]      @relation("PaymentVerifiedBy")
 }
 
 model PortalUser {
@@ -398,22 +399,32 @@ model Invoice {
 // ============= PAYMENTS =============
 
 model Payment {
-  id              String    @id @default(cuid())
-  receiptNumber   String    @unique
-  invoiceId       String
-  amount          Float
-  paymentMethod   String    @default("cash")
-  referenceNumber String?
-  notes           String?
-  paymentDate     DateTime  @default(now())
-  createdById     String
-  labId           String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                 String    @id @default(cuid())
+  receiptNumber      String    @unique
+  invoiceId          String
+  amount             Float
+  paymentMethod      String    @default("cash")
+  referenceNumber    String?
+  chequeNumber       String?
+  chequeDate         DateTime?
+  bankName           String?
+  bankAccountNumber  String?
+  transactionId      String?
+  notes              String?
+  paymentDate        DateTime  @default(now())
+  verificationStatus String    @default("pending")
+  verifiedById       String?
+  verifiedAt         DateTime?
+  verificationNotes  String?
+  createdById        String
+  labId              String
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  invoice   Invoice @relation(fields: [invoiceId], references: [id])
-  createdBy User    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
-  lab       Lab     @relation(fields: [labId], references: [id])
+  invoice    Invoice @relation(fields: [invoiceId], references: [id])
+  createdBy  User    @relation("PaymentCreatedBy", fields: [createdById], references: [id])
+  verifiedBy User?   @relation("PaymentVerifiedBy", fields: [verifiedById], references: [id])
+  lab        Lab     @relation(fields: [labId], references: [id])
 }
 
 model InvoiceItem {

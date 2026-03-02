@@ -24,6 +24,32 @@ export async function getPayments() {
         },
       },
       createdBy: { select: { name: true } },
+      verifiedBy: { select: { name: true } },
+    },
+    orderBy: { createdAt: "desc" },
+  })
+
+  return payments
+}
+
+export async function getPendingPayments() {
+  const session = await requirePermission("accounts", "view")
+  const user = session.user as any
+  const labId = user.labId
+
+  const payments = await db.payment.findMany({
+    where: { labId, verificationStatus: "pending" },
+    include: {
+      invoice: {
+        select: {
+          invoiceNumber: true,
+          invoiceType: true,
+          total: true,
+          status: true,
+          client: { select: { id: true, name: true, company: true } },
+        },
+      },
+      createdBy: { select: { name: true } },
     },
     orderBy: { createdAt: "desc" },
   })
@@ -46,6 +72,7 @@ export async function getPayment(id: string) {
         },
       },
       createdBy: { select: { name: true } },
+      verifiedBy: { select: { name: true } },
       lab: true,
     },
   })
@@ -72,7 +99,6 @@ export async function getUnpaidInvoices() {
     orderBy: { createdAt: "desc" },
   })
 
-  // Calculate balance for each invoice
   return invoices.map((inv) => {
     const totalPaid = inv.payments.reduce((sum, p) => sum + p.amount, 0)
     const balance = inv.total - totalPaid
@@ -93,6 +119,11 @@ export async function createPayment(data: {
   amount: number
   paymentMethod: string
   referenceNumber?: string
+  chequeNumber?: string
+  chequeDate?: string
+  bankName?: string
+  bankAccountNumber?: string
+  transactionId?: string
   notes?: string
   paymentDate?: string
 }) {
@@ -100,7 +131,6 @@ export async function createPayment(data: {
   const user = session.user as any
   const labId = user.labId
 
-  // Validate invoice
   const invoice = await db.invoice.findFirst({
     where: { id: data.invoiceId, labId, deletedAt: null },
     include: { payments: { select: { amount: true } } },
@@ -122,8 +152,14 @@ export async function createPayment(data: {
       amount: data.amount,
       paymentMethod: data.paymentMethod,
       referenceNumber: data.referenceNumber || null,
+      chequeNumber: data.chequeNumber || null,
+      chequeDate: data.chequeDate ? new Date(data.chequeDate) : null,
+      bankName: data.bankName || null,
+      bankAccountNumber: data.bankAccountNumber || null,
+      transactionId: data.transactionId || null,
       notes: data.notes || null,
       paymentDate: data.paymentDate ? new Date(data.paymentDate) : new Date(),
+      verificationStatus: "pending",
       createdById: user.id,
       labId,
     },
@@ -148,9 +184,101 @@ export async function createPayment(data: {
   )
 
   revalidatePath("/accounts/payments")
+  revalidatePath("/accounts/payment-verification")
   revalidatePath("/accounts/invoices")
 
   return payment
+}
+
+export async function verifyPayment(id: string, notes?: string) {
+  const session = await requirePermission("accounts", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const payment = await db.payment.findFirst({
+    where: { id, labId },
+    include: { invoice: { select: { invoiceNumber: true } } },
+  })
+  if (!payment) throw new Error("Payment not found")
+  if (payment.verificationStatus !== "pending") throw new Error("Payment is not pending verification")
+
+  await db.payment.update({
+    where: { id },
+    data: {
+      verificationStatus: "verified",
+      verifiedById: user.id,
+      verifiedAt: new Date(),
+      verificationNotes: notes || null,
+    },
+  })
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "accounts",
+    "edit",
+    `Verified payment ${payment.receiptNumber} of ${payment.amount.toFixed(2)} for invoice ${payment.invoice.invoiceNumber}`
+  )
+
+  revalidatePath("/accounts/payments")
+  revalidatePath("/accounts/payment-verification")
+
+  return { success: true }
+}
+
+export async function rejectPayment(id: string, reason: string) {
+  const session = await requirePermission("accounts", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const payment = await db.payment.findFirst({
+    where: { id, labId },
+    include: {
+      invoice: {
+        include: { payments: { select: { id: true, amount: true } } },
+      },
+    },
+  })
+  if (!payment) throw new Error("Payment not found")
+  if (payment.verificationStatus !== "pending") throw new Error("Payment is not pending verification")
+
+  await db.payment.update({
+    where: { id },
+    data: {
+      verificationStatus: "rejected",
+      verifiedById: user.id,
+      verifiedAt: new Date(),
+      verificationNotes: reason,
+    },
+  })
+
+  // If invoice was marked paid, revert since this payment is rejected
+  const validPaid = payment.invoice.payments
+    .filter((p) => p.id !== id)
+    .reduce((sum, p) => sum + p.amount, 0)
+
+  if (payment.invoice.status === "paid" && validPaid < payment.invoice.total - 0.01) {
+    await db.invoice.update({
+      where: { id: payment.invoiceId },
+      data: { status: "sent", paidDate: null },
+    })
+  }
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "accounts",
+    "edit",
+    `Rejected payment ${payment.receiptNumber}: ${reason}`
+  )
+
+  revalidatePath("/accounts/payments")
+  revalidatePath("/accounts/payment-verification")
+  revalidatePath("/accounts/invoices")
+
+  return { success: true }
 }
 
 export async function deletePayment(id: string) {
@@ -166,10 +294,8 @@ export async function deletePayment(id: string) {
   })
   if (!payment) throw new Error("Payment not found")
 
-  // Delete the payment
   await db.payment.delete({ where: { id } })
 
-  // Recalculate if invoice should revert from "paid" status
   const remainingPaid = payment.invoice.payments
     .filter((p) => p.id !== id)
     .reduce((sum, p) => sum + p.amount, 0)
@@ -191,6 +317,7 @@ export async function deletePayment(id: string) {
   )
 
   revalidatePath("/accounts/payments")
+  revalidatePath("/accounts/payment-verification")
   revalidatePath("/accounts/invoices")
 
   return payment

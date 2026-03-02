@@ -18,6 +18,7 @@ import {
   Menu,
   FileClock,
   CreditCard,
+  ClipboardCheck,
   type LucideIcon,
 } from "lucide-react"
 
@@ -129,6 +130,12 @@ export const menuGroups: MenuGroup[] = [
         href: "/accounts/payments",
         icon: CreditCard,
         permission: "accounts:view",
+      },
+      {
+        title: "Payment Verification",
+        href: "/accounts/payment-verification",
+        icon: ClipboardCheck,
+        permission: "accounts:edit",
       },
       {
         title: "Deleted Invoices",
