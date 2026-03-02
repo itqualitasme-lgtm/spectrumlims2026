@@ -424,3 +424,56 @@ export async function deletePrefilledRemark(id: string) {
   await db.reportRemark.delete({ where: { id } })
   return { success: true }
 }
+
+// ============= REVERT TO REGISTRATION =============
+
+export async function revertToRegistration(sampleId: string, reason: string) {
+  const session = await requirePermission("process", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const sample = await db.sample.findFirst({
+    where: { id: sampleId, labId },
+  })
+
+  if (!sample) throw new Error("Sample not found")
+
+  // Reset sample status back to registered and store the reason in notes
+  const existingNotes = sample.notes || ""
+  const revertNote = `[Reverted by ${user.name}: ${reason}]`
+  const updatedNotes = existingNotes ? `${existingNotes}\n${revertNote}` : revertNote
+
+  await db.sample.update({
+    where: { id: sampleId },
+    data: {
+      status: "registered",
+      assignedToId: null,
+      notes: updatedNotes,
+    },
+  })
+
+  // Reset all test results to pending and clear entered values
+  await db.testResult.updateMany({
+    where: { sampleId },
+    data: {
+      status: "pending",
+      resultValue: null,
+      enteredById: null,
+      enteredAt: null,
+    },
+  })
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "process",
+    "edit",
+    `Reverted sample ${sample.sampleNumber} to registration: ${reason}`
+  )
+
+  revalidatePath("/process/test-results")
+  revalidatePath("/process/registration")
+
+  return { success: true }
+}

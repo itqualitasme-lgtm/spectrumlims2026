@@ -6,7 +6,7 @@ import {
   Loader2,
   Save,
   Plus,
-  Trash2,
+  RotateCcw,
   FlaskConical,
   ChevronRight,
   ChevronDown,
@@ -46,13 +46,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Checkbox } from "@/components/ui/checkbox"
 
 import { Textarea } from "@/components/ui/textarea"
 import {
   batchUpdateTestResults,
-  addTestsToSample,
-  deleteTestResult,
+  revertToRegistration,
   getReportRemarks,
   getPrefilledRemarks,
   createPrefilledRemark,
@@ -197,18 +195,10 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
   })
   const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
 
-  // Add test dialog
-  const [addTestOpen, setAddTestOpen] = useState(false)
-  const [addTestSample, setAddTestSample] = useState<Sample | null>(null)
-  const [selectedTestIndices, setSelectedTestIndices] = useState<Set<number>>(new Set())
-  const [showCustomForm, setShowCustomForm] = useState(false)
-  const [newParam, setNewParam] = useState("")
-  const [newMethod, setNewMethod] = useState("")
-  const [newUnit, setNewUnit] = useState("")
-  const [newSpecMin, setNewSpecMin] = useState("")
-  const [newSpecMax, setNewSpecMax] = useState("")
-  const [newTat, setNewTat] = useState("")
-  const [addTestLoading, setAddTestLoading] = useState(false)
+  // Revert to registration dialog
+  const [revertOpen, setRevertOpen] = useState(false)
+  const [revertReason, setRevertReason] = useState("")
+  const [revertLoading, setRevertLoading] = useState(false)
 
   // Remarks state
   const [remarksText, setRemarksText] = useState("")
@@ -343,103 +333,24 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
     }
   }
 
-  const handleOpenAddTest = (sample: Sample) => {
-    setAddTestSample(sample)
-    setSelectedTestIndices(new Set())
-    setShowCustomForm(false)
-    setNewParam("")
-    setNewMethod("")
-    setNewUnit("")
-    setNewSpecMin("")
-    setNewSpecMax("")
-    setNewTat("")
-    setAddTestOpen(true)
-  }
-
-  // Get available tests (from template, excluding already-added ones)
-  const availableTests = useMemo(() => {
-    if (!addTestSample) return []
-    const allTests = parseDefaultTests(addTestSample.sampleType.defaultTests)
-    const existingParams = new Set(addTestSample.testResults.map((tr) => tr.parameter.toLowerCase()))
-    return allTests.filter((t) => !existingParams.has(t.parameter.toLowerCase()))
-  }, [addTestSample])
-
-  const toggleTestIndex = (idx: number) => {
-    setSelectedTestIndices((prev) => {
-      const next = new Set(prev)
-      if (next.has(idx)) next.delete(idx)
-      else next.add(idx)
-      return next
-    })
-  }
-
-  const toggleAllTests = () => {
-    if (selectedTestIndices.size === availableTests.length) {
-      setSelectedTestIndices(new Set())
-    } else {
-      setSelectedTestIndices(new Set(availableTests.map((_, i) => i)))
-    }
-  }
-
-  const handleAddTest = async () => {
-    if (!addTestSample) return
-
-    const testsToAdd: { parameter: string; testMethod?: string; unit?: string; specMin?: string; specMax?: string; tat?: number }[] = []
-
-    // Add selected template tests
-    selectedTestIndices.forEach((idx) => {
-      const t = availableTests[idx]
-      if (t) {
-        testsToAdd.push({
-          parameter: t.parameter,
-          testMethod: getTestMethod(t) || undefined,
-          unit: t.unit || undefined,
-          specMin: t.specMin || undefined,
-          specMax: t.specMax || undefined,
-          tat: t.tat || undefined,
-        })
-      }
-    })
-
-    // Add custom test if filled
-    if (showCustomForm && newParam.trim()) {
-      testsToAdd.push({
-        parameter: newParam.trim(),
-        testMethod: newMethod.trim() || undefined,
-        unit: newUnit.trim() || undefined,
-        specMin: newSpecMin.trim() || undefined,
-        specMax: newSpecMax.trim() || undefined,
-        tat: newTat ? parseInt(newTat) : undefined,
-      })
-    }
-
-    if (testsToAdd.length === 0) {
-      toast.error("Select at least one test or fill in the custom parameter")
+  const handleRevert = async () => {
+    if (!selectedSample || !revertReason.trim()) {
+      toast.error("Please provide a reason for reverting")
       return
     }
 
-    setAddTestLoading(true)
+    setRevertLoading(true)
     try {
-      await addTestsToSample(addTestSample.id, testsToAdd)
-      toast.success(`Added ${testsToAdd.length} parameter(s) to ${addTestSample.sampleNumber}`)
-      setAddTestOpen(false)
+      await revertToRegistration(selectedSample.id, revertReason.trim())
+      toast.success(`${selectedSample.sampleNumber} reverted to registration`)
+      setRevertOpen(false)
+      setRevertReason("")
+      setSelectedSampleId(null)
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Failed to add test parameter")
+      toast.error(error.message || "Failed to revert")
     } finally {
-      setAddTestLoading(false)
-    }
-  }
-
-  const handleDeleteTest = async (testResultId: string, paramName: string) => {
-    if (!confirm(`Delete pending parameter "${paramName}"?`)) return
-
-    try {
-      await deleteTestResult(testResultId)
-      toast.success(`Deleted parameter "${paramName}"`)
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to delete test parameter")
+      setRevertLoading(false)
     }
   }
 
@@ -733,11 +644,14 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => handleOpenAddTest(selectedSample)}
+                    className="h-7 text-xs text-orange-600 hover:text-orange-700"
+                    onClick={() => {
+                      setRevertReason("")
+                      setRevertOpen(true)
+                    }}
                   >
-                    <Plus className="mr-1 h-3 w-3" />
-                    Add Test
+                    <RotateCcw className="mr-1 h-3 w-3" />
+                    Revert to Registration
                   </Button>
                   <Button
                     size="sm"
@@ -808,7 +722,6 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                           <TableHead className="text-[10px] py-1.5">Max</TableHead>
                           <TableHead className="text-[10px] py-1.5">Due</TableHead>
                           <TableHead className="text-[10px] py-1.5">Status</TableHead>
-                          <TableHead className="text-[10px] py-1.5 w-[28px]"></TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -868,18 +781,6 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                   <Badge variant="secondary" className="text-[9px] px-1 py-0">Pending</Badge>
                                 ) : (
                                   <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[9px] px-1 py-0">Done</Badge>
-                                )}
-                              </TableCell>
-                              <TableCell className="py-1">
-                                {tr.status === "pending" && (
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-5 w-5 p-0 text-destructive hover:text-destructive"
-                                    onClick={() => handleDeleteTest(tr.id, tr.parameter)}
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </Button>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -975,17 +876,8 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                   <div className="flex flex-col items-center justify-center py-12 text-center">
                     <FlaskConical className="h-8 w-8 text-muted-foreground/30 mb-2" />
                     <p className="text-xs text-muted-foreground mb-3">
-                      No test parameters defined.
+                      No test parameters defined. Revert to registration to add parameters.
                     </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => handleOpenAddTest(selectedSample)}
-                    >
-                      <Plus className="mr-1 h-3 w-3" />
-                      Add Test Parameter
-                    </Button>
                   </div>
                 )}
               </div>
@@ -994,176 +886,42 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
         </div>
       </div>
 
-      {/* Add Test Dialog */}
-      <Dialog open={addTestOpen} onOpenChange={setAddTestOpen}>
-        <DialogContent className="sm:max-w-[550px]">
+      {/* Revert to Registration Dialog */}
+      <Dialog open={revertOpen} onOpenChange={setRevertOpen}>
+        <DialogContent className="sm:max-w-[450px]">
           <DialogHeader>
-            <DialogTitle>Add Test Parameters</DialogTitle>
+            <DialogTitle>Revert to Registration</DialogTitle>
             <DialogDescription>
-              Add tests to {addTestSample?.sampleNumber} ({addTestSample?.sampleType.name})
+              Send {selectedSample?.sampleNumber} back to registration. Test results will be cleared and the sample status will be reset.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3 py-2">
-            {/* Template tests checklist */}
-            {availableTests.length > 0 ? (
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Available Tests</Label>
-                  <button
-                    type="button"
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
-                    onClick={toggleAllTests}
-                  >
-                    <Checkbox checked={selectedTestIndices.size === availableTests.length && availableTests.length > 0} />
-                    <span>Select All</span>
-                  </button>
-                </div>
-                <div className="rounded-md border max-h-[250px] overflow-y-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-[32px]"></TableHead>
-                        <TableHead className="text-xs">Parameter</TableHead>
-                        <TableHead className="text-xs">Method</TableHead>
-                        <TableHead className="text-xs">Unit</TableHead>
-                        <TableHead className="text-xs">TAT</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {availableTests.map((test, idx) => (
-                        <TableRow
-                          key={idx}
-                          className="cursor-pointer"
-                          onClick={() => toggleTestIndex(idx)}
-                        >
-                          <TableCell className="py-1.5">
-                            <Checkbox checked={selectedTestIndices.has(idx)} />
-                          </TableCell>
-                          <TableCell className="text-xs font-medium py-1.5">{test.parameter}</TableCell>
-                          <TableCell className="text-xs py-1.5">{getTestMethod(test) || "-"}</TableCell>
-                          <TableCell className="text-xs py-1.5">{test.unit || "-"}</TableCell>
-                          <TableCell className="text-xs py-1.5">{test.tat ? `${test.tat}d` : "-"}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-                {selectedTestIndices.size > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {selectedTestIndices.size} test{selectedTestIndices.size !== 1 ? "s" : ""} selected
-                  </p>
-                )}
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground py-2">
-                {addTestSample?.testResults.length
-                  ? "All available tests from the template are already added."
-                  : "No template tests defined for this sample type."}
-              </p>
-            )}
-
-            {/* Custom test toggle */}
-            {!showCustomForm ? (
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 text-xs w-full"
-                onClick={() => setShowCustomForm(true)}
-              >
-                <Plus className="mr-1 h-3 w-3" />
-                Add Custom Parameter
-              </Button>
-            ) : (
-              <div className="space-y-2 border rounded-md p-3">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs font-medium">Custom Parameter</Label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-5 text-xs px-1"
-                    onClick={() => setShowCustomForm(false)}
-                  >
-                    Remove
-                  </Button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="grid gap-1">
-                    <Label className="text-[10px] text-muted-foreground">Parameter Name *</Label>
-                    <Input
-                      className="h-8 text-xs"
-                      value={newParam}
-                      onChange={(e) => setNewParam(e.target.value)}
-                      placeholder="e.g. Viscosity"
-                    />
-                  </div>
-                  <div className="grid gap-1">
-                    <Label className="text-[10px] text-muted-foreground">Test Method</Label>
-                    <Input
-                      className="h-8 text-xs"
-                      value={newMethod}
-                      onChange={(e) => setNewMethod(e.target.value)}
-                      placeholder="e.g. ASTM D445"
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-4 gap-2">
-                  <div className="grid gap-1">
-                    <Label className="text-[10px] text-muted-foreground">Unit</Label>
-                    <Input
-                      className="h-8 text-xs"
-                      value={newUnit}
-                      onChange={(e) => setNewUnit(e.target.value)}
-                      placeholder="cSt"
-                    />
-                  </div>
-                  <div className="grid gap-1">
-                    <Label className="text-[10px] text-muted-foreground">Spec Min</Label>
-                    <Input
-                      className="h-8 text-xs"
-                      value={newSpecMin}
-                      onChange={(e) => setNewSpecMin(e.target.value)}
-                      placeholder="min"
-                    />
-                  </div>
-                  <div className="grid gap-1">
-                    <Label className="text-[10px] text-muted-foreground">Spec Max</Label>
-                    <Input
-                      className="h-8 text-xs"
-                      value={newSpecMax}
-                      onChange={(e) => setNewSpecMax(e.target.value)}
-                      placeholder="max"
-                    />
-                  </div>
-                  <div className="grid gap-1">
-                    <Label className="text-[10px] text-muted-foreground">TAT (days)</Label>
-                    <Input
-                      className="h-8 text-xs"
-                      type="number"
-                      min="1"
-                      max="30"
-                      value={newTat}
-                      onChange={(e) => setNewTat(e.target.value)}
-                      placeholder="3"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Reason / Remarks *</Label>
+              <Textarea
+                value={revertReason}
+                onChange={(e) => setRevertReason(e.target.value)}
+                placeholder="e.g. Need to add extra parameters, wrong sample type selected..."
+                rows={4}
+              />
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setAddTestOpen(false)} disabled={addTestLoading}>
+            <Button variant="outline" onClick={() => setRevertOpen(false)} disabled={revertLoading}>
               Cancel
             </Button>
-            <Button onClick={handleAddTest} disabled={addTestLoading}>
-              {addTestLoading ? (
+            <Button
+              variant="destructive"
+              onClick={handleRevert}
+              disabled={revertLoading || !revertReason.trim()}
+            >
+              {revertLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
+                  Reverting...
                 </>
               ) : (
-                `Add ${selectedTestIndices.size + (showCustomForm && newParam.trim() ? 1 : 0)} Parameter${
-                  selectedTestIndices.size + (showCustomForm && newParam.trim() ? 1 : 0) !== 1 ? "s" : ""
-                }`
+                "Revert to Registration"
               )}
             </Button>
           </DialogFooter>
