@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation"
 import { type ColumnDef } from "@tanstack/react-table"
 import {
   Send,
-  CheckCircle,
-  XCircle,
   Trash2,
   Eye,
   Pencil,
   FileText,
+  ArrowRightLeft,
+  Layers,
+  XCircle,
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -44,10 +45,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   updateInvoiceStatus,
   deleteInvoice,
   getInvoice,
+  convertProformaToTax,
+  consolidateProformas,
 } from "@/actions/invoices"
 
 type Invoice = {
@@ -108,42 +112,24 @@ const formatCurrency = (amount: number) => {
   })}`
 }
 
-const statusBadge = (status: string, dueDate?: string | null) => {
-  if (status === "sent" && dueDate && new Date(dueDate) < new Date()) {
-    return (
-      <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-        Overdue
-      </Badge>
-    )
-  }
-
+const statusBadge = (status: string) => {
   switch (status) {
     case "draft":
       return <Badge variant="secondary">Draft</Badge>
     case "sent":
-      return (
-        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-          Sent
-        </Badge>
-      )
-    case "paid":
-      return (
-        <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-          Paid
-        </Badge>
-      )
+      return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Sent</Badge>
+    case "converted":
+      return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Converted</Badge>
+    case "consolidated":
+      return <Badge className="bg-purple-100 text-purple-800 hover:bg-purple-100">Consolidated</Badge>
     case "cancelled":
-      return (
-        <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">
-          Cancelled
-        </Badge>
-      )
+      return <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-100">Cancelled</Badge>
     default:
       return <Badge variant="secondary">{status}</Badge>
   }
 }
 
-export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
+export function ProformaClient({ invoices }: { invoices: Invoice[] }) {
   const router = useRouter()
 
   const [detailOpen, setDetailOpen] = useState(false)
@@ -152,27 +138,86 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
   const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null)
   const [invoiceDetail, setInvoiceDetail] = useState<InvoiceDetail | null>(null)
 
+  // Selection for consolidation
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
   const handleViewDetail = async (invoice: Invoice) => {
     try {
       const detail = await getInvoice(invoice.id)
       if (!detail) {
-        toast.error("Invoice not found")
+        toast.error("Proforma not found")
         return
       }
       setInvoiceDetail(JSON.parse(JSON.stringify(detail)))
       setDetailOpen(true)
     } catch {
-      toast.error("Failed to load invoice details")
+      toast.error("Failed to load proforma details")
     }
   }
 
   const handleStatusChange = async (invoice: Invoice, status: string) => {
     try {
       await updateInvoiceStatus(invoice.id, status)
-      toast.success(`Invoice ${invoice.invoiceNumber} marked as ${status}`)
+      toast.success(`Proforma ${invoice.invoiceNumber} marked as ${status}`)
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Failed to update invoice status")
+      toast.error(error.message || "Failed to update status")
+    }
+  }
+
+  const handleConvertToTax = async (invoice: Invoice) => {
+    try {
+      const taxInvoice = await convertProformaToTax(invoice.id)
+      toast.success(`Converted to tax invoice ${taxInvoice.invoiceNumber}`)
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to convert proforma")
+    }
+  }
+
+  const handleConsolidate = async () => {
+    const ids = Array.from(selectedIds)
+    if (ids.length < 2) {
+      toast.error("Select at least 2 proformas to consolidate")
+      return
+    }
+
+    // Validate same client
+    const selectedInvoices = invoices.filter((inv) => ids.includes(inv.id))
+    const clientIds = new Set(selectedInvoices.map((inv) => inv.clientId))
+    if (clientIds.size > 1) {
+      toast.error("All selected proformas must be from the same client")
+      return
+    }
+
+    try {
+      const taxInvoice = await consolidateProformas(ids)
+      toast.success(`Consolidated ${ids.length} proformas into tax invoice ${taxInvoice.invoiceNumber}`)
+      setSelectedIds(new Set())
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to consolidate proformas")
+    }
+  }
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const handleSelectAll = () => {
+    const selectableIds = invoices
+      .filter((inv) => inv.status !== "converted" && inv.status !== "consolidated" && inv.status !== "cancelled")
+      .map((inv) => inv.id)
+
+    if (selectedIds.size === selectableIds.length) {
+      setSelectedIds(new Set())
+    } else {
+      setSelectedIds(new Set(selectableIds))
     }
   }
 
@@ -181,20 +226,47 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
     setLoading(true)
     try {
       await deleteInvoice(selectedInvoice.id)
-      toast.success(`Invoice ${selectedInvoice.invoiceNumber} deleted`)
+      toast.success(`Proforma ${selectedInvoice.invoiceNumber} deleted`)
       setDeleteOpen(false)
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Failed to delete invoice")
+      toast.error(error.message || "Failed to delete proforma")
     } finally {
       setLoading(false)
     }
   }
 
+  const isSelectable = (invoice: Invoice) =>
+    invoice.status !== "converted" && invoice.status !== "consolidated" && invoice.status !== "cancelled"
+
   const columns: ColumnDef<Invoice, any>[] = [
     {
+      id: "select",
+      header: () => {
+        const selectableCount = invoices.filter(isSelectable).length
+        if (selectableCount === 0) return null
+        return (
+          <Checkbox
+            checked={selectedIds.size === selectableCount && selectableCount > 0}
+            onCheckedChange={handleSelectAll}
+          />
+        )
+      },
+      enableSorting: false,
+      cell: ({ row }) => {
+        const invoice = row.original
+        if (!isSelectable(invoice)) return null
+        return (
+          <Checkbox
+            checked={selectedIds.has(invoice.id)}
+            onCheckedChange={() => toggleSelect(invoice.id)}
+          />
+        )
+      },
+    },
+    {
       accessorKey: "invoiceNumber",
-      header: "Invoice #",
+      header: "Proforma #",
       cell: ({ row }) => (
         <span className="font-medium">{row.original.invoiceNumber}</span>
       ),
@@ -216,11 +288,6 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       cell: ({ row }) => formatCurrency(row.original.subtotal),
     },
     {
-      accessorKey: "taxAmount",
-      header: "Tax",
-      cell: ({ row }) => formatCurrency(row.original.taxAmount),
-    },
-    {
       accessorKey: "total",
       header: "Total",
       cell: ({ row }) => (
@@ -232,15 +299,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => statusBadge(row.original.status, row.original.dueDate),
-    },
-    {
-      accessorKey: "dueDate",
-      header: "Due Date",
-      cell: ({ row }) =>
-        row.original.dueDate
-          ? format(new Date(row.original.dueDate), "dd MMM yyyy")
-          : "-",
+      cell: ({ row }) => statusBadge(row.original.status),
     },
     {
       accessorKey: "createdBy.name",
@@ -258,6 +317,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       enableSorting: false,
       cell: ({ row }) => {
         const invoice = row.original
+        const isActive = isSelectable(invoice)
         return (
           <TooltipProvider delayDuration={300}>
             <div className="flex items-center gap-1">
@@ -297,14 +357,14 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                   </Tooltip>
                 </>
               )}
-              {invoice.status === "sent" && (
+              {isActive && (
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleStatusChange(invoice, "paid")}>
-                      <CheckCircle className="h-4 w-4" />
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-green-600 hover:text-green-700" onClick={() => handleConvertToTax(invoice)}>
+                      <ArrowRightLeft className="h-4 w-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Mark as Paid</TooltipContent>
+                  <TooltipContent>Convert to Tax Invoice</TooltipContent>
                 </Tooltip>
               )}
               {(invoice.status === "draft" || invoice.status === "sent") && (
@@ -317,14 +377,16 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                   <TooltipContent>Cancel</TooltipContent>
                 </Tooltip>
               )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => { setSelectedInvoice(invoice); setDeleteOpen(true) }}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Delete</TooltipContent>
-              </Tooltip>
+              {isActive && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => { setSelectedInvoice(invoice); setDeleteOpen(true) }}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete</TooltipContent>
+                </Tooltip>
+              )}
             </div>
           </TooltipProvider>
         )
@@ -335,16 +397,29 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
   return (
     <div className="space-y-6">
       <PageHeader
-        title="Tax Invoices"
-        description="Manage tax invoices for lab services"
-        actionLabel="Create Invoice"
-        actionHref="/accounts/invoices/new?type=tax"
+        title="Proforma Invoices"
+        description="Create proforma invoices and consolidate them into tax invoices"
+        actionLabel="Create Proforma"
+        actionHref="/accounts/invoices/new?type=proforma"
       />
+
+      {selectedIds.size > 0 && (
+        <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+          <span className="text-sm font-medium">{selectedIds.size} proforma(s) selected</span>
+          <Button size="sm" onClick={handleConsolidate} disabled={selectedIds.size < 2}>
+            <Layers className="mr-2 h-4 w-4" />
+            Consolidate to Tax Invoice
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setSelectedIds(new Set())}>
+            Clear Selection
+          </Button>
+        </div>
+      )}
 
       <DataTable
         columns={columns}
         data={invoices}
-        searchPlaceholder="Search invoices..."
+        searchPlaceholder="Search proforma invoices..."
         searchKey="invoiceNumber"
       />
 
@@ -352,15 +427,15 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
         <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Invoice {invoiceDetail?.invoiceNumber}</DialogTitle>
-            <DialogDescription>Invoice details and line items</DialogDescription>
+            <DialogTitle>Proforma {invoiceDetail?.invoiceNumber}</DialogTitle>
+            <DialogDescription>Proforma invoice details and line items</DialogDescription>
           </DialogHeader>
           {invoiceDetail && (
             <div className="space-y-6 py-4">
               <div className="grid grid-cols-2 gap-6">
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Invoice Details</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Proforma Details</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     <div className="flex justify-between">
@@ -369,24 +444,12 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Status</span>
-                      {statusBadge(invoiceDetail.status, invoiceDetail.dueDate)}
+                      {statusBadge(invoiceDetail.status)}
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Date</span>
                       <span>{format(new Date(invoiceDetail.createdAt), "dd MMM yyyy")}</span>
                     </div>
-                    {invoiceDetail.dueDate && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Due Date</span>
-                        <span>{format(new Date(invoiceDetail.dueDate), "dd MMM yyyy")}</span>
-                      </div>
-                    )}
-                    {invoiceDetail.paidDate && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Paid Date</span>
-                        <span>{format(new Date(invoiceDetail.paidDate), "dd MMM yyyy")}</span>
-                      </div>
-                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Created By</span>
                       <span>{invoiceDetail.createdBy.name}</span>
@@ -395,7 +458,7 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
                 </Card>
                 <Card>
                   <CardHeader className="pb-3">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Bill To</CardTitle>
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Client</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     <p className="font-medium">{invoiceDetail.client.company || invoiceDetail.client.name}</p>
@@ -497,8 +560,8 @@ export function InvoicesClient({ invoices }: { invoices: Invoice[] }) {
       <ConfirmDialog
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
-        title="Delete Invoice"
-        description={`Are you sure you want to delete invoice ${selectedInvoice?.invoiceNumber}? This action cannot be undone.`}
+        title="Delete Proforma"
+        description={`Are you sure you want to delete proforma ${selectedInvoice?.invoiceNumber}? This action cannot be undone.`}
         onConfirm={handleDelete}
         confirmLabel="Delete"
         destructive

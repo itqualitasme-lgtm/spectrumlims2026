@@ -21,7 +21,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { SearchableSelect } from "@/components/shared/searchable-select"
 
 import { createInvoice, getReportsForInvoice } from "@/actions/invoices"
@@ -114,10 +113,11 @@ function formatCurrency(amount: number): string {
 
 // ============= COMPONENT =============
 
-export function NewInvoiceClient({ customers }: { customers: CustomerOption[] }) {
+export function NewInvoiceClient({ customers, invoiceType }: { customers: CustomerOption[]; invoiceType: string }) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
-  const [invoiceType, setInvoiceType] = useState("tax")
+  const isProforma = invoiceType === "proforma"
+  const backHref = isProforma ? "/accounts/proforma" : "/accounts/invoices"
 
   // Client selection
   const [clientId, setClientId] = useState("")
@@ -263,8 +263,8 @@ export function NewInvoiceClient({ customers }: { customers: CustomerOption[] })
         notes: notes.trim() || undefined,
         taxRate,
       })
-      toast.success(`${invoiceType === "proforma" ? "Proforma" : "Tax"} invoice created`)
-      router.push("/accounts/invoices")
+      toast.success(`${isProforma ? "Proforma" : "Tax"} invoice created`)
+      router.push(backHref)
     } catch (error: any) {
       toast.error(error.message || "Failed to create invoice")
     } finally {
@@ -278,26 +278,23 @@ export function NewInvoiceClient({ customers }: { customers: CustomerOption[] })
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Link href="/accounts/invoices">
+        <Link href={backHref}>
           <Button variant="ghost" size="sm">
             <ArrowLeft className="mr-1 h-4 w-4" />
             Back
           </Button>
         </Link>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Create Invoice</h1>
-          <p className="text-sm text-muted-foreground">Create a new tax invoice or proforma</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Create {isProforma ? "Proforma Invoice" : "Tax Invoice"}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isProforma ? "Create a new proforma invoice" : "Create a new tax invoice"}
+          </p>
         </div>
       </div>
 
-      {/* Invoice Type Tabs */}
-      <Tabs value={invoiceType} onValueChange={setInvoiceType}>
-        <TabsList>
-          <TabsTrigger value="tax">Tax Invoice</TabsTrigger>
-          <TabsTrigger value="proforma">Proforma Invoice</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value={invoiceType} className="space-y-4 mt-4">
+      <div className="space-y-4">
           {/* Row 1: Client & Terms */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_200px_200px_120px] gap-4 items-end">
             <div className="grid gap-1.5">
@@ -554,7 +551,7 @@ export function NewInvoiceClient({ customers }: { customers: CustomerOption[] })
 
           {/* Actions */}
           <div className="flex items-center justify-end gap-3 pt-2">
-            <Link href="/accounts/invoices">
+            <Link href={backHref}>
               <Button variant="outline">Cancel</Button>
             </Link>
             <Button onClick={handleSave} disabled={saving}>
@@ -564,12 +561,11 @@ export function NewInvoiceClient({ customers }: { customers: CustomerOption[] })
                   Creating...
                 </>
               ) : (
-                `Create ${invoiceType === "proforma" ? "Proforma" : "Tax Invoice"}`
+                `Create ${isProforma ? "Proforma" : "Tax Invoice"}`
               )}
             </Button>
           </div>
-        </TabsContent>
-      </Tabs>
+      </div>
     </div>
   )
 }

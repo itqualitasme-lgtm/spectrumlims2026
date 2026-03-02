@@ -223,6 +223,19 @@ export async function batchUpdateTestResults(
   // Get the sample for logging
   const sample = await db.sample.findUnique({ where: { id: sampleId } })
 
+  // Check for existing report (for revision reset and auto-create)
+  const existingReport = await db.report.findFirst({
+    where: { sampleId, labId, deletedAt: null },
+  })
+
+  // If report is in revision, reset to draft whenever chemist saves results
+  if (existingReport?.status === "revision") {
+    await db.report.update({
+      where: { id: existingReport.id },
+      data: { status: "draft", reviewedById: null, reviewedAt: null },
+    })
+  }
+
   if (pendingResults === 0) {
     // All tests completed - update sample status to "completed"
     await db.sample.update({
@@ -231,10 +244,6 @@ export async function batchUpdateTestResults(
     })
 
     // Auto-create a report if one doesn't already exist for this sample
-    const existingReport = await db.report.findFirst({
-      where: { sampleId, labId },
-    })
-
     if (!existingReport) {
       // Get default template
       const defaultTemplate = await db.reportTemplate.findFirst({
@@ -275,12 +284,6 @@ export async function batchUpdateTestResults(
         "create",
         `Auto-created report ${reportNumber} for completed sample ${sample?.sampleNumber || sampleId}`
       )
-    } else if (existingReport.status === "revision") {
-      // Reset revision report back to draft for re-authentication
-      await db.report.update({
-        where: { id: existingReport.id },
-        data: { status: "draft", reviewedById: null, reviewedAt: null },
-      })
     }
   } else {
     // Still has pending results - set to "testing" if it was "assigned" or "registered"

@@ -6,13 +6,18 @@ import { logAudit } from "@/lib/audit"
 import { generateNextNumber } from "@/lib/auto-number"
 import { revalidatePath } from "next/cache"
 
-export async function getInvoices() {
+export async function getInvoices(invoiceType?: string) {
   const session = await requirePermission("accounts", "view")
   const user = session.user as any
   const labId = user.labId
 
+  const where: any = { labId, deletedAt: null }
+  if (invoiceType) {
+    where.invoiceType = invoiceType
+  }
+
   const invoices = await db.invoice.findMany({
-    where: { labId, deletedAt: null },
+    where,
     include: {
       client: true,
       createdBy: { select: { name: true } },

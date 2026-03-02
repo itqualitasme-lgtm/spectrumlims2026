@@ -16,6 +16,7 @@ import {
   Trash2,
   Activity,
   Menu,
+  FileClock,
   type LucideIcon,
 } from "lucide-react"
 
@@ -114,6 +115,12 @@ export const menuGroups: MenuGroup[] = [
         title: "Contracts",
         href: "/accounts/contracts",
         icon: FileSignature,
+        permission: "accounts:view",
+      },
+      {
+        title: "Proforma Invoices",
+        href: "/accounts/proforma",
+        icon: FileClock,
         permission: "accounts:view",
       },
       {
