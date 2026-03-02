@@ -128,9 +128,10 @@ model PortalUser {
   password   String
   customerId String
   labId      String
-  isActive   Boolean   @default(true)
-  lastLogin  DateTime?
-  createdAt  DateTime  @default(now())
+  isActive          Boolean   @default(true)
+  lastLogin         DateTime?
+  passwordChangedAt DateTime?
+  createdAt         DateTime  @default(now())
 
   customer Customer @relation(fields: [customerId], references: [id])
   lab      Lab      @relation(fields: [labId], references: [id])

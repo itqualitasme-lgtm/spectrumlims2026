@@ -141,7 +141,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           try {
             const portalId = tokenId.replace("portal_", "")
             const portalUser = await db.portalUser.findUnique({ where: { id: portalId } })
-            ;(session.user as any).permissions = portalUser?.isActive ? ["portal:view"] : []
+            if (portalUser?.isActive) {
+              // Force re-login if password was changed after this session was created
+              if (portalUser.passwordChangedAt && token.issuedAt) {
+                if (portalUser.passwordChangedAt.getTime() > (token.issuedAt as number)) {
+                  ;(session.user as any).permissions = []
+                  return session
+                }
+              }
+              ;(session.user as any).permissions = ["portal:view"]
+            } else {
+              ;(session.user as any).permissions = []
+            }
           } catch {
             ;(session.user as any).permissions = token.permissions
           }

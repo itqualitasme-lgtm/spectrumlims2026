@@ -334,6 +334,7 @@ export async function updatePortalUser(
 
   if (data.password) {
     updateData.password = await hash(data.password, 12)
+    updateData.passwordChangedAt = new Date()
   }
 
   const portalUser = await db.portalUser.update({
