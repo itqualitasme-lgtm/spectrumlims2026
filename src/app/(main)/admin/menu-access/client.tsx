@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { toast } from "sonner"
 import { Save } from "lucide-react"
@@ -128,12 +127,9 @@ export function MenuAccessClient({ users }: { users: UserItem[] }) {
               </Select>
             </div>
             {selectedUser && (
-              <div className="flex items-center gap-2">
-                <Badge variant="outline">{roleName}</Badge>
-                <span className="text-sm text-muted-foreground">
-                  {visibleCount} of {permittedCount} menu items visible
-                </span>
-              </div>
+              <span className="text-sm text-muted-foreground">
+                {visibleCount} of {permittedCount} menu items visible
+              </span>
             )}
           </div>
         </CardContent>
