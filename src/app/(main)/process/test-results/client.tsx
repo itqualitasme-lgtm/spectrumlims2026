@@ -246,7 +246,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
       setPrefilledRemarksList(prefilled)
       setRemarksLoaded(sampleId)
     } catch {
-      // silently fail
+      toast.error("Failed to load remarks")
     }
   }, [remarksLoaded, prefilledRemarksList])
 

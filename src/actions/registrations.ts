@@ -65,7 +65,11 @@ export async function createRegistration(data: {
   // Generate registration number: REG-YYMMDD-NNN
   const { formatted: registrationNumber, sequenceNumber } = await generateNextNumber(labId, "registration", "REG")
 
-  const recordDate = data.collectionDate ? new Date(data.collectionDate) : new Date()
+  let recordDate = new Date()
+  if (data.collectionDate) {
+    const parsed = new Date(data.collectionDate)
+    if (!isNaN(parsed.getTime())) recordDate = parsed
+  }
   const collectedById = data.collectedById || null
 
   // Create the Registration parent
@@ -588,7 +592,11 @@ export async function createSample(data: {
   const collectedById = data.collectedById || (data.collectedByCurrentUser ? user.id : null)
 
   // Use provided date/time or default to now
-  const recordDate = data.collectionDate ? new Date(data.collectionDate) : new Date()
+  let recordDate = new Date()
+  if (data.collectionDate) {
+    const parsed = new Date(data.collectionDate)
+    if (!isNaN(parsed.getTime())) recordDate = parsed
+  }
 
   const sample = await db.sample.create({
     data: {
