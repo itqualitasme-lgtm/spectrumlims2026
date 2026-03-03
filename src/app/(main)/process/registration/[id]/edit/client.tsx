@@ -260,24 +260,30 @@ export function EditSampleClient({
 
     setLoading(true)
     try {
-      const promises: Promise<any>[] = [
-        updateSample(sample.id, {
-          clientId,
-          sampleTypeId,
-          jobType,
-          priority,
-          reference: reference || undefined,
-          description: description || undefined,
-          collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
-          collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
-          samplePoint: samplePoint || undefined,
-          quantity: quantity || undefined,
-          notes: notes || undefined,
-          collectionDate: `${collectionDate}T${collectionTime}`,
-        }),
-      ]
+      // Build a valid date string, fallback to undefined if invalid
+      const dateTimeStr = collectionDate && collectionTime
+        ? `${collectionDate}T${collectionTime}`
+        : collectionDate
+          ? `${collectionDate}T00:00`
+          : undefined
+
+      await updateSample(sample.id, {
+        clientId,
+        sampleTypeId,
+        jobType,
+        priority,
+        reference: reference || undefined,
+        description: description || undefined,
+        collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+        collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
+        samplePoint: samplePoint || undefined,
+        quantity: quantity || undefined,
+        notes: notes || undefined,
+        collectionDate: dateTimeStr,
+      })
+
       if (sample.registration?.id) {
-        promises.push(updateRegistration(sample.registration.id, {
+        await updateRegistration(sample.registration.id, {
           samplingMethod,
           drawnBy: drawnBy || undefined,
           deliveredBy: deliveredBy || undefined,
@@ -285,9 +291,9 @@ export function EditSampleClient({
           reference: reference || undefined,
           collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
           collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
-        }))
+        })
       }
-      await Promise.all(promises)
+
       toast.success(`Sample ${sample.sampleNumber} updated`)
       router.push(`/process/registration/${sample.id}`)
       router.refresh()
@@ -336,7 +342,7 @@ export function EditSampleClient({
         unit: newUnit.trim() || undefined,
         specMin: newSpecMin.trim() || undefined,
         specMax: newSpecMax.trim() || undefined,
-        tat: newTat ? parseInt(newTat) : undefined,
+        tat: newTat ? parseInt(newTat, 10) : undefined,
       })
     }
 

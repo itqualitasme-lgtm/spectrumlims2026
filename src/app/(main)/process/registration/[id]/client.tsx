@@ -189,7 +189,7 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
           <PageHeader title={`Sample ${sample.sampleNumber}`} />
           {sample.registration && (
             <p className="text-sm text-muted-foreground -mt-1">
-              Registration {sample.registration.registrationNumber} — Sample {sample.subSampleNumber} of {sample.registration.samples.length}
+              Registration {sample.registration.registrationNumber} — Sample {sample.subSampleNumber || 1} of {sample.registration.samples.length}
             </p>
           )}
         </div>

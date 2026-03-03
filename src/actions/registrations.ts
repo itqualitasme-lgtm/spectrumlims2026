@@ -703,7 +703,13 @@ export async function updateSample(
     throw new Error("Can only edit samples with pending, registered, or assigned status")
   }
 
-  const recordDate = data.collectionDate ? new Date(data.collectionDate) : undefined
+  let recordDate: Date | undefined
+  if (data.collectionDate) {
+    const parsed = new Date(data.collectionDate)
+    if (!isNaN(parsed.getTime())) {
+      recordDate = parsed
+    }
+  }
 
   const sample = await db.sample.update({
     where: { id: sampleId },
