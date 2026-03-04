@@ -345,6 +345,7 @@ export async function getRegistrations() {
       collectionLocation: reg.collectionLocation,
       assignedTo: assignedNames.length > 0 ? assignedNames.join(", ") : null,
       status: overallStatus,
+      sheetNumber: reg.sheetNumber || null,
       createdAt: reg.createdAt.toISOString(),
       samples: reg.samples.map((s) => ({
         id: s.id,

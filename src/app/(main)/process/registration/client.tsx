@@ -49,6 +49,7 @@ type RegistrationRow = {
   collectionLocation: string | null
   assignedTo: string | null
   status: string
+  sheetNumber: string | null
   createdAt: string
   samples: { id: string; sampleNumber: string; status: string }[]
 }
@@ -291,6 +292,11 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
         const order = ["registered", "assigned", "testing", "completed", "reported", "mixed"]
         return order.indexOf(rowA.original.status) - order.indexOf(rowB.original.status)
       },
+    },
+    {
+      accessorKey: "sheetNumber",
+      header: "Sheet #",
+      cell: ({ row }) => row.original.sheetNumber || "-",
     },
     {
       accessorKey: "createdAt",

@@ -200,7 +200,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
   const [statusFilter, setStatusFilter] = useState("active")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedSampleId, setSelectedSampleId] = useState<string | null>(null)
-  const [collapsedRegs, setCollapsedRegs] = useState<Set<string>>(new Set())
+  const [expandedReg, setExpandedReg] = useState<string | null>(null)
 
   // Result entry state
   const [resultValues, setResultValues] = useState<Record<string, string>>(() => {
@@ -287,12 +287,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
   }
 
   const toggleRegCollapse = (regNumber: string) => {
-    setCollapsedRegs((prev) => {
-      const next = new Set(prev)
-      if (next.has(regNumber)) next.delete(regNumber)
-      else next.add(regNumber)
-      return next
-    })
+    setExpandedReg((prev) => prev === regNumber ? null : regNumber)
   }
 
   // Filtered samples
@@ -508,7 +503,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                   }
 
                   return regGroups.map((reg) => {
-                    const isCollapsed = reg.regNumber ? collapsedRegs.has(reg.regNumber) : false
+                    const isCollapsed = reg.regNumber ? (expandedReg !== null ? expandedReg !== reg.regNumber : false) : false
                     // Check if selected sample is in this group
                     const hasSelectedSample = reg.typeGroups.some((tg) =>
                       tg.samples.some((s) => s.id === selectedSampleId)
@@ -619,14 +614,17 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                   } ${hasRevision ? "border-l-2 border-l-amber-500" : ""} ${
                                     isUrgent && !isSelected && !hasRevision ? "border-l-2 border-l-red-500" : ""
                                   }`}
-                                  onClick={() => setSelectedSampleId(sample.id)}
+                                  onClick={() => {
+                                    setSelectedSampleId(sample.id)
+                                    if (reg.regNumber) setExpandedReg(reg.regNumber)
+                                  }}
                                 >
-                                  <div className="flex items-center justify-between gap-1.5">
-                                    <div className="flex items-center gap-1.5 min-w-0">
+                                  <div className="flex items-center justify-between gap-1.5 overflow-hidden">
+                                    <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
                                       <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${statusDot}`} />
                                       <span className="font-mono text-[11px] font-semibold shrink-0">{shortNum}</span>
                                       {details && (
-                                        <span className="text-[9px] text-muted-foreground truncate">
+                                        <span className="text-[9px] text-muted-foreground truncate min-w-0">
                                           {details}
                                         </span>
                                       )}
@@ -684,7 +682,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
         </div>
 
         {/* RIGHT PANEL — Test Entry */}
-        <div className="flex-1 flex flex-col border rounded-lg overflow-hidden">
+        <div className="flex-1 flex flex-col border rounded-lg overflow-hidden min-h-0">
           {!selectedSample ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center px-8">
               <ChevronRight className="h-10 w-10 text-muted-foreground/20 mb-3" />
@@ -794,7 +792,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
               )}
 
               {/* Test results table + remarks */}
-              <div className="flex-1 overflow-auto">
+              <div className="flex-1 overflow-auto min-h-0">
                 {selectedSample.testResults.length > 0 ? (
                   <div className="p-2 space-y-3">
                     <Table>
