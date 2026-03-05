@@ -50,6 +50,7 @@ type RegistrationRow = {
   assignedTo: string | null
   status: string
   sheetNumber: string | null
+  hasApprovedEdit?: boolean
   createdAt: string
   samples: { id: string; sampleNumber: string; status: string }[]
 }
@@ -242,12 +243,19 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
       accessorKey: "registrationNumber",
       header: "Reg #",
       cell: ({ row }) => (
-        <Link
-          href={`/process/registration/${row.original.samples[0]?.id || row.original.id}`}
-          className="font-medium text-primary hover:underline font-mono text-xs"
-        >
-          {row.original.registrationNumber}
-        </Link>
+        <div className="flex items-center gap-1.5">
+          <Link
+            href={`/process/registration/${row.original.samples[0]?.id || row.original.id}`}
+            className="font-medium text-primary hover:underline font-mono text-xs"
+          >
+            {row.original.registrationNumber}
+          </Link>
+          {row.original.hasApprovedEdit && (
+            <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100 text-[10px] px-1.5 py-0">
+              Edit Approved
+            </Badge>
+          )}
+        </div>
       ),
     },
     {

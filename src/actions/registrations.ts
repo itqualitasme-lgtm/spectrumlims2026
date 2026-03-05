@@ -305,6 +305,12 @@ export async function getRegistrations() {
         include: {
           sampleType: { select: { name: true } },
           assignedTo: { select: { name: true } },
+          editRequests: {
+            where: { status: "approved" },
+            orderBy: { approvedAt: "desc" },
+            take: 1,
+            select: { id: true, status: true, approvedAt: true },
+          },
         },
         orderBy: { subSampleNumber: "asc" },
       },
@@ -347,6 +353,7 @@ export async function getRegistrations() {
       status: overallStatus,
       sheetNumber: reg.sheetNumber || null,
       createdAt: reg.createdAt.toISOString(),
+      hasApprovedEdit: reg.samples.some((s) => s.editRequests.length > 0),
       samples: reg.samples.map((s) => ({
         id: s.id,
         sampleNumber: s.sampleNumber,

@@ -148,18 +148,25 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
   // Edit request state
   const [editRequestOpen, setEditRequestOpen] = useState(false)
   const [editRequestReason, setEditRequestReason] = useState("")
-  const [pendingRequest, setPendingRequest] = useState<{ id: string; reason: string; requestedBy: { name: string }; createdAt: string } | null>(null)
+  const [editRequest, setEditRequest] = useState<{
+    id: string; status: string; reason: string;
+    requestedBy: { name: string }; approvedBy?: { name: string } | null;
+    createdAt: string; approvedAt?: string | null
+  } | null>(null)
 
   const allTestsCompleted = sample.testResults.length > 0 && sample.testResults.every((tr) => tr.status === "completed")
 
-  // Check for pending edit request on mount
+  // Check for pending/approved edit request on mount
   useEffect(() => {
-    if (allTestsCompleted) {
-      getEditRequestStatus(sample.id).then((req) => {
-        if (req) setPendingRequest({ id: req.id, reason: req.reason, requestedBy: req.requestedBy, createdAt: req.createdAt.toISOString() })
-      }).catch(() => {})
-    }
-  }, [sample.id, allTestsCompleted])
+    getEditRequestStatus(sample.id).then((req) => {
+      if (req) setEditRequest({
+        id: req.id, status: req.status, reason: req.reason,
+        requestedBy: req.requestedBy, approvedBy: req.approvedBy,
+        createdAt: req.createdAt.toISOString(),
+        approvedAt: req.approvedAt?.toISOString() || null,
+      })
+    }).catch(() => {})
+  }, [sample.id])
 
   const handleRequestEdit = async () => {
     if (!editRequestReason.trim()) {
@@ -232,17 +239,34 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
         </div>
       </div>
 
-      {/* Pending Edit Request Banner */}
-      {pendingRequest && (
+      {/* Edit Request Banner */}
+      {editRequest?.status === "pending" && (
         <div className="flex items-center gap-3 px-4 py-3 border rounded-lg bg-amber-50 dark:bg-amber-950/30 border-amber-200">
           <Clock className="h-5 w-5 text-amber-600 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Edit Request Pending</p>
             <p className="text-xs text-amber-700 dark:text-amber-500">
-              Requested by {pendingRequest.requestedBy.name}: {pendingRequest.reason}
+              Requested by {editRequest.requestedBy.name}: {editRequest.reason}
             </p>
           </div>
           <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Awaiting Approval</Badge>
+        </div>
+      )}
+      {editRequest?.status === "approved" && (
+        <div className="flex items-center gap-3 px-4 py-3 border rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border-cyan-200">
+          <ShieldCheck className="h-5 w-5 text-cyan-600 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-cyan-800 dark:text-cyan-400">Edit Approved — Ready to Edit</p>
+            <p className="text-xs text-cyan-700 dark:text-cyan-500">
+              Approved by {editRequest.approvedBy?.name || "Authenticator"} — Reason: {editRequest.reason}
+            </p>
+          </div>
+          <Button variant="outline" size="sm" className="text-cyan-700 border-cyan-300 hover:bg-cyan-100" asChild>
+            <Link href={`/process/registration/${sample.id}/edit`}>
+              <Pencil className="mr-1.5 h-3.5 w-3.5" />
+              Edit Now
+            </Link>
+          </Button>
         </div>
       )}
 
@@ -255,14 +279,14 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
               <CardDescription>Details for sample {sample.sampleNumber}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {!allTestsCompleted ? (
+              {!allTestsCompleted || editRequest?.status === "approved" ? (
                 <Button variant="outline" asChild>
                   <Link href={`/process/registration/${sample.id}/edit`}>
                     <Pencil className="mr-2 h-4 w-4" />
                     Edit
                   </Link>
                 </Button>
-              ) : !pendingRequest ? (
+              ) : !editRequest ? (
                 <Button
                   variant="outline"
                   className="text-amber-600 border-amber-200 hover:bg-amber-50"

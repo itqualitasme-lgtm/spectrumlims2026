@@ -75,14 +75,10 @@ export async function approveEditRequest(requestId: string) {
   })
 
   // Reset sample to allow editing — set status back to "registered"
-  const existingNotes = (await db.sample.findUnique({ where: { id: request.sampleId }, select: { notes: true } }))?.notes || ""
-  const editNote = `[Edit approved by ${user.name}: requested by ${request.requestedBy.name}]`
   await db.sample.update({
     where: { id: request.sampleId },
     data: {
       status: "registered",
-      notes: existingNotes ? `${existingNotes}
-${editNote}` : editNote,
     },
   })
 
@@ -201,13 +197,16 @@ export async function getEditRequestStatus(sampleId: string) {
   const labId = user.labId
 
   return db.editRequest.findFirst({
-    where: { sampleId, labId, status: "pending" },
+    where: { sampleId, labId, status: { in: ["pending", "approved"] } },
     select: {
       id: true,
       status: true,
       reason: true,
       createdAt: true,
+      approvedAt: true,
       requestedBy: { select: { name: true } },
+      approvedBy: { select: { name: true } },
     },
+    orderBy: { createdAt: "desc" },
   })
 }
