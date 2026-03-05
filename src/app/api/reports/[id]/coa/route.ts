@@ -47,6 +47,7 @@ export async function GET(
               },
             },
             assignedTo: { select: { id: true, name: true, designation: true, signatureUrl: true } },
+            registeredBy: { select: { id: true, name: true, employeeCode: true } },
             testResults: {
               include: {
                 enteredBy: { select: { id: true, name: true, employeeCode: true } },
@@ -175,6 +176,7 @@ export async function GET(
         testResults: report.sample.testResults,
       },
       testedBy: chemist ? { id: chemist.id, name: chemist.name, employeeCode: (chemist as any).employeeCode || null } : undefined,
+      registeredBy: report.sample.registeredBy ? { id: report.sample.registeredBy.id, name: report.sample.registeredBy.name, employeeCode: report.sample.registeredBy.employeeCode || null } : undefined,
       testResults: report.sample.testResults,
       lab: {
         id: report.lab.id,

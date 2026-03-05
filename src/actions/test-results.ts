@@ -178,6 +178,8 @@ export async function updateTestUnit(testResultId: string, unit: string) {
   })
 
   revalidatePath("/process/registration")
+  revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
   revalidatePath("/process/test-results")
 }
 
@@ -330,6 +332,8 @@ export async function batchUpdateTestResults(
   revalidatePath("/process/registration")
   revalidatePath("/process/reports")
   revalidatePath("/process/authentication")
+  revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
 
   return { success: true }
 }
@@ -393,6 +397,8 @@ export async function addTestsToSample(
 
   revalidatePath("/process/test-results")
   revalidatePath("/process/registration")
+  revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
   revalidatePath(`/process/registration/${sampleId}`)
 
   return { success: true }
@@ -425,6 +431,8 @@ export async function deleteTestResult(testResultId: string) {
 
   revalidatePath("/process/test-results")
   revalidatePath("/process/registration")
+  revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
   revalidatePath(`/process/registration/${testResult.sampleId}`)
 
   return { success: true }
@@ -516,17 +524,30 @@ export async function revertToRegistration(sampleId: string, reason: string) {
     },
   })
 
+  // Remove/reset any existing reports for this sample
+  const existingReports = await db.report.findMany({
+    where: { sampleId, labId, deletedAt: null },
+  })
+  for (const report of existingReports) {
+    await db.report.update({
+      where: { id: report.id },
+      data: { deletedAt: new Date(), deletedById: user.id },
+    })
+  }
+
   await logAudit(
     labId,
     user.id,
     user.name,
     "process",
     "edit",
-    `Reverted sample ${sample.sampleNumber} to registration: ${reason}`
+    `Reverted sample ${sample.sampleNumber} to registration: ${reason}${existingReports.length > 0 ? ` (${existingReports.length} report(s) removed)` : ""}`
   )
 
   revalidatePath("/process/test-results")
   revalidatePath("/process/registration")
+  revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
 
   return { success: true }
 }

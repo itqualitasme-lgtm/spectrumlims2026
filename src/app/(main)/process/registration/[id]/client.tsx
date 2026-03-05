@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/utils"
-import { ArrowLeft, Pencil, UserPlus, Loader2, Printer } from "lucide-react"
+import { ArrowLeft, Pencil, UserPlus, Loader2, Printer, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -37,6 +37,8 @@ import {
 } from "@/components/ui/dialog"
 
 import { assignSample, getChemistsForSelect } from "@/actions/registrations"
+import { revertToRegistration } from "@/actions/test-results"
+import { Input } from "@/components/ui/input"
 
 type TestResult = {
   id: string
@@ -142,6 +144,29 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
   const [assignedToId, setAssignedToId] = useState("")
   const [chemists, setChemists] = useState<{ value: string; label: string }[]>([])
   const [loading, setLoading] = useState(false)
+  const [revertOpen, setRevertOpen] = useState(false)
+  const [revertReason, setRevertReason] = useState("")
+
+  const allTestsCompleted = sample.testResults.length > 0 && sample.testResults.every((tr) => tr.status === "completed")
+
+  const handleRevert = async () => {
+    if (!revertReason.trim()) {
+      toast.error("Please provide a reason for reverting")
+      return
+    }
+    setLoading(true)
+    try {
+      await revertToRegistration(sample.id, revertReason.trim())
+      toast.success(`Sample ${sample.sampleNumber} reverted to registration`)
+      setRevertOpen(false)
+      setRevertReason("")
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to revert")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleOpenAssign = async () => {
     try {
@@ -204,14 +229,7 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
               <CardDescription>Details for sample {sample.sampleNumber}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {["pending", "registered", "assigned"].includes(sample.status) && (
-                <Button variant="outline" asChild>
-                  <Link href={`/process/registration/${sample.id}/edit`}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </Link>
-                </Button>
-              )}
+              {!allTestsCompleted ? (                <Button variant="outline" asChild>                  <Link href={`/process/registration/${sample.id}/edit`}>                    <Pencil className="mr-2 h-4 w-4" />                    Edit                  </Link>                </Button>              ) : (                <Button variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => setRevertOpen(true)}>                  <RotateCcw className="mr-2 h-4 w-4" />                  Revert to Registration                </Button>              )}
               <Button
                 variant="outline"
                 onClick={() => window.open(`/api/samples/${sample.id}/label`, "_blank")}
@@ -508,6 +526,42 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
                 </>
               ) : (
                 "Assign"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+n      {/* Revert Dialog */}
+      <Dialog open={revertOpen} onOpenChange={setRevertOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Revert to Registration</DialogTitle>
+            <DialogDescription>
+              This will clear all test results and remove any reports for {sample.sampleNumber}. The sample will be sent back for re-testing.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Reason for reverting *</Label>
+              <Input
+                value={revertReason}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRevertReason(e.target.value)}
+                placeholder="e.g. Wrong test parameters, unit correction needed..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevertOpen(false)} disabled={loading}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleRevert} disabled={loading || !revertReason.trim()}>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Reverting...
+                </>
+              ) : (
+                "Revert"
               )}
             </Button>
           </DialogFooter>

@@ -128,6 +128,7 @@ export interface COAPDFProps {
   lab: LabInfo
   customer: CustomerInfo
   testedBy?: TestedByInfo
+  registeredBy?: { id: string; name: string; employeeCode: string | null }
   template?: TemplateInfo | null
   qrCodeDataUrl?: string
   verificationCode?: string
@@ -577,6 +578,7 @@ export function COAPDF({
   lab,
   customer,
   testedBy,
+  registeredBy,
   template,
   qrCodeDataUrl,
   verificationCode,
@@ -873,7 +875,7 @@ export function COAPDF({
           <View style={styles.metaRow}>
             <Text style={styles.metaLabel}>Report prepared by</Text>
             <Text style={styles.metaSep}>:</Text>
-            <Text style={styles.metaValue}>{report.reviewedBy?.employeeCode || report.reviewedBy?.name || report.createdBy.employeeCode || report.createdBy.name}</Text>
+            <Text style={styles.metaValue}>{registeredBy?.employeeCode || registeredBy?.name || report.createdBy.employeeCode || report.createdBy.name}</Text>
           </View>
           <Text style={styles.metaNote}>
             The above test results are only applicable to the sample(s) referred above
@@ -998,6 +1000,7 @@ function COAPageContent(props: COAPDFProps) {
     testResults,
     lab,
     testedBy,
+    registeredBy,
     template,
     qrCodeDataUrl,
     verificationUrl,
@@ -1269,7 +1272,7 @@ function COAPageContent(props: COAPDFProps) {
         <View style={styles.metaRow}>
           <Text style={styles.metaLabel}>Report prepared by</Text>
           <Text style={styles.metaSep}>:</Text>
-          <Text style={styles.metaValue}>{report.reviewedBy?.employeeCode || report.reviewedBy?.name || report.createdBy.employeeCode || report.createdBy.name}</Text>
+          <Text style={styles.metaValue}>{registeredBy?.employeeCode || registeredBy?.name || report.createdBy.employeeCode || report.createdBy.name}</Text>
         </View>
         <Text style={styles.metaNote}>
           The above test results are only applicable to the sample(s) referred above
