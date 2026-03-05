@@ -779,7 +779,7 @@ export function COAPDF({
             </View>
           </View>
 
-          {/* Dates: Tested & Sample No */}
+          {/* Date Tested */}
           <View style={[styles.infoGrid, { borderBottomWidth: 0 }]}>
             <View style={styles.infoGridLeft}>
               <Text style={styles.infoGridLabel}>Date Tested</Text>
@@ -788,11 +788,7 @@ export function COAPDF({
                 {formatDateTime(report.createdAt)}
               </Text>
             </View>
-            <View style={styles.infoGridRight}>
-              <Text style={styles.infoGridLabel}>Sample No</Text>
-              <Text style={styles.infoGridSep}>:</Text>
-              <Text style={styles.infoGridValue}>{sample.sampleNumber}</Text>
-            </View>
+            <View style={styles.infoGridRight} />
           </View>
         </View>
 
@@ -1190,18 +1186,14 @@ function COAPageContent(props: COAPDFProps) {
           </View>
         </View>
 
-        {/* Date Tested & Sample No */}
+        {/* Date Tested */}
         <View style={[styles.infoGrid, { borderBottomWidth: 0 }]}>
           <View style={styles.infoGridLeft}>
             <Text style={styles.infoGridLabel}>Date Tested</Text>
             <Text style={styles.infoGridSep}>:</Text>
             <Text style={styles.infoGridValue}>{formatDateTime(report.createdAt)}</Text>
           </View>
-          <View style={styles.infoGridRight}>
-            <Text style={styles.infoGridLabel}>Sample No</Text>
-            <Text style={styles.infoGridSep}>:</Text>
-            <Text style={styles.infoGridValue}>{sample.sampleNumber}</Text>
-          </View>
+          <View style={styles.infoGridRight} />
         </View>
       </View>
 

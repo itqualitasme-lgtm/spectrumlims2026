@@ -705,11 +705,18 @@ export async function updateSample(
   const user = session.user as any
   const labId = user.labId
 
-  const existing = await db.sample.findFirst({ where: { id: sampleId, labId } })
+  const existing = await db.sample.findFirst({
+    where: { id: sampleId, labId },
+    include: {
+      testResults: { select: { status: true } },
+    },
+  })
   if (!existing) throw new Error("Sample not found")
 
-  if (!["pending", "registered", "assigned"].includes(existing.status)) {
-    throw new Error("Can only edit samples with pending, registered, or assigned status")
+  // Block edit only if ALL test results are completed
+  const allTestsCompleted = existing.testResults.length > 0 && existing.testResults.every((tr) => tr.status === "completed")
+  if (allTestsCompleted) {
+    throw new Error("Cannot edit: all test results have been entered. Revert to registration first.")
   }
 
   let recordDate: Date | undefined
