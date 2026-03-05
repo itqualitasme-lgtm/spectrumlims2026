@@ -720,14 +720,21 @@ export async function updateSample(
 
   const existing = await db.sample.findFirst({
     where: { id: sampleId, labId },
-    include: { testResults: { select: { status: true } } },
+    include: {
+      testResults: { select: { status: true } },
+      client: { select: { name: true } },
+      sampleType: { select: { name: true } },
+      collectedBy: { select: { name: true } },
+    },
   })
   if (!existing) throw new Error("Sample not found")
 
-  // Block edit only if ALL test results are completed (unless status is "edit" = approved edit request)
-  const allTestsCompleted = existing.testResults.length > 0 && existing.testResults.every((tr) => tr.status === "completed")
-  if (allTestsCompleted && existing.status !== "edit") {
-    throw new Error("Cannot edit: all test results have been entered. Request edit permission first.")
+  // If sample is in a completed/reported state but NOT in "edit" status, auto-create an edit request
+  const isProtected = ["completed", "reported"].includes(existing.status)
+  const isEditApproved = existing.status === "edit"
+
+  if (isProtected && !isEditApproved) {
+    throw new Error("Cannot edit: sample is completed/reported. Request edit permission first.")
   }
 
   let recordDate: Date | undefined
@@ -735,6 +742,84 @@ export async function updateSample(
     const parsed = new Date(data.collectionDate)
     if (!isNaN(parsed.getTime())) {
       recordDate = parsed
+    }
+  }
+
+  // Track changes if this is an approved edit (status === "edit")
+  if (isEditApproved) {
+    const changes: { field: string; oldValue: string; newValue: string }[] = []
+
+    // Compare fields and track differences
+    const comparisons: { field: string; oldVal: string | null; newVal: string | null }[] = [
+      { field: "Client", oldVal: existing.client?.name || null, newVal: null }, // resolved below
+      { field: "Sample Type", oldVal: existing.sampleType?.name || null, newVal: null }, // resolved below
+      { field: "Description", oldVal: existing.description, newVal: data.description || null },
+      { field: "Quantity", oldVal: existing.quantity, newVal: data.quantity || null },
+      { field: "Priority", oldVal: existing.priority, newVal: data.priority },
+      { field: "Job Type", oldVal: existing.jobType, newVal: data.jobType || "testing" },
+      { field: "Reference", oldVal: existing.reference, newVal: data.reference || null },
+      { field: "Collection Location", oldVal: existing.collectionLocation, newVal: data.collectionLocation || null },
+      { field: "Sample Point", oldVal: existing.samplePoint, newVal: data.samplePoint || null },
+      { field: "Notes", oldVal: existing.notes, newVal: data.notes || null },
+    ]
+
+    // Resolve client and sample type names for comparison
+    if (data.clientId !== existing.clientId) {
+      const newClient = await db.customer.findUnique({ where: { id: data.clientId }, select: { name: true } })
+      comparisons[0].newVal = newClient?.name || data.clientId
+    } else {
+      comparisons[0].newVal = existing.client?.name || null
+    }
+    if (data.sampleTypeId !== existing.sampleTypeId) {
+      const newType = await db.sampleType.findUnique({ where: { id: data.sampleTypeId }, select: { name: true } })
+      comparisons[1].newVal = newType?.name || data.sampleTypeId
+    } else {
+      comparisons[1].newVal = existing.sampleType?.name || null
+    }
+
+    // Collector name
+    if ((data.collectedById || null) !== (existing.collectedById || null)) {
+      const oldName = existing.collectedBy?.name || "-"
+      let newName = "-"
+      if (data.collectedById) {
+        const newCollector = await db.user.findUnique({ where: { id: data.collectedById }, select: { name: true } })
+        newName = newCollector?.name || data.collectedById
+      }
+      changes.push({ field: "Collected By", oldValue: oldName, newValue: newName })
+    }
+
+    // Collection date
+    if (recordDate) {
+      const oldDate = existing.collectionDate ? existing.collectionDate.toISOString().split("T")[0] : "-"
+      const newDate = recordDate.toISOString().split("T")[0]
+      if (oldDate !== newDate) {
+        changes.push({ field: "Collection Date", oldValue: oldDate, newValue: newDate })
+      }
+    }
+
+    for (const c of comparisons) {
+      const old = (c.oldVal || "").trim()
+      const nw = (c.newVal || "").trim()
+      if (old !== nw) {
+        changes.push({ field: c.field, oldValue: old || "-", newValue: nw || "-" })
+      }
+    }
+
+    // Store changes on the approved edit request
+    if (changes.length > 0) {
+      const editRequest = await db.editRequest.findFirst({
+        where: { sampleId, labId, status: "approved" },
+        orderBy: { createdAt: "desc" },
+      })
+      if (editRequest) {
+        await db.editRequest.update({
+          where: { id: editRequest.id },
+          data: {
+            changes: JSON.stringify(changes),
+            status: "changes_submitted",
+          },
+        })
+      }
     }
   }
 
@@ -759,8 +844,8 @@ export async function updateSample(
     },
   })
 
-  // If sample was in "edit" status (from approved edit request), reset to "registered"
-  if (existing.status === "edit") {
+  // If sample was in "edit" status, set to "registered" (will go through testing again)
+  if (isEditApproved) {
     await db.sample.update({
       where: { id: sampleId },
       data: { status: "registered" },
@@ -773,12 +858,13 @@ export async function updateSample(
     user.name,
     "process",
     "edit",
-    `Updated sample ${sample.sampleNumber}`
+    `Updated sample ${sample.sampleNumber}${isEditApproved ? " (approved edit)" : ""}`
   )
 
   revalidatePath("/process/registration")
   revalidatePath(`/process/registration/${sampleId}`)
   revalidatePath("/process/sample-collection")
+  revalidatePath("/process/authentication")
 
   return sample
 }

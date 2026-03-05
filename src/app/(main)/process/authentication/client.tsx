@@ -51,7 +51,7 @@ import {
   requestRevision,
   revertReportToRegistration,
 } from "@/actions/reports"
-import { approveEditRequest, rejectEditRequest } from "@/actions/edit-requests"
+import { approveEditRequest, rejectEditRequest, acknowledgeEditChanges } from "@/actions/edit-requests"
 
 type TestResultInfo = {
   id: string
@@ -106,10 +106,17 @@ type Report = {
   reviewedBy: { id: string; name: string } | null
 }
 
+type EditChange = {
+  field: string
+  oldValue: string
+  newValue: string
+}
+
 type EditRequestItem = {
   id: string
   reason: string
   status: string
+  changes: string | null
   createdAt: string
   sample: {
     id: string
@@ -302,6 +309,22 @@ export function AuthenticationClient({
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to reject edit request")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const [viewChangesRequest, setViewChangesRequest] = useState<EditRequestItem | null>(null)
+
+  const handleAcknowledgeChanges = async (requestId: string) => {
+    setLoading(true)
+    try {
+      await acknowledgeEditChanges(requestId)
+      toast.success("Changes acknowledged — sample will go through testing again")
+      setViewChangesRequest(null)
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to acknowledge changes")
     } finally {
       setLoading(false)
     }
@@ -508,8 +531,9 @@ export function AuthenticationClient({
                   <TableHead className="text-xs">Type</TableHead>
                   <TableHead className="text-xs">Requested By</TableHead>
                   <TableHead className="text-xs">Reason</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
                   <TableHead className="text-xs">Date</TableHead>
-                  <TableHead className="text-xs w-[120px]">Actions</TableHead>
+                  <TableHead className="text-xs w-[180px]">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -521,29 +545,52 @@ export function AuthenticationClient({
                     <TableCell className="text-xs">{req.sample.sampleType.name}</TableCell>
                     <TableCell className="text-xs">{req.requestedBy.name}</TableCell>
                     <TableCell className="text-xs max-w-[200px] truncate">{req.reason}</TableCell>
+                    <TableCell>
+                      {req.status === "pending" ? (
+                        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100 text-[10px]">Pending</Badge>
+                      ) : (
+                        <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100 text-[10px]">Changes Made</Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-xs">{formatDate(req.createdAt)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
-                          onClick={() => handleApproveEditRequest(req.id)}
-                          disabled={loading}
-                        >
-                          <Check className="h-3 w-3 mr-1" />
-                          Approve
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleRejectEditRequest(req.id)}
-                          disabled={loading}
-                        >
-                          <X className="h-3 w-3 mr-1" />
-                          Reject
-                        </Button>
+                        {req.status === "pending" && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+                              onClick={() => handleApproveEditRequest(req.id)}
+                              disabled={loading}
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Approve
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleRejectEditRequest(req.id)}
+                              disabled={loading}
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                        {req.status === "changes_submitted" && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs text-cyan-600 hover:text-cyan-700 hover:bg-cyan-50"
+                            onClick={() => setViewChangesRequest(req)}
+                            disabled={loading}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            View Changes
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -845,6 +892,74 @@ export function AuthenticationClient({
                 </>
               ) : (
                 "Revert to Registration"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Edit Changes Dialog */}
+      <Dialog open={!!viewChangesRequest} onOpenChange={(open) => !open && setViewChangesRequest(null)}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Edit Changes — {viewChangesRequest?.sample.sampleNumber}</DialogTitle>
+            <DialogDescription>
+              Changes made by {viewChangesRequest?.requestedBy.name}. Review and acknowledge to proceed.
+            </DialogDescription>
+          </DialogHeader>
+
+          {viewChangesRequest?.reason && (
+            <div className="text-xs p-2 rounded bg-muted">
+              <span className="font-medium">Reason:</span> {viewChangesRequest.reason}
+            </div>
+          )}
+
+          {viewChangesRequest?.changes && (() => {
+            const changes: EditChange[] = JSON.parse(viewChangesRequest.changes)
+            return changes.length > 0 ? (
+              <div className="rounded-md border max-h-[300px] overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs">Field</TableHead>
+                      <TableHead className="text-xs">Before</TableHead>
+                      <TableHead className="text-xs">After</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {changes.map((c, i) => (
+                      <TableRow key={i}>
+                        <TableCell className="text-xs font-medium">{c.field}</TableCell>
+                        <TableCell className="text-xs text-red-600 line-through">{c.oldValue}</TableCell>
+                        <TableCell className="text-xs text-green-600 font-medium">{c.newValue}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">No field changes detected.</p>
+            )
+          })()}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setViewChangesRequest(null)} disabled={loading}>
+              Close
+            </Button>
+            <Button
+              onClick={() => viewChangesRequest && handleAcknowledgeChanges(viewChangesRequest.id)}
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Acknowledging...
+                </>
+              ) : (
+                <>
+                  <Check className="mr-1 h-4 w-4" />
+                  Acknowledge Changes
+                </>
               )}
             </Button>
           </DialogFooter>

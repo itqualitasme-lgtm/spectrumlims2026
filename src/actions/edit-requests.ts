@@ -170,7 +170,7 @@ export async function getPendingEditRequests() {
   const labId = user.labId
 
   return db.editRequest.findMany({
-    where: { labId, status: "pending" },
+    where: { labId, status: { in: ["pending", "changes_submitted"] } },
     include: {
       sample: {
         select: {
@@ -187,6 +187,43 @@ export async function getPendingEditRequests() {
     },
     orderBy: { createdAt: "desc" },
   })
+}
+
+// ============= ACKNOWLEDGE EDIT CHANGES =============
+
+export async function acknowledgeEditChanges(requestId: string) {
+  const session = await requirePermission("process", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const request = await db.editRequest.findFirst({
+    where: { id: requestId, labId, status: "changes_submitted" },
+    include: {
+      sample: { select: { sampleNumber: true } },
+      requestedBy: { select: { name: true } },
+    },
+  })
+  if (!request) throw new Error("Edit request not found or not in changes_submitted status")
+
+  // Mark as completed — changes acknowledged by authenticator
+  await db.editRequest.update({
+    where: { id: requestId },
+    data: { status: "acknowledged" },
+  })
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "process",
+    "edit",
+    `Acknowledged edit changes for sample ${request.sample.sampleNumber} (edited by ${request.requestedBy.name})`
+  )
+
+  revalidatePath("/process/authentication")
+  revalidatePath("/process/registration")
+
+  return { success: true }
 }
 
 // ============= GET EDIT REQUEST STATUS FOR SAMPLE =============

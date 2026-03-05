@@ -99,26 +99,23 @@ function nextLineId(): string {
   return `line-${++lineItemCounter}`
 }
 
-function reportToLineItems(report: ReportOption): LineItem[] {
-  return report.testResults.map((tr) => {
+function reportToLineItem(report: ReportOption): LineItem {
+  const totalPrice = report.testResults.reduce((sum, tr) => {
     const defaultTest = report.defaultTests.find(
       (dt) => dt.parameter.toLowerCase() === tr.parameter.toLowerCase()
     )
-    const method = tr.testMethod || defaultTest?.method || ""
-    const description = method
-      ? `${tr.parameter} (${method})`
-      : tr.parameter
+    return sum + (defaultTest?.price || 0)
+  }, 0)
 
-    return {
-      id: nextLineId(),
-      description,
-      quantity: 1,
-      unitPrice: defaultTest?.price || 0,
-      discount: 0,
-      sampleId: report.sampleId,
-      reportId: report.id,
-    }
-  })
+  return {
+    id: nextLineId(),
+    description: `${report.reportNumber} — ${report.sampleTypeName} (${report.testResults.length} test${report.testResults.length !== 1 ? "s" : ""})`,
+    quantity: 1,
+    unitPrice: totalPrice,
+    discount: 0,
+    sampleId: report.sampleId,
+    reportId: report.id,
+  }
 }
 
 function formatCurrency(amount: number): string {
@@ -240,8 +237,8 @@ export function EditInvoiceClient({
   }
 
   const handleAddReport = (report: ReportOption) => {
-    const items = reportToLineItems(report)
-    setLineItems((prev) => [...prev, ...items])
+    const item = reportToLineItem(report)
+    setLineItems((prev) => [...prev, item])
   }
 
   const handleAddManualItem = () => {

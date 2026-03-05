@@ -107,7 +107,7 @@ type Sample = {
   registration: { id: string; registrationNumber: string; samplingMethod: string; drawnBy: string; deliveredBy: string | null; sheetNumber: string | null } | null
   notes: string | null
   testResults: TestResult[]
-  reports: { summary: string | null; status: string; reviewedBy: { name: string } | null }[]
+  reports: { reportNumber: string; summary: string | null; status: string; reviewedBy: { name: string } | null }[]
 }
 
 // ============= HELPERS =============
@@ -583,6 +583,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                               const sCompletedTests = sample.testResults.filter((tr) => tr.status === "completed").length
                               const sTotalTests = sample.testResults.length
                               const hasRevision = sample.reports.length > 0 && sample.reports[0].status === "revision"
+                              const reportNumber = sample.reports.length > 0 ? sample.reports[0].reportNumber : null
                               const shortNum = sample.sampleNumber
                               const isUrgent = sample.priority === "urgent" || sample.priority === "rush"
                               // Build detail line: sample point, description, bottle size
@@ -653,6 +654,9 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                     <div className="text-[10px] text-muted-foreground truncate">
                                       {clientName}
                                       {!reg.regNumber && <> · {sample.sampleType.name}</>}
+                                      {reportNumber && sample.status === "completed" && (
+                                        <span className="ml-1 font-mono text-green-600"> · {reportNumber}</span>
+                                      )}
                                     </div>
                                     {earliestDue && sample.status !== "completed" && (
                                       <span className={`text-[9px] flex items-center gap-0.5 shrink-0 ml-2 ${
@@ -713,6 +717,11 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                   <span className="text-xs text-muted-foreground truncate">
                     {selectedSample.sampleType.name}
                   </span>
+                  {selectedSample.reports.length > 0 && (
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono">
+                      {selectedSample.reports[0].reportNumber}
+                    </Badge>
+                  )}
                   {selectedSample.registration && (
                     <span className="text-[10px] text-muted-foreground">
                       ({selectedSample.registration.registrationNumber})
@@ -771,7 +780,6 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                 {selectedSample.quantity && <span>Size: {selectedSample.quantity}</span>}
                 {selectedSample.description && <span>Desc: {selectedSample.description}</span>}
                 {selectedSample.registration?.drawnBy && <span>Drawn By: {selectedSample.registration.drawnBy}</span>}
-                {selectedSample.registration?.deliveredBy && <span>Delivered By: {selectedSample.registration.deliveredBy}</span>}
                 {selectedSample.notes && <span>Notes: {selectedSample.notes}</span>}
               </div>
 

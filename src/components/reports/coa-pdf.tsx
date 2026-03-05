@@ -747,19 +747,31 @@ export function COAPDF({
             </View>
           </View>
 
-          {/* Reference & Sheet No */}
-          {(sample.reference || sample.sheetNumber) && (
+          {/* Reference row (only if reference exists) */}
+          {sample.reference && (
             <View style={styles.infoGrid}>
               <View style={styles.infoGridLeft}>
-                <Text style={styles.infoGridLabel}>{sample.reference ? "Reference" : ""}</Text>
-                <Text style={styles.infoGridSep}>{sample.reference ? ":" : ""}</Text>
-                <Text style={styles.infoGridValue}>{sample.reference || ""}</Text>
+                <Text style={styles.infoGridLabel}>Reference</Text>
+                <Text style={styles.infoGridSep}>:</Text>
+                <Text style={styles.infoGridValue}>{sample.reference}</Text>
               </View>
               <View style={styles.infoGridRight}>
                 <Text style={styles.infoGridLabel}>{sample.sheetNumber ? "Lab Ref No." : ""}</Text>
                 <Text style={styles.infoGridSep}>{sample.sheetNumber ? ":" : ""}</Text>
                 <Text style={styles.infoGridValue}>{sample.sheetNumber || ""}</Text>
               </View>
+            </View>
+          )}
+
+          {/* Lab Ref No. standalone (only if no reference but sheet number exists) */}
+          {!sample.reference && sample.sheetNumber && (
+            <View style={styles.infoGrid}>
+              <View style={styles.infoGridLeft}>
+                <Text style={styles.infoGridLabel}>Lab Ref No.</Text>
+                <Text style={styles.infoGridSep}>:</Text>
+                <Text style={styles.infoGridValue}>{sample.sheetNumber}</Text>
+              </View>
+              <View style={styles.infoGridRight} />
             </View>
           )}
 
@@ -1159,19 +1171,31 @@ function COAPageContent(props: COAPDFProps) {
           </View>
         </View>
 
-        {/* Reference & Sheet No */}
-        {(sample.reference || sample.sheetNumber) && (
+        {/* Reference row (only if reference exists) */}
+        {sample.reference && (
           <View style={styles.infoGrid}>
             <View style={styles.infoGridLeft}>
-              <Text style={styles.infoGridLabel}>{sample.reference ? "Reference" : ""}</Text>
-              <Text style={styles.infoGridSep}>{sample.reference ? ":" : ""}</Text>
-              <Text style={styles.infoGridValue}>{sample.reference || ""}</Text>
+              <Text style={styles.infoGridLabel}>Reference</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>{sample.reference}</Text>
             </View>
             <View style={styles.infoGridRight}>
               <Text style={styles.infoGridLabel}>{sample.sheetNumber ? "Lab Ref No." : ""}</Text>
               <Text style={styles.infoGridSep}>{sample.sheetNumber ? ":" : ""}</Text>
               <Text style={styles.infoGridValue}>{sample.sheetNumber || ""}</Text>
             </View>
+          </View>
+        )}
+
+        {/* Lab Ref No. standalone (only if no reference but sheet number exists) */}
+        {!sample.reference && sample.sheetNumber && (
+          <View style={styles.infoGrid}>
+            <View style={styles.infoGridLeft}>
+              <Text style={styles.infoGridLabel}>Lab Ref No.</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>{sample.sheetNumber}</Text>
+            </View>
+            <View style={styles.infoGridRight} />
           </View>
         )}
 

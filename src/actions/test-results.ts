@@ -42,17 +42,22 @@ export async function getSamplesForTestEntry() {
         orderBy: { sortOrder: "asc" },
       },
       reports: {
-        where: { status: "revision", deletedAt: null },
+        where: { deletedAt: null },
         select: {
+          reportNumber: true,
           summary: true,
           status: true,
           createdById: true,
           reviewedBy: { select: { name: true } },
         },
+        orderBy: { createdAt: "desc" },
         take: 1,
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: [
+      { priority: "desc" },
+      { createdAt: "desc" },
+    ],
   })
 
   // For chemists, filter out revision samples that aren't assigned to or created by them
