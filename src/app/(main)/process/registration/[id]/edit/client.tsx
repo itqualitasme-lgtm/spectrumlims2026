@@ -505,7 +505,7 @@ export function EditSampleClient({
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Sheet No.</Label>
-              <Input className="h-9" value={sheetNumber} onChange={(e) => setSheetNumber(e.target.value)} placeholder="Optional" />
+              <Input className="h-9" value={sheetNumber} onChange={(e) => setSheetNumber(e.target.value)} placeholder="e.g. 252828" />
             </div>
           </div>
         </CardContent>

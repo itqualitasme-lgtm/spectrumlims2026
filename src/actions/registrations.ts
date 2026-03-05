@@ -53,13 +53,26 @@ export async function createRegistration(data: {
   const labId = user.labId
 
   // Block registration for inactive customers
-  const customer = await db.customer.findFirst({
-    where: { id: data.clientId, labId },
-    select: { status: true, name: true },
-  })
+  const [customer, lab] = await Promise.all([
+    db.customer.findFirst({
+      where: { id: data.clientId, labId },
+      select: { status: true, name: true },
+    }),
+    db.lab.findUnique({ where: { id: labId }, select: { code: true } }),
+  ])
   if (!customer) throw new Error("Customer not found")
   if (customer.status !== "active") {
     throw new Error(`Cannot register samples for inactive customer: ${customer.name}`)
+  }
+
+  // Format sheet number: user enters "252828" → stored as "SPL-LAB-252828-26"
+  let formattedSheet: string | null = null
+  if (data.sheetNumber?.trim()) {
+    const yearSuffix = String(new Date().getFullYear()).slice(-2)
+    const labCode = lab?.code || "LAB"
+    const raw = data.sheetNumber.trim()
+    // If already formatted (contains "-"), store as-is; otherwise auto-format
+    formattedSheet = raw.includes("-") ? raw : `${labCode}-${raw}-${yearSuffix}`
   }
 
   // Generate registration number: REG-YYMMDD-NNN
@@ -89,7 +102,7 @@ export async function createRegistration(data: {
       samplingMethod: data.samplingMethod || "NP",
       drawnBy: data.drawnBy || "NP & Spectrum",
       deliveredBy: data.deliveredBy || null,
-      sheetNumber: data.sheetNumber || null,
+      sheetNumber: formattedSheet,
       notes: data.notes || null,
       labId,
     },
@@ -786,8 +799,24 @@ export async function updateRegistration(
   const user = session.user as any
   const labId = user.labId
 
-  const existing = await db.registration.findFirst({ where: { id: registrationId, labId } })
+  const [existing, labInfo] = await Promise.all([
+    db.registration.findFirst({ where: { id: registrationId, labId } }),
+    db.lab.findUnique({ where: { id: labId }, select: { code: true } }),
+  ])
   if (!existing) throw new Error("Registration not found")
+
+  // Format sheet number if provided
+  let formattedSheet: string | null | undefined = undefined
+  if (data.sheetNumber !== undefined) {
+    if (data.sheetNumber?.trim()) {
+      const yearSuffix = String(new Date().getFullYear()).slice(-2)
+      const labCode = labInfo?.code || "LAB"
+      const raw = data.sheetNumber.trim()
+      formattedSheet = raw.includes("-") ? raw : `${labCode}-${raw}-${yearSuffix}`
+    } else {
+      formattedSheet = null
+    }
+  }
 
   const registration = await db.registration.update({
     where: { id: registrationId },
@@ -795,7 +824,7 @@ export async function updateRegistration(
       samplingMethod: data.samplingMethod || "NP",
       drawnBy: data.drawnBy !== undefined ? (data.drawnBy || "NP & Spectrum") : undefined,
       deliveredBy: data.deliveredBy !== undefined ? (data.deliveredBy || null) : undefined,
-      sheetNumber: data.sheetNumber !== undefined ? (data.sheetNumber || null) : undefined,
+      sheetNumber: formattedSheet,
       reference: data.reference !== undefined ? (data.reference || null) : undefined,
       collectionLocation: data.collectionLocation !== undefined ? (data.collectionLocation || null) : undefined,
       collectedById: data.collectedById !== undefined ? (data.collectedById || null) : undefined,
