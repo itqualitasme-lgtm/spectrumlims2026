@@ -50,7 +50,6 @@ type RegistrationRow = {
   assignedTo: string | null
   status: string
   sheetNumber: string | null
-  hasApprovedEdit?: boolean
   createdAt: string
   samples: { id: string; sampleNumber: string; status: string }[]
 }
@@ -69,6 +68,8 @@ const statusBadge = (status: string) => {
       return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>
     case "reported":
       return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Reported</Badge>
+    case "edit":
+      return <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100">Edit</Badge>
     case "mixed":
       return <Badge variant="secondary">Mixed</Badge>
     default:
@@ -96,6 +97,7 @@ const STATUS_OPTIONS = [
   { value: "testing", label: "Testing" },
   { value: "completed", label: "Completed" },
   { value: "reported", label: "Reported" },
+  { value: "edit", label: "Edit Approved" },
 ]
 
 export function RegistrationClient({ registrations }: { registrations: RegistrationRow[] }) {
@@ -243,19 +245,12 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
       accessorKey: "registrationNumber",
       header: "Reg #",
       cell: ({ row }) => (
-        <div className="flex items-center gap-1.5">
-          <Link
-            href={`/process/registration/${row.original.samples[0]?.id || row.original.id}`}
-            className="font-medium text-primary hover:underline font-mono text-xs"
-          >
-            {row.original.registrationNumber}
-          </Link>
-          {row.original.hasApprovedEdit && (
-            <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100 text-[10px] px-1.5 py-0">
-              Edit Approved
-            </Badge>
-          )}
-        </div>
+        <Link
+          href={`/process/registration/${row.original.samples[0]?.id || row.original.id}`}
+          className="font-medium text-primary hover:underline font-mono text-xs"
+        >
+          {row.original.registrationNumber}
+        </Link>
       ),
     },
     {
@@ -297,7 +292,7 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
       header: "Status",
       cell: ({ row }) => statusBadge(row.original.status),
       sortingFn: (rowA, rowB) => {
-        const order = ["registered", "assigned", "testing", "completed", "reported", "mixed"]
+        const order = ["edit", "registered", "assigned", "testing", "completed", "reported", "mixed"]
         return order.indexOf(rowA.original.status) - order.indexOf(rowB.original.status)
       },
     },

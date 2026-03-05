@@ -74,11 +74,11 @@ export async function approveEditRequest(requestId: string) {
     },
   })
 
-  // Reset sample to allow editing — set status back to "registered"
+  // Set sample status to "edit" so registration team can identify it
   await db.sample.update({
     where: { id: request.sampleId },
     data: {
-      status: "registered",
+      status: "edit",
     },
   })
 

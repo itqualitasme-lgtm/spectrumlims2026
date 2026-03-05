@@ -318,12 +318,6 @@ export async function getRegistrations() {
         include: {
           sampleType: { select: { name: true } },
           assignedTo: { select: { name: true } },
-          editRequests: {
-            where: { status: "approved" },
-            orderBy: { approvedAt: "desc" },
-            take: 1,
-            select: { id: true, status: true, approvedAt: true },
-          },
         },
         orderBy: { subSampleNumber: "asc" },
       },
@@ -366,7 +360,6 @@ export async function getRegistrations() {
       status: overallStatus,
       sheetNumber: reg.sheetNumber || null,
       createdAt: reg.createdAt.toISOString(),
-      hasApprovedEdit: reg.samples.some((s) => s.editRequests.length > 0),
       samples: reg.samples.map((s) => ({
         id: s.id,
         sampleNumber: s.sampleNumber,
@@ -731,10 +724,10 @@ export async function updateSample(
   })
   if (!existing) throw new Error("Sample not found")
 
-  // Block edit only if ALL test results are completed
+  // Block edit only if ALL test results are completed (unless status is "edit" = approved edit request)
   const allTestsCompleted = existing.testResults.length > 0 && existing.testResults.every((tr) => tr.status === "completed")
-  if (allTestsCompleted) {
-    throw new Error("Cannot edit: all test results have been entered. Revert to registration first.")
+  if (allTestsCompleted && existing.status !== "edit") {
+    throw new Error("Cannot edit: all test results have been entered. Request edit permission first.")
   }
 
   let recordDate: Date | undefined
@@ -765,6 +758,14 @@ export async function updateSample(
       }),
     },
   })
+
+  // If sample was in "edit" status (from approved edit request), reset to "registered"
+  if (existing.status === "edit") {
+    await db.sample.update({
+      where: { id: sampleId },
+      data: { status: "registered" },
+    })
+  }
 
   await logAudit(
     labId,

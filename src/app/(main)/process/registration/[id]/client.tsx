@@ -109,6 +109,8 @@ const statusBadge = (status: string) => {
       return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>
     case "reported":
       return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100">Reported</Badge>
+    case "edit":
+      return <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100">Edit</Badge>
     default:
       return <Badge variant="secondary">{status}</Badge>
   }
@@ -252,13 +254,13 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
           <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Awaiting Approval</Badge>
         </div>
       )}
-      {editRequest?.status === "approved" && (
+      {sample.status === "edit" && (
         <div className="flex items-center gap-3 px-4 py-3 border rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border-cyan-200">
           <ShieldCheck className="h-5 w-5 text-cyan-600 shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-medium text-cyan-800 dark:text-cyan-400">Edit Approved — Ready to Edit</p>
             <p className="text-xs text-cyan-700 dark:text-cyan-500">
-              Approved by {editRequest.approvedBy?.name || "Authenticator"} — Reason: {editRequest.reason}
+              {editRequest?.approvedBy?.name ? `Approved by ${editRequest.approvedBy.name}` : "Approved by Authenticator"}{editRequest?.reason ? ` — Reason: ${editRequest.reason}` : ""}
             </p>
           </div>
           <Button variant="outline" size="sm" className="text-cyan-700 border-cyan-300 hover:bg-cyan-100" asChild>
@@ -279,7 +281,7 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
               <CardDescription>Details for sample {sample.sampleNumber}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {!allTestsCompleted || editRequest?.status === "approved" ? (
+              {!allTestsCompleted || sample.status === "edit" ? (
                 <Button variant="outline" asChild>
                   <Link href={`/process/registration/${sample.id}/edit`}>
                     <Pencil className="mr-2 h-4 w-4" />
