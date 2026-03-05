@@ -41,6 +41,7 @@ model Lab {
   roles                Role[]
   portalUsers          PortalUser[]
   auditLogs            AuditLog[]
+  editRequests         EditRequest[]
   registrations        Registration[]
   reportVerifications  ReportVerification[]
   reportTemplates      ReportTemplate[]
@@ -120,6 +121,8 @@ model User {
   regsRegistered          Registration[] @relation("RegRegisteredBy")
   paymentsCreated         Payment[]      @relation("PaymentCreatedBy")
   paymentsVerified        Payment[]      @relation("PaymentVerifiedBy")
+  editRequestsMade        EditRequest[]   @relation("EditRequestedBy")
+  editRequestsApproved    EditRequest[]   @relation("EditApprovedBy")
 }
 
 model PortalUser {
@@ -273,6 +276,7 @@ model Sample {
 
   testResults    TestResult[]
   reports        Report[]
+  editRequests   EditRequest[]
   invoiceItems   InvoiceItem[]
   quotationItems QuotationItem[]
   contractItems  ContractItem[]
@@ -569,4 +573,25 @@ model ReportVerification {
 
   report Report @relation(fields: [reportId], references: [id])
   lab    Lab    @relation(fields: [labId], references: [id])
+}
+
+// ============= EDIT REQUESTS =============
+
+model EditRequest {
+  id            String    @id @default(cuid())
+  sampleId      String
+  requestedById String
+  reason        String
+  status        String    @default("pending") // pending, approved, rejected
+  approvedById  String?
+  approvedAt    DateTime?
+  rejectionNote String?
+  labId         String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  sample      Sample @relation(fields: [sampleId], references: [id])
+  requestedBy User   @relation("EditRequestedBy", fields: [requestedById], references: [id])
+  approvedBy  User?  @relation("EditApprovedBy", fields: [approvedById], references: [id])
+  lab         Lab    @relation(fields: [labId], references: [id])
 }

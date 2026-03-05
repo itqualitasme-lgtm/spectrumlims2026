@@ -259,7 +259,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   infoLabel: {
-    width: 130,
+    width: 100,
     fontSize: 8,
     fontFamily: "Helvetica-Bold",
     color: BLACK,

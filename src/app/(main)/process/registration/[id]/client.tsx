@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/utils"
-import { ArrowLeft, Pencil, UserPlus, Loader2, Printer, RotateCcw } from "lucide-react"
+import { ArrowLeft, Pencil, UserPlus, Loader2, Printer, ShieldCheck, Clock } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -12,6 +12,7 @@ import { SearchableSelect } from "@/components/shared/searchable-select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import {
   Card,
   CardContent,
@@ -37,8 +38,7 @@ import {
 } from "@/components/ui/dialog"
 
 import { assignSample, getChemistsForSelect } from "@/actions/registrations"
-import { revertToRegistration } from "@/actions/test-results"
-import { Input } from "@/components/ui/input"
+import { createEditRequest, getEditRequestStatus } from "@/actions/edit-requests"
 
 type TestResult = {
   id: string
@@ -144,25 +144,37 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
   const [assignedToId, setAssignedToId] = useState("")
   const [chemists, setChemists] = useState<{ value: string; label: string }[]>([])
   const [loading, setLoading] = useState(false)
-  const [revertOpen, setRevertOpen] = useState(false)
-  const [revertReason, setRevertReason] = useState("")
+
+  // Edit request state
+  const [editRequestOpen, setEditRequestOpen] = useState(false)
+  const [editRequestReason, setEditRequestReason] = useState("")
+  const [pendingRequest, setPendingRequest] = useState<{ id: string; reason: string; requestedBy: { name: string }; createdAt: string } | null>(null)
 
   const allTestsCompleted = sample.testResults.length > 0 && sample.testResults.every((tr) => tr.status === "completed")
 
-  const handleRevert = async () => {
-    if (!revertReason.trim()) {
-      toast.error("Please provide a reason for reverting")
+  // Check for pending edit request on mount
+  useEffect(() => {
+    if (allTestsCompleted) {
+      getEditRequestStatus(sample.id).then((req) => {
+        if (req) setPendingRequest({ id: req.id, reason: req.reason, requestedBy: req.requestedBy, createdAt: req.createdAt.toISOString() })
+      }).catch(() => {})
+    }
+  }, [sample.id, allTestsCompleted])
+
+  const handleRequestEdit = async () => {
+    if (!editRequestReason.trim()) {
+      toast.error("Please provide a reason for the edit request")
       return
     }
     setLoading(true)
     try {
-      await revertToRegistration(sample.id, revertReason.trim())
-      toast.success(`Sample ${sample.sampleNumber} reverted to registration`)
-      setRevertOpen(false)
-      setRevertReason("")
+      await createEditRequest(sample.id, editRequestReason.trim())
+      toast.success("Edit request submitted for approval")
+      setEditRequestOpen(false)
+      setEditRequestReason("")
       router.refresh()
     } catch (error: any) {
-      toast.error(error.message || "Failed to revert")
+      toast.error(error.message || "Failed to submit edit request")
     } finally {
       setLoading(false)
     }
@@ -220,6 +232,20 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
         </div>
       </div>
 
+      {/* Pending Edit Request Banner */}
+      {pendingRequest && (
+        <div className="flex items-center gap-3 px-4 py-3 border rounded-lg bg-amber-50 dark:bg-amber-950/30 border-amber-200">
+          <Clock className="h-5 w-5 text-amber-600 shrink-0" />
+          <div className="flex-1">
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Edit Request Pending</p>
+            <p className="text-xs text-amber-700 dark:text-amber-500">
+              Requested by {pendingRequest.requestedBy.name}: {pendingRequest.reason}
+            </p>
+          </div>
+          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Awaiting Approval</Badge>
+        </div>
+      )}
+
       {/* Sample Info Card */}
       <Card>
         <CardHeader>
@@ -229,7 +255,23 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
               <CardDescription>Details for sample {sample.sampleNumber}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {!allTestsCompleted ? (                <Button variant="outline" asChild>                  <Link href={`/process/registration/${sample.id}/edit`}>                    <Pencil className="mr-2 h-4 w-4" />                    Edit                  </Link>                </Button>              ) : (                <Button variant="outline" className="text-orange-600 border-orange-200 hover:bg-orange-50" onClick={() => setRevertOpen(true)}>                  <RotateCcw className="mr-2 h-4 w-4" />                  Revert to Registration                </Button>              )}
+              {!allTestsCompleted ? (
+                <Button variant="outline" asChild>
+                  <Link href={`/process/registration/${sample.id}/edit`}>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit
+                  </Link>
+                </Button>
+              ) : !pendingRequest ? (
+                <Button
+                  variant="outline"
+                  className="text-amber-600 border-amber-200 hover:bg-amber-50"
+                  onClick={() => setEditRequestOpen(true)}
+                >
+                  <ShieldCheck className="mr-2 h-4 w-4" />
+                  Request Edit
+                </Button>
+              ) : null}
               <Button
                 variant="outline"
                 onClick={() => window.open(`/api/samples/${sample.id}/label`, "_blank")}
@@ -531,37 +573,38 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-n      {/* Revert Dialog */}
-      <Dialog open={revertOpen} onOpenChange={setRevertOpen}>
+
+      {/* Edit Request Dialog */}
+      <Dialog open={editRequestOpen} onOpenChange={setEditRequestOpen}>
         <DialogContent className="sm:max-w-[400px]">
           <DialogHeader>
-            <DialogTitle>Revert to Registration</DialogTitle>
+            <DialogTitle>Request Edit Permission</DialogTitle>
             <DialogDescription>
-              This will clear all test results and remove any reports for {sample.sampleNumber}. The sample will be sent back for re-testing.
+              Test results have been entered for {sample.sampleNumber}. An authenticator must approve before you can edit this sample.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label>Reason for reverting *</Label>
+              <Label>Reason for editing *</Label>
               <Input
-                value={revertReason}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setRevertReason(e.target.value)}
-                placeholder="e.g. Wrong test parameters, unit correction needed..."
+                value={editRequestReason}
+                onChange={(e) => setEditRequestReason(e.target.value)}
+                placeholder="e.g. Wrong unit, need to add parameter, correction needed..."
               />
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setRevertOpen(false)} disabled={loading}>
+            <Button variant="outline" onClick={() => setEditRequestOpen(false)} disabled={loading}>
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleRevert} disabled={loading || !revertReason.trim()}>
+            <Button onClick={handleRequestEdit} disabled={loading || !editRequestReason.trim()}>
               {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Reverting...
+                  Submitting...
                 </>
               ) : (
-                "Revert"
+                "Submit Request"
               )}
             </Button>
           </DialogFooter>

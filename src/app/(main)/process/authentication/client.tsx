@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/utils"
 import { type ColumnDef } from "@tanstack/react-table"
-import {
+import { Check, X,
   Send,
   ShieldCheck,
   RotateCcw,
@@ -51,6 +51,7 @@ import {
   requestRevision,
   revertReportToRegistration,
 } from "@/actions/reports"
+import { approveEditRequest, rejectEditRequest } from "@/actions/edit-requests"
 
 type TestResultInfo = {
   id: string
@@ -105,6 +106,23 @@ type Report = {
   reviewedBy: { id: string; name: string } | null
 }
 
+type EditRequestItem = {
+  id: string
+  reason: string
+  status: string
+  createdAt: string
+  sample: {
+    id: string
+    sampleNumber: string
+    status: string
+    client: { id: string; name: string; company: string | null }
+    sampleType: { name: string }
+    assignedTo: { name: string } | null
+    registration: { registrationNumber: string } | null
+  }
+  requestedBy: { id: string; name: string }
+}
+
 const statusBadge = (status: string) => {
   switch (status) {
     case "draft":
@@ -155,9 +173,11 @@ type Template = {
 }
 
 export function AuthenticationClient({
+  editRequests = [],
   reports,
   templates,
 }: {
+  editRequests?: EditRequestItem[]
   reports: Report[]
   templates: Template[]
 }) {
@@ -256,6 +276,32 @@ export function AuthenticationClient({
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to revert to registration")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleApproveEditRequest = async (requestId: string) => {
+    setLoading(true)
+    try {
+      await approveEditRequest(requestId)
+      toast.success("Edit request approved — sample sent back for editing")
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to approve edit request")
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRejectEditRequest = async (requestId: string) => {
+    setLoading(true)
+    try {
+      await rejectEditRequest(requestId)
+      toast.success("Edit request rejected")
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to reject edit request")
     } finally {
       setLoading(false)
     }
@@ -443,6 +489,70 @@ export function AuthenticationClient({
         searchPlaceholder="Search by report number..."
         searchKey="reportNumber"
       />
+
+      {/* Edit Requests Section */}
+      {editRequests.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-4 w-4 text-amber-600" />
+            <h3 className="text-sm font-semibold">Edit Requests</h3>
+            <Badge variant="secondary" className="text-xs">{editRequests.length}</Badge>
+          </div>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Sample #</TableHead>
+                  <TableHead className="text-xs">Registration</TableHead>
+                  <TableHead className="text-xs">Client</TableHead>
+                  <TableHead className="text-xs">Type</TableHead>
+                  <TableHead className="text-xs">Requested By</TableHead>
+                  <TableHead className="text-xs">Reason</TableHead>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs w-[120px]">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {editRequests.map((req) => (
+                  <TableRow key={req.id}>
+                    <TableCell className="text-xs font-mono font-medium">{req.sample.sampleNumber}</TableCell>
+                    <TableCell className="text-xs">{req.sample.registration?.registrationNumber || "-"}</TableCell>
+                    <TableCell className="text-xs">{req.sample.client.company || req.sample.client.name}</TableCell>
+                    <TableCell className="text-xs">{req.sample.sampleType.name}</TableCell>
+                    <TableCell className="text-xs">{req.requestedBy.name}</TableCell>
+                    <TableCell className="text-xs max-w-[200px] truncate">{req.reason}</TableCell>
+                    <TableCell className="text-xs">{formatDate(req.createdAt)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs text-green-600 hover:text-green-700 hover:bg-green-50"
+                          onClick={() => handleApproveEditRequest(req.id)}
+                          disabled={loading}
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Approve
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleRejectEditRequest(req.id)}
+                          disabled={loading}
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Reject
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+      )}
 
       {/* View Results Dialog */}
       <Dialog open={viewResultsOpen} onOpenChange={setViewResultsOpen}>
