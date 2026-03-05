@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -23,7 +23,16 @@ interface SidebarProps {
 
 export default function Sidebar({ permissions, roleName, hiddenMenuItems = [] }: SidebarProps) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed, setCollapsed] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("sidebar-collapsed") === "true"
+    }
+    return false
+  })
+
+  useEffect(() => {
+    localStorage.setItem("sidebar-collapsed", String(collapsed))
+  }, [collapsed])
 
   // Find which group contains the active route
   const activeGroup = menuGroups.find((g) =>

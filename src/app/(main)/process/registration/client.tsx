@@ -264,6 +264,11 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
       header: "Type",
     },
     {
+      accessorKey: "sheetNumber",
+      header: "Sheet #",
+      cell: ({ row }) => row.original.sheetNumber || "-",
+    },
+    {
       accessorKey: "sampleCount",
       header: "Qty",
       cell: ({ row }) => (
@@ -295,11 +300,6 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
         const order = ["edit", "registered", "assigned", "testing", "completed", "reported", "mixed"]
         return order.indexOf(rowA.original.status) - order.indexOf(rowB.original.status)
       },
-    },
-    {
-      accessorKey: "sheetNumber",
-      header: "Sheet #",
-      cell: ({ row }) => row.original.sheetNumber || "-",
     },
     {
       accessorKey: "createdAt",
