@@ -319,9 +319,8 @@ export async function getRegistrations() {
           sampleType: { select: { name: true } },
           assignedTo: { select: { name: true } },
           editRequests: {
-            where: { status: "pending" },
-            select: { id: true },
-            take: 1,
+            where: { status: { in: ["pending", "approved"] } },
+            select: { id: true, status: true },
           },
         },
         orderBy: { subSampleNumber: "asc" },
@@ -365,7 +364,8 @@ export async function getRegistrations() {
       status: overallStatus,
       sheetNumber: reg.sheetNumber || null,
       createdAt: reg.createdAt.toISOString(),
-      editRequested: reg.samples.some((s) => s.editRequests.length > 0),
+      editRequested: reg.samples.some((s) => s.editRequests.some((er) => er.status === "pending")),
+      revisionCount: reg.samples.reduce((sum, s) => sum + s.editRequests.filter((er) => er.status === "approved").length, 0),
       samples: reg.samples.map((s) => ({
         id: s.id,
         sampleNumber: s.sampleNumber,

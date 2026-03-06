@@ -53,6 +53,18 @@ export async function getSamplesForTestEntry() {
         orderBy: { createdAt: "desc" },
         take: 1,
       },
+      editRequests: {
+        where: { status: "approved" },
+        select: {
+          id: true,
+          reason: true,
+          changes: true,
+          approvedAt: true,
+          requestedBy: { select: { name: true } },
+          approvedBy: { select: { name: true } },
+        },
+        orderBy: { approvedAt: "desc" },
+      },
     },
     orderBy: [
       { priority: "desc" },

@@ -1398,7 +1398,12 @@ import { signPDF } from "@/lib/pdf-sign"
 export async function generateCOAPDF(props: COAPDFProps): Promise<Buffer> {
   const buffer = await renderToBuffer(<COAPDF {...props} />)
   if (!props.showHeaderFooter) return buffer as Buffer
-  return signPDF(buffer as Buffer)
+  try {
+    return await signPDF(buffer as Buffer)
+  } catch (e) {
+    console.error("PDF signing failed, returning unsigned PDF:", e)
+    return buffer as Buffer
+  }
 }
 
 export async function generateBatchCOAPDF(reports: COAPDFProps[]): Promise<Buffer> {
@@ -1408,5 +1413,10 @@ export async function generateBatchCOAPDF(reports: COAPDFProps[]): Promise<Buffe
   const buffer = await renderToBuffer(<COABatchPDF reports={reports} />)
   const skipSigning = reports.some(r => !r.showHeaderFooter)
   if (skipSigning) return buffer as Buffer
-  return signPDF(buffer as Buffer)
+  try {
+    return await signPDF(buffer as Buffer)
+  } catch (e) {
+    console.error("PDF signing failed, returning unsigned PDF:", e)
+    return buffer as Buffer
+  }
 }

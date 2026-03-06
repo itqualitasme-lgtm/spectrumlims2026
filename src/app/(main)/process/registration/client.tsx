@@ -51,6 +51,7 @@ type RegistrationRow = {
   status: string
   sheetNumber: string | null
   editRequested: boolean
+  revisionCount: number
   createdAt: string
   samples: { id: string; sampleNumber: string; status: string }[]
 }
@@ -304,6 +305,11 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
           {statusBadge(row.original.status)}
           {row.original.editRequested && (
             <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1 py-0">Edit Req</Badge>
+          )}
+          {row.original.revisionCount > 0 && (
+            <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[9px] px-1 py-0">
+              Rev {row.original.revisionCount}
+            </Badge>
           )}
         </div>
       ),

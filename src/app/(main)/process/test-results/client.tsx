@@ -16,6 +16,7 @@ import {
   X,
   Clock,
   Zap,
+  History,
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
@@ -108,6 +109,14 @@ type Sample = {
   notes: string | null
   testResults: TestResult[]
   reports: { reportNumber: string; summary: string | null; status: string; reviewedBy: { name: string } | null }[]
+  editRequests: {
+    id: string
+    reason: string
+    changes: string | null
+    approvedAt: string | null
+    requestedBy: { name: string }
+    approvedBy: { name: string } | null
+  }[]
 }
 
 // ============= HELPERS =============
@@ -644,6 +653,11 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                       {hasRevision && (
                                         <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1 py-0">Rev</Badge>
                                       )}
+                                      {sample.editRequests.length > 0 && (
+                                        <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[9px] px-1 py-0">
+                                          R{sample.editRequests.length}
+                                        </Badge>
+                                      )}
                                       {sTotalTests > 0 && (
                                         <span className="text-[9px] text-muted-foreground whitespace-nowrap">{sCompletedTests}/{sTotalTests}</span>
                                       )}
@@ -722,6 +736,11 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                       {selectedSample.reports[0].reportNumber}
                     </Badge>
                   )}
+                  {selectedSample.editRequests.length > 0 && (
+                    <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[10px] px-1.5 py-0">
+                      Rev {selectedSample.editRequests.length}
+                    </Badge>
+                  )}
                   {selectedSample.registration && (
                     <span className="text-[10px] text-muted-foreground">
                       ({selectedSample.registration.registrationNumber})
@@ -795,6 +814,51 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                     {selectedSample.reports[0].summary && (
                       <p className="text-amber-700 dark:text-amber-500 mt-0.5">{selectedSample.reports[0].summary}</p>
                     )}
+                  </div>
+                </div>
+              )}
+
+              {/* Edit history banner — shows when sample was edited (approved edit requests) */}
+              {selectedSample.editRequests.length > 0 && (
+                <div className="px-3 py-2 border-b bg-blue-50 dark:bg-blue-950/30 flex items-start gap-2">
+                  <History className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div className="text-xs flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-blue-800 dark:text-blue-400">
+                        Revision {selectedSample.editRequests.length}
+                      </span>
+                      <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[9px] px-1 py-0">
+                        {selectedSample.editRequests.length} edit{selectedSample.editRequests.length !== 1 ? "s" : ""}
+                      </Badge>
+                    </div>
+                    {/* Show the most recent edit details */}
+                    {(() => {
+                      const latest = selectedSample.editRequests[0]
+                      const changes: { field: string; oldValue: string; newValue: string }[] = latest.changes ? JSON.parse(latest.changes) : []
+                      return (
+                        <div className="mt-1 space-y-0.5">
+                          <p className="text-blue-700 dark:text-blue-500">
+                            Edited by {latest.requestedBy.name}
+                            {latest.approvedBy && <> — approved by {latest.approvedBy.name}</>}
+                            {latest.approvedAt && <> on {format(new Date(latest.approvedAt), "dd MMM yyyy")}</>}
+                          </p>
+                          {changes.length > 0 && (
+                            <div className="mt-1 space-y-0.5">
+                              {changes.map((c, i) => (
+                                <div key={i} className="text-[10px] text-blue-600 dark:text-blue-400">
+                                  <span className="font-medium">{c.field}:</span>{" "}
+                                  <span className="line-through text-blue-400">{c.oldValue}</span>{" "}
+                                  → <span className="font-medium">{c.newValue}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {changes.length === 0 && latest.reason && (
+                            <p className="text-blue-600 dark:text-blue-400">{latest.reason}</p>
+                          )}
+                        </div>
+                      )
+                    })()}
                   </div>
                 </div>
               )}
