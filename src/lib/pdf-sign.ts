@@ -32,7 +32,17 @@ export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
     globalThis.DOMMatrix = canvas.DOMMatrix
   }
 
-  // Dynamic import of ESM-only package — works in-process on both local and Vercel
+  // Pre-load the pdfjs worker module so it's available for the fake worker setup.
+  // On Vercel, the dynamic import of the worker file fails because it's not in the
+  // output bundle. Loading it here forces the bundler to include it.
+  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs")
+  // @ts-ignore — no type declarations for worker module
+  const pdfjsWorker = await import("pdfjs-dist/legacy/build/pdf.worker.mjs")
+  if (pdfjsWorker.WorkerMessageHandler) {
+    ;(pdfjs as any).PDFWorker._setupFakeWorkerGlobal = Promise.resolve(pdfjsWorker.WorkerMessageHandler)
+  }
+
+  // Dynamic import of ESM-only package
   const { pdf } = await import("pdf-to-img")
 
   // Get original page sizes
@@ -44,7 +54,10 @@ export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
 
   // Render each page to PNG at 3x scale for high quality
   const pageImages: Buffer[] = []
-  const converter = await pdf(pdfBuffer, { scale: 3 })
+  const converter = await pdf(pdfBuffer, {
+    scale: 3,
+    docInitParams: { disableAutoFetch: true, useWorkerFetch: false } as any,
+  })
   for await (const pageImage of converter) {
     pageImages.push(Buffer.from(pageImage))
   }
