@@ -41,7 +41,7 @@ import {
 type RegistrationRow = {
   id: string
   registrationNumber: string
-  client: { id: string; name: string; company: string | null }
+  client: { id: string; name: string; company: string | null; nickname: string | null }
   sampleTypes: string
   sampleCount: number
   priority: string
@@ -262,7 +262,7 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
       accessorKey: "client.company",
       header: "Client",
       cell: ({ row }) =>
-        row.original.client.company || row.original.client.name,
+        row.original.client.nickname || row.original.client.company || row.original.client.name,
     },
     {
       accessorKey: "sampleTypes",
@@ -286,11 +286,6 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
       accessorKey: "priority",
       header: "Priority",
       cell: ({ row }) => priorityBadge(row.original.priority),
-    },
-    {
-      accessorKey: "collectionLocation",
-      header: "Location",
-      cell: ({ row }) => row.original.collectionLocation || "-",
     },
     {
       accessorKey: "assignedTo",
@@ -380,6 +375,26 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
         actionLabel="Register Sample"
         actionHref="/process/registration/new"
       />
+
+      {/* Summary Cards */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 rounded-md border px-3 py-1.5 bg-muted/30">
+          <span className="text-xs text-muted-foreground">Total</span>
+          <Badge variant="secondary" className="text-xs">{registrations.length}</Badge>
+        </div>
+        <div className="flex items-center gap-2 rounded-md border px-3 py-1.5 bg-amber-500/10 border-amber-500/30">
+          <span className="text-xs text-amber-700 dark:text-amber-400">Edit Requested</span>
+          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">
+            {registrations.filter((r) => r.editRequested).length}
+          </Badge>
+        </div>
+        <div className="flex items-center gap-2 rounded-md border px-3 py-1.5 bg-cyan-500/10 border-cyan-500/30">
+          <span className="text-xs text-cyan-700 dark:text-cyan-400">Edit Approved</span>
+          <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100 text-xs">
+            {registrations.filter((r) => r.revisionCount > 0).length}
+          </Badge>
+        </div>
+      </div>
 
       {/* Filters & Batch Actions Bar */}
       <div className="flex items-center justify-between gap-3">

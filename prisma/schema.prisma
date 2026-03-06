@@ -148,6 +148,7 @@ model Customer {
   name          String
   email         String?
   company       String?
+  nickname      String?
   phone         String?
   address       String?
   contactPerson String?

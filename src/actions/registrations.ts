@@ -310,7 +310,7 @@ export async function getRegistrations() {
   const registrations = await db.registration.findMany({
     where: { labId },
     include: {
-      client: { select: { id: true, name: true, company: true } },
+      client: { select: { id: true, name: true, company: true, nickname: true } },
       collectedBy: { select: { name: true } },
       registeredBy: { select: { name: true } },
       samples: {
@@ -354,7 +354,7 @@ export async function getRegistrations() {
     return {
       id: reg.id,
       registrationNumber: reg.registrationNumber,
-      client: { id: reg.client.id, name: reg.client.name, company: reg.client.company },
+      client: { id: reg.client.id, name: reg.client.name, company: reg.client.company, nickname: reg.client.nickname },
       sampleTypes,
       sampleCount: reg.samples.length,
       priority: reg.priority,

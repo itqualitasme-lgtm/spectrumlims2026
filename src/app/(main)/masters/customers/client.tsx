@@ -40,6 +40,7 @@ interface Customer {
   name: string
   email: string | null
   company: string | null
+  nickname: string | null
   phone: string | null
   address: string | null
   contactPerson: string | null
@@ -223,6 +224,7 @@ export function CustomersClient({
           name,
           email: (formData.get("email") as string) || undefined,
           company: (formData.get("company") as string) || undefined,
+          nickname: (formData.get("nickname") as string) || undefined,
           phone: (formData.get("phone") as string) || undefined,
           address: (formData.get("address") as string) || undefined,
           contactPerson: (formData.get("contactPerson") as string) || undefined,
@@ -235,6 +237,7 @@ export function CustomersClient({
           name,
           email: (formData.get("email") as string) || undefined,
           company: (formData.get("company") as string) || undefined,
+          nickname: (formData.get("nickname") as string) || undefined,
           phone: (formData.get("phone") as string) || undefined,
           address: (formData.get("address") as string) || undefined,
           contactPerson: (formData.get("contactPerson") as string) || undefined,
@@ -340,6 +343,14 @@ export function CustomersClient({
                   name="company"
                   defaultValue={editingItem?.company || ""}
                   placeholder="Company name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label>Nickname</Label>
+                <Input
+                  name="nickname"
+                  defaultValue={editingItem?.nickname || ""}
+                  placeholder="Short name for lists"
                 />
               </div>
               <div className="grid gap-2">

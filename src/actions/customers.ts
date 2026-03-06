@@ -40,6 +40,7 @@ export async function createCustomer(data: {
   name: string
   email?: string
   company?: string
+  nickname?: string
   phone?: string
   address?: string
   contactPerson?: string
@@ -60,6 +61,7 @@ export async function createCustomer(data: {
       name: data.name,
       email: data.email || null,
       company: data.company || null,
+      nickname: data.nickname || null,
       phone: data.phone || null,
       address: data.address || null,
       contactPerson: data.contactPerson || null,
@@ -88,6 +90,7 @@ export async function updateCustomer(
     name?: string
     email?: string
     company?: string
+    nickname?: string
     phone?: string
     address?: string
     contactPerson?: string
@@ -109,6 +112,7 @@ export async function updateCustomer(
       name: data.name,
       email: data.email || null,
       company: data.company || null,
+      nickname: data.nickname || null,
       phone: data.phone || null,
       address: data.address || null,
       contactPerson: data.contactPerson || null,
