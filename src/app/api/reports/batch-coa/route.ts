@@ -222,7 +222,7 @@ export async function GET(request: NextRequest) {
       })
     )
 
-    const pdfBuffer = await generateBatchCOAPDF(batchProps)
+    const { buffer: pdfBuffer } = await generateBatchCOAPDF(batchProps)
 
     return new Response(new Uint8Array(pdfBuffer), {
       headers: {

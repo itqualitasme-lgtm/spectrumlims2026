@@ -175,7 +175,7 @@ export async function GET(
       showHeaderFooter: true,
     }
 
-    const pdfBuffer = await generateCOAPDF(pdfProps)
+    const { buffer: pdfBuffer } = await generateCOAPDF(pdfProps)
 
     return new Response(new Uint8Array(pdfBuffer), {
       status: 200,

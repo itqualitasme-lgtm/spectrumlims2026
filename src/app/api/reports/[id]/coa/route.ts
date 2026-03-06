@@ -211,17 +211,24 @@ export async function GET(
     }
 
     // Generate PDF buffer
-    const pdfBuffer = await generateCOAPDF(pdfProps)
+    const { buffer: pdfBuffer, errors } = await generateCOAPDF(pdfProps)
+
+    // If debug mode, return errors as JSON
+    if (url.searchParams.get("debug") === "1" && errors.length > 0) {
+      return NextResponse.json({ errors, pdfSize: pdfBuffer.length })
+    }
 
     // Return PDF response
-    return new Response(new Uint8Array(pdfBuffer), {
-      status: 200,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `inline; filename="COA-${report.reportNumber}.pdf"`,
-        "Cache-Control": "no-store",
-      },
-    })
+    const headers: Record<string, string> = {
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `inline; filename="COA-${report.reportNumber}.pdf"`,
+      "Cache-Control": "no-store",
+    }
+    if (errors.length > 0) {
+      headers["X-PDF-Errors"] = errors.join(" | ").substring(0, 500)
+    }
+
+    return new Response(new Uint8Array(pdfBuffer), { status: 200, headers })
   } catch (error) {
     console.error("Error generating COA PDF:", error)
     return NextResponse.json(

@@ -1385,37 +1385,39 @@ function COAPageContent(props: COAPDFProps) {
 
 import { signPDF, rasterizePDF } from "@/lib/pdf-sign"
 
-async function securePDF(pdfBuffer: Buffer): Promise<Buffer> {
+export async function securePDF(pdfBuffer: Buffer): Promise<{ result: Buffer; errors: string[] }> {
   let result = pdfBuffer
+  const errors: string[] = []
   // Rasterize PDF pages to images — removes all text/objects, prevents editing and OCR
   try {
     result = await rasterizePDF(result)
-    console.log("[securePDF] Rasterization OK, size:", result.length)
   } catch (e: any) {
-    console.error("[securePDF] Rasterization FAILED:", e?.message || e)
-    console.error("[securePDF] Stack:", e?.stack)
+    const msg = e?.stderr?.toString?.() || e?.message || String(e)
+    errors.push(`Rasterization: ${msg}`)
   }
   // Then digitally sign to detect tampering
   try {
     result = await signPDF(result)
-  } catch (e) {
-    console.error("[securePDF] Signing failed:", e)
+  } catch (e: any) {
+    errors.push(`Signing: ${e?.message || e}`)
   }
-  return result
+  return { result, errors }
 }
 
-export async function generateCOAPDF(props: COAPDFProps): Promise<Buffer> {
+export async function generateCOAPDF(props: COAPDFProps): Promise<{ buffer: Buffer; errors: string[] }> {
   const buffer = await renderToBuffer(<COAPDF {...props} />)
-  if (!props.showHeaderFooter) return buffer as Buffer
-  return securePDF(buffer as Buffer)
+  if (!props.showHeaderFooter) return { buffer: buffer as Buffer, errors: [] }
+  const { result, errors } = await securePDF(buffer as Buffer)
+  return { buffer: result, errors }
 }
 
-export async function generateBatchCOAPDF(reports: COAPDFProps[]): Promise<Buffer> {
+export async function generateBatchCOAPDF(reports: COAPDFProps[]): Promise<{ buffer: Buffer; errors: string[] }> {
   if (reports.length === 1) {
     return generateCOAPDF(reports[0])
   }
   const buffer = await renderToBuffer(<COABatchPDF reports={reports} />)
   const skipSigning = reports.some(r => !r.showHeaderFooter)
-  if (skipSigning) return buffer as Buffer
-  return securePDF(buffer as Buffer)
+  if (skipSigning) return { buffer: buffer as Buffer, errors: [] }
+  const { result, errors } = await securePDF(buffer as Buffer)
+  return { buffer: result, errors }
 }
