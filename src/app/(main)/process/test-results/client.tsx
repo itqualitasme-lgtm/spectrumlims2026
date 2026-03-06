@@ -48,7 +48,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { ScrollArea } from "@/components/ui/scroll-area"
 
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -453,7 +452,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
           </div>
 
           {/* Sample items - grouped by registration, collapsible */}
-          <ScrollArea className="flex-1">
+          <div className="flex-1 overflow-y-auto min-h-0">
             {filteredSamples.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center px-4">
                 <FlaskConical className="h-8 w-8 text-muted-foreground/30 mb-2" />
@@ -700,7 +699,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                 })()}
               </div>
             )}
-          </ScrollArea>
+          </div>
         </div>
 
         {/* RIGHT PANEL — Test Entry */}
