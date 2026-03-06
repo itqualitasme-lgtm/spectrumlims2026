@@ -21,6 +21,39 @@ function getP12Certificate(): Buffer {
   return cachedP12
 }
 
+// Inline ESM script for rasterization — executed as a child process to avoid
+// Next.js Turbopack bundler issues with ESM-only packages (pdf-to-img, pdfjs-dist)
+const RASTERIZE_SCRIPT = `
+import { readFileSync, writeFileSync } from "fs";
+import { pdf } from "pdf-to-img";
+import { PDFDocument } from "pdf-lib";
+const inputPath = process.env.RASTER_INPUT;
+const outputPath = process.env.RASTER_OUTPUT;
+const pdfBuffer = readFileSync(inputPath);
+const srcDoc = await PDFDocument.load(pdfBuffer);
+const pageSizes = Array.from({ length: srcDoc.getPageCount() }, (_, i) => {
+  const p = srcDoc.getPage(i);
+  return p.getSize();
+});
+const pageImages = [];
+for await (const img of await pdf(pdfBuffer, { scale: 3 })) {
+  pageImages.push(Buffer.from(img));
+}
+const destDoc = await PDFDocument.create();
+for (let i = 0; i < pageImages.length; i++) {
+  const { width, height } = pageSizes[i] || { width: 595, height: 842 };
+  const pngImage = await destDoc.embedPng(pageImages[i]);
+  const page = destDoc.addPage([width, height]);
+  page.drawImage(pngImage, { x: 0, y: 0, width, height });
+}
+destDoc.setTitle("Certificate of Quality");
+destDoc.setAuthor("Spectrum LIMS");
+destDoc.setSubject("Official Laboratory Report - Do Not Modify");
+destDoc.setCreator("Spectrum LIMS");
+destDoc.setProducer("Spectrum LIMS - Protected Document");
+writeFileSync(outputPath, Buffer.from(await destDoc.save()));
+`
+
 /**
  * Rasterize each PDF page to a high-quality PNG image, then rebuild the PDF
  * with only embedded images — no selectable text, no editable objects, no OCR.
@@ -28,27 +61,24 @@ function getP12Certificate(): Buffer {
  */
 export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
   const { execFileSync } = await import("child_process")
+  const os = await import("os")
 
-  // Write input PDF to a temp file
-  const tmpDir = path.join(process.cwd(), ".tmp")
-  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
-
-  const inputPath = path.join(tmpDir, `raster-in-${Date.now()}.pdf`)
-  const outputPath = path.join(tmpDir, `raster-out-${Date.now()}.pdf`)
-  const scriptPath = path.join(process.cwd(), "scripts", "rasterize-pdf.mjs")
+  const tmpDir = os.tmpdir()
+  const ts = Date.now()
+  const inputPath = path.join(tmpDir, `raster-in-${ts}.pdf`)
+  const outputPath = path.join(tmpDir, `raster-out-${ts}.pdf`)
 
   fs.writeFileSync(inputPath, pdfBuffer)
 
   try {
-    execFileSync("node", [scriptPath, inputPath, outputPath], {
+    execFileSync("node", ["--input-type=module", "-e", RASTERIZE_SCRIPT], {
       timeout: 30000,
       stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, RASTER_INPUT: inputPath, RASTER_OUTPUT: outputPath },
     })
 
-    const result = fs.readFileSync(outputPath)
-    return result
+    return fs.readFileSync(outputPath)
   } finally {
-    // Clean up temp files
     try { fs.unlinkSync(inputPath) } catch {}
     try { fs.unlinkSync(outputPath) } catch {}
   }
