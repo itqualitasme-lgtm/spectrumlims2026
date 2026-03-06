@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/utils"
-import { ArrowLeft, Pencil, UserPlus, Loader2, Printer, ShieldCheck, Clock } from "lucide-react"
+import { ArrowLeft, Pencil, UserPlus, Loader2, Printer, Clock } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -12,7 +12,6 @@ import { SearchableSelect } from "@/components/shared/searchable-select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { Input } from "@/components/ui/input"
 import {
   Card,
   CardContent,
@@ -38,7 +37,7 @@ import {
 } from "@/components/ui/dialog"
 
 import { assignSample, getChemistsForSelect } from "@/actions/registrations"
-import { createEditRequest, getEditRequestStatus } from "@/actions/edit-requests"
+import { getEditRequestStatus } from "@/actions/edit-requests"
 
 type TestResult = {
   id: string
@@ -147,47 +146,22 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
   const [chemists, setChemists] = useState<{ value: string; label: string }[]>([])
   const [loading, setLoading] = useState(false)
 
-  // Edit request state
-  const [editRequestOpen, setEditRequestOpen] = useState(false)
-  const [editRequestReason, setEditRequestReason] = useState("")
+  // Check for pending edit request
   const [editRequest, setEditRequest] = useState<{
     id: string; status: string; reason: string;
-    requestedBy: { name: string }; approvedBy?: { name: string } | null;
-    createdAt: string; approvedAt?: string | null
+    requestedBy: { name: string };
+    createdAt: string;
   } | null>(null)
 
-  const allTestsCompleted = sample.testResults.length > 0 && sample.testResults.every((tr) => tr.status === "completed")
-
-  // Check for pending/approved edit request on mount
   useEffect(() => {
     getEditRequestStatus(sample.id).then((req) => {
       if (req) setEditRequest({
         id: req.id, status: req.status, reason: req.reason,
-        requestedBy: req.requestedBy, approvedBy: req.approvedBy,
+        requestedBy: req.requestedBy,
         createdAt: req.createdAt.toISOString(),
-        approvedAt: req.approvedAt?.toISOString() || null,
       })
     }).catch(() => {})
   }, [sample.id])
-
-  const handleRequestEdit = async () => {
-    if (!editRequestReason.trim()) {
-      toast.error("Please provide a reason for the edit request")
-      return
-    }
-    setLoading(true)
-    try {
-      await createEditRequest(sample.id, editRequestReason.trim())
-      toast.success("Edit request submitted for approval")
-      setEditRequestOpen(false)
-      setEditRequestReason("")
-      router.refresh()
-    } catch (error: any) {
-      toast.error(error.message || "Failed to submit edit request")
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const handleOpenAssign = async () => {
     try {
@@ -241,34 +215,17 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
         </div>
       </div>
 
-      {/* Edit Request Banner */}
+      {/* Edit Request Pending Banner */}
       {editRequest?.status === "pending" && (
         <div className="flex items-center gap-3 px-4 py-3 border rounded-lg bg-amber-50 dark:bg-amber-950/30 border-amber-200">
           <Clock className="h-5 w-5 text-amber-600 shrink-0" />
           <div className="flex-1">
-            <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Edit Request Pending</p>
+            <p className="text-sm font-medium text-amber-800 dark:text-amber-400">Edit Changes Pending Approval</p>
             <p className="text-xs text-amber-700 dark:text-amber-500">
-              Requested by {editRequest.requestedBy.name}: {editRequest.reason}
+              Submitted by {editRequest.requestedBy.name} — awaiting authenticator review
             </p>
           </div>
-          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Awaiting Approval</Badge>
-        </div>
-      )}
-      {sample.status === "edit" && (
-        <div className="flex items-center gap-3 px-4 py-3 border rounded-lg bg-cyan-50 dark:bg-cyan-950/30 border-cyan-200">
-          <ShieldCheck className="h-5 w-5 text-cyan-600 shrink-0" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-cyan-800 dark:text-cyan-400">Edit Approved — Ready to Edit</p>
-            <p className="text-xs text-cyan-700 dark:text-cyan-500">
-              {editRequest?.approvedBy?.name ? `Approved by ${editRequest.approvedBy.name}` : "Approved by Authenticator"}{editRequest?.reason ? ` — Reason: ${editRequest.reason}` : ""}
-            </p>
-          </div>
-          <Button variant="outline" size="sm" className="text-cyan-700 border-cyan-300 hover:bg-cyan-100" asChild>
-            <Link href={`/process/registration/${sample.id}/edit`}>
-              <Pencil className="mr-1.5 h-3.5 w-3.5" />
-              Edit Now
-            </Link>
-          </Button>
+          <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100">Pending Review</Badge>
         </div>
       )}
 
@@ -281,23 +238,12 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
               <CardDescription>Details for sample {sample.sampleNumber}</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              {!allTestsCompleted || sample.status === "edit" ? (
-                <Button variant="outline" asChild>
-                  <Link href={`/process/registration/${sample.id}/edit`}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Edit
-                  </Link>
-                </Button>
-              ) : !editRequest ? (
-                <Button
-                  variant="outline"
-                  className="text-amber-600 border-amber-200 hover:bg-amber-50"
-                  onClick={() => setEditRequestOpen(true)}
-                >
-                  <ShieldCheck className="mr-2 h-4 w-4" />
-                  Request Edit
-                </Button>
-              ) : null}
+              <Button variant="outline" asChild>
+                <Link href={`/process/registration/${sample.id}/edit`}>
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Edit
+                </Link>
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => window.open(`/api/samples/${sample.id}/label`, "_blank")}
@@ -600,42 +546,6 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
         </DialogContent>
       </Dialog>
 
-      {/* Edit Request Dialog */}
-      <Dialog open={editRequestOpen} onOpenChange={setEditRequestOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Request Edit Permission</DialogTitle>
-            <DialogDescription>
-              Test results have been entered for {sample.sampleNumber}. An authenticator must approve before you can edit this sample.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Reason for editing *</Label>
-              <Input
-                value={editRequestReason}
-                onChange={(e) => setEditRequestReason(e.target.value)}
-                placeholder="e.g. Wrong unit, need to add parameter, correction needed..."
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditRequestOpen(false)} disabled={loading}>
-              Cancel
-            </Button>
-            <Button onClick={handleRequestEdit} disabled={loading || !editRequestReason.trim()}>
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Submitting...
-                </>
-              ) : (
-                "Submit Request"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

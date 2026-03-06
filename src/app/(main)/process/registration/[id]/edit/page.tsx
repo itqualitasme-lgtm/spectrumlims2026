@@ -12,12 +12,6 @@ export default async function EditSamplePage({ params }: { params: Promise<{ id:
 
   if (!sample) notFound()
 
-  // Allow editing for pending/registered/assigned/edit samples
-  // "edit" status = authenticator approved an edit request
-  if (!["pending", "registered", "assigned", "edit"].includes(sample.status)) {
-    notFound()
-  }
-
   return (
     <EditSampleClient
       sample={JSON.parse(JSON.stringify(sample))}

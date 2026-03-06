@@ -44,6 +44,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 
 import { updateSample, updateRegistration, searchCustomers, getCustomerById } from "@/actions/registrations"
 import { addTestsToSample, deleteTestResult, updateTestUnit } from "@/actions/test-results"
+import { submitEditForReview } from "@/actions/edit-requests"
 
 type TestParam = {
   parameter: string
@@ -267,34 +268,69 @@ export function EditSampleClient({
           ? `${collectionDate}T00:00`
           : undefined
 
-      await updateSample(sample.id, {
-        clientId,
-        sampleTypeId,
-        jobType,
-        priority,
-        reference: reference || undefined,
-        description: description || undefined,
-        collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
-        collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
-        samplePoint: samplePoint || undefined,
-        quantity: quantity || undefined,
-        notes: notes || undefined,
-        collectionDate: dateTimeStr,
-      })
+      const isReported = ["completed", "reported"].includes(sample.status)
 
-      if (sample.registration?.id) {
-        await updateRegistration(sample.registration.id, {
-          samplingMethod,
-          drawnBy: drawnBy || undefined,
-          deliveredBy: deliveredBy || undefined,
-          sheetNumber: sheetNumber || undefined,
-          reference: reference || undefined,
-          collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
-          collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+      if (isReported) {
+        // For reported/completed samples: submit changes for authenticator review
+        await submitEditForReview(sample.id, {
+          sample: {
+            clientId,
+            sampleTypeId,
+            jobType,
+            priority,
+            reference: reference || undefined,
+            description: description || undefined,
+            collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+            collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
+            samplePoint: samplePoint || undefined,
+            quantity: quantity || undefined,
+            notes: notes || undefined,
+            collectionDate: dateTimeStr,
+          },
+          registration: sample.registration?.id ? {
+            registrationId: sample.registration.id,
+            samplingMethod,
+            drawnBy: drawnBy || undefined,
+            deliveredBy: deliveredBy || undefined,
+            sheetNumber: sheetNumber || undefined,
+            reference: reference || undefined,
+            collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
+            collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+          } : undefined,
         })
+        toast.success("Edit submitted for authenticator review")
+      } else {
+        // For non-reported samples: apply changes directly
+        await updateSample(sample.id, {
+          clientId,
+          sampleTypeId,
+          jobType,
+          priority,
+          reference: reference || undefined,
+          description: description || undefined,
+          collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+          collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
+          samplePoint: samplePoint || undefined,
+          quantity: quantity || undefined,
+          notes: notes || undefined,
+          collectionDate: dateTimeStr,
+        })
+
+        if (sample.registration?.id) {
+          await updateRegistration(sample.registration.id, {
+            samplingMethod,
+            drawnBy: drawnBy || undefined,
+            deliveredBy: deliveredBy || undefined,
+            sheetNumber: sheetNumber || undefined,
+            reference: reference || undefined,
+            collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
+            collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+          })
+        }
+
+        toast.success(`Sample ${sample.sampleNumber} updated`)
       }
 
-      toast.success(`Sample ${sample.sampleNumber} updated`)
       router.push(`/process/registration/${sample.id}`)
       router.refresh()
     } catch (error: any) {
@@ -415,8 +451,8 @@ export function EditSampleClient({
       {/* Job Details */}
       <Card>
         <CardContent className="py-3 px-4">
+          {/* Row 1: Customer, Job Type, Priority, Date/Time */}
           <div className="grid grid-cols-2 md:grid-cols-[1fr_110px_110px_auto] gap-x-3 gap-y-2">
-            {/* Row 1 */}
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Customer *</Label>
               <AsyncSearchableSelect
@@ -461,7 +497,9 @@ export function EditSampleClient({
                 <Input className="h-9 w-[180px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
               </div>
             </div>
-            {/* Row 2 */}
+          </div>
+          {/* Row 2: Reference, Location, Sampler, Sampling */}
+          <div className="grid grid-cols-2 md:grid-cols-[1fr_1fr_1.5fr_120px] gap-x-3 gap-y-2 mt-1.5">
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Reference / PO</Label>
               <Input className="h-9" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number" />
@@ -494,7 +532,9 @@ export function EditSampleClient({
                 </SelectContent>
               </Select>
             </div>
-            {/* Row 3 */}
+          </div>
+          {/* Row 3: Drawn By, Delivered By, Sheet No */}
+          <div className="grid grid-cols-2 md:grid-cols-[150px_180px_200px_150px] gap-x-3 gap-y-2 mt-1.5">
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Drawn By</Label>
               <Input className="h-9" value={drawnBy} onChange={(e) => setDrawnBy(e.target.value)} placeholder="NP & Spectrum" />

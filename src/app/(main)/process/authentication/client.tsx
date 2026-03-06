@@ -292,7 +292,8 @@ export function AuthenticationClient({
     setLoading(true)
     try {
       await approveEditRequest(requestId)
-      toast.success("Edit request approved — sample sent back for editing")
+      toast.success("Edit approved — changes applied to sample")
+      setViewChangesRequest(null)
       router.refresh()
     } catch (error: any) {
       toast.error(error.message || "Failed to approve edit request")
@@ -555,7 +556,19 @@ export function AuthenticationClient({
                     <TableCell className="text-xs">{formatDate(req.createdAt)}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
-                        {req.status === "pending" && (
+                        {req.status === "pending" && req.changes && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={() => setViewChangesRequest(req)}
+                            disabled={loading}
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            Review
+                          </Button>
+                        )}
+                        {req.status === "pending" && !req.changes && (
                           <>
                             <Button
                               variant="outline"
@@ -904,13 +917,16 @@ export function AuthenticationClient({
           <DialogHeader>
             <DialogTitle>Edit Changes — {viewChangesRequest?.sample.sampleNumber}</DialogTitle>
             <DialogDescription>
-              Changes made by {viewChangesRequest?.requestedBy.name}. Review and acknowledge to proceed.
+              {viewChangesRequest?.status === "pending"
+                ? `Proposed changes by ${viewChangesRequest?.requestedBy.name}. Review and approve or reject.`
+                : `Changes made by ${viewChangesRequest?.requestedBy.name}. Review and acknowledge to proceed.`
+              }
             </DialogDescription>
           </DialogHeader>
 
           {viewChangesRequest?.reason && (
             <div className="text-xs p-2 rounded bg-muted">
-              <span className="font-medium">Reason:</span> {viewChangesRequest.reason}
+              <span className="font-medium">Summary:</span> {viewChangesRequest.reason}
             </div>
           )}
 
@@ -922,8 +938,8 @@ export function AuthenticationClient({
                   <TableHeader>
                     <TableRow>
                       <TableHead className="text-xs">Field</TableHead>
-                      <TableHead className="text-xs">Before</TableHead>
-                      <TableHead className="text-xs">After</TableHead>
+                      <TableHead className="text-xs">Current</TableHead>
+                      <TableHead className="text-xs">Proposed</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -946,22 +962,58 @@ export function AuthenticationClient({
             <Button variant="outline" onClick={() => setViewChangesRequest(null)} disabled={loading}>
               Close
             </Button>
-            <Button
-              onClick={() => viewChangesRequest && handleAcknowledgeChanges(viewChangesRequest.id)}
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Acknowledging...
-                </>
-              ) : (
-                <>
-                  <Check className="mr-1 h-4 w-4" />
-                  Acknowledge Changes
-                </>
-              )}
-            </Button>
+            {viewChangesRequest?.status === "pending" && (
+              <>
+                <Button
+                  variant="outline"
+                  className="text-red-600 hover:text-red-700 border-red-200"
+                  onClick={() => {
+                    if (viewChangesRequest) {
+                      handleRejectEditRequest(viewChangesRequest.id)
+                      setViewChangesRequest(null)
+                    }
+                  }}
+                  disabled={loading}
+                >
+                  <X className="mr-1 h-4 w-4" />
+                  Reject
+                </Button>
+                <Button
+                  onClick={() => viewChangesRequest && handleApproveEditRequest(viewChangesRequest.id)}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Approving...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="mr-1 h-4 w-4" />
+                      Approve & Apply
+                    </>
+                  )}
+                </Button>
+              </>
+            )}
+            {viewChangesRequest?.status === "changes_submitted" && (
+              <Button
+                onClick={() => viewChangesRequest && handleAcknowledgeChanges(viewChangesRequest.id)}
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Acknowledging...
+                  </>
+                ) : (
+                  <>
+                    <Check className="mr-1 h-4 w-4" />
+                    Acknowledge Changes
+                  </>
+                )}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

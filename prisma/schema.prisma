@@ -584,6 +584,7 @@ model EditRequest {
   reason        String
   status        String    @default("pending") // pending, approved, rejected, changes_submitted
   changes       String?   // JSON: [{field, oldValue, newValue}] — tracked changes made by registration team
+  proposedData  String?   // JSON: full proposed sample+registration data to apply on approval
   approvedById  String?
   approvedAt    DateTime?
   rejectionNote String?
