@@ -50,6 +50,7 @@ type RegistrationRow = {
   assignedTo: string | null
   status: string
   sheetNumber: string | null
+  editRequested: boolean
   createdAt: string
   samples: { id: string; sampleNumber: string; status: string }[]
 }
@@ -97,6 +98,7 @@ const STATUS_OPTIONS = [
   { value: "testing", label: "Testing" },
   { value: "completed", label: "Completed" },
   { value: "reported", label: "Reported" },
+  { value: "edit_requested", label: "Edit Requested" },
   { value: "edit", label: "Edit Approved" },
 ]
 
@@ -120,7 +122,9 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
 
   const filteredRegistrations = useMemo(() => {
     let result = registrations
-    if (statusFilter !== "all") {
+    if (statusFilter === "edit_requested") {
+      result = result.filter((r) => r.editRequested)
+    } else if (statusFilter !== "all") {
       result = result.filter((r) => r.status === statusFilter || r.samples.some((s) => s.status === statusFilter))
     }
     if (searchQuery.trim()) {
@@ -295,8 +299,18 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => statusBadge(row.original.status),
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1">
+          {statusBadge(row.original.status)}
+          {row.original.editRequested && (
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1 py-0">Edit Req</Badge>
+          )}
+        </div>
+      ),
       sortingFn: (rowA, rowB) => {
+        // Edit requested items sort first
+        if (rowA.original.editRequested && !rowB.original.editRequested) return -1
+        if (!rowA.original.editRequested && rowB.original.editRequested) return 1
         const order = ["edit", "registered", "assigned", "testing", "completed", "reported", "mixed"]
         return order.indexOf(rowA.original.status) - order.indexOf(rowB.original.status)
       },
