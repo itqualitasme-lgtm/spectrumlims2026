@@ -26,6 +26,12 @@ function getP12Certificate(): Buffer {
  * with only embedded images — no selectable text, no editable objects, no OCR.
  */
 export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
+  // Polyfill DOMMatrix for pdfjs-dist in Node.js environments (needed on Vercel)
+  if (typeof globalThis.DOMMatrix === "undefined") {
+    const canvas = require("@napi-rs/canvas")
+    globalThis.DOMMatrix = canvas.DOMMatrix
+  }
+
   // Dynamic import of ESM-only package — works in-process on both local and Vercel
   const { pdf } = await import("pdf-to-img")
 
