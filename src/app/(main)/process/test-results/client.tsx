@@ -928,6 +928,12 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                               </TableCell>
                               <TableCell className="py-1">
                                 <div className="flex items-center gap-1">
+                                  {passFail === "pass" && (
+                                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 shrink-0 text-[9px] px-1 py-0">P</Badge>
+                                  )}
+                                  {passFail === "fail" && (
+                                    <Badge className="bg-red-100 text-red-800 hover:bg-red-100 shrink-0 text-[9px] px-1 py-0">F</Badge>
+                                  )}
                                   <Input
                                     value={currentValue}
                                     onChange={(e) => handleResultChange(tr.id, e.target.value)}
@@ -941,12 +947,6 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                           : ""
                                     }`}
                                   />
-                                  {passFail === "pass" && (
-                                    <Badge className="bg-green-100 text-green-800 hover:bg-green-100 shrink-0 text-[9px] px-1 py-0">P</Badge>
-                                  )}
-                                  {passFail === "fail" && (
-                                    <Badge className="bg-red-100 text-red-800 hover:bg-red-100 shrink-0 text-[9px] px-1 py-0">F</Badge>
-                                  )}
                                 </div>
                               </TableCell>
                               <TableCell className="text-[10px] py-1">{tr.specMin || "-"}</TableCell>
