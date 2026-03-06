@@ -747,31 +747,21 @@ export function COAPDF({
             </View>
           </View>
 
-          {/* Reference row (only if reference exists) */}
-          {sample.reference && (
+          {/* Reference & Lab Ref No. row */}
+          {(sample.reference || sample.sheetNumber) && (
             <View style={styles.infoGrid}>
               <View style={styles.infoGridLeft}>
-                <Text style={styles.infoGridLabel}>Reference</Text>
+                <Text style={styles.infoGridLabel}>{sample.reference ? "Reference" : "Lab Ref No."}</Text>
                 <Text style={styles.infoGridSep}>:</Text>
-                <Text style={styles.infoGridValue}>{sample.reference}</Text>
+                <Text style={styles.infoGridValue}>{sample.reference || sample.sheetNumber}</Text>
               </View>
-              <View style={styles.infoGridRight}>
-                <Text style={styles.infoGridLabel}>{sample.sheetNumber ? "Lab Ref No." : ""}</Text>
-                <Text style={styles.infoGridSep}>{sample.sheetNumber ? ":" : ""}</Text>
-                <Text style={styles.infoGridValue}>{sample.sheetNumber || ""}</Text>
-              </View>
-            </View>
-          )}
-
-          {/* Lab Ref No. standalone (only if no reference but sheet number exists) */}
-          {!sample.reference && sample.sheetNumber && (
-            <View style={styles.infoGrid}>
-              <View style={styles.infoGridLeft}>
-                <Text style={styles.infoGridLabel}>Lab Ref No.</Text>
-                <Text style={styles.infoGridSep}>:</Text>
-                <Text style={styles.infoGridValue}>{sample.sheetNumber}</Text>
-              </View>
-              <View style={styles.infoGridRight} />
+              {sample.reference && sample.sheetNumber ? (
+                <View style={styles.infoGridRight}>
+                  <Text style={styles.infoGridLabel}>Lab Ref No.</Text>
+                  <Text style={styles.infoGridSep}>:</Text>
+                  <Text style={styles.infoGridValue}>{sample.sheetNumber}</Text>
+                </View>
+              ) : null}
             </View>
           )}
 
@@ -802,7 +792,6 @@ export function COAPDF({
                 {formatDateTime(report.reviewedAt || report.createdAt)}
               </Text>
             </View>
-            <View style={styles.infoGridRight} />
           </View>
         </View>
 
@@ -1171,31 +1160,21 @@ function COAPageContent(props: COAPDFProps) {
           </View>
         </View>
 
-        {/* Reference row (only if reference exists) */}
-        {sample.reference && (
+        {/* Reference & Lab Ref No. row */}
+        {(sample.reference || sample.sheetNumber) && (
           <View style={styles.infoGrid}>
             <View style={styles.infoGridLeft}>
-              <Text style={styles.infoGridLabel}>Reference</Text>
+              <Text style={styles.infoGridLabel}>{sample.reference ? "Reference" : "Lab Ref No."}</Text>
               <Text style={styles.infoGridSep}>:</Text>
-              <Text style={styles.infoGridValue}>{sample.reference}</Text>
+              <Text style={styles.infoGridValue}>{sample.reference || sample.sheetNumber}</Text>
             </View>
-            <View style={styles.infoGridRight}>
-              <Text style={styles.infoGridLabel}>{sample.sheetNumber ? "Lab Ref No." : ""}</Text>
-              <Text style={styles.infoGridSep}>{sample.sheetNumber ? ":" : ""}</Text>
-              <Text style={styles.infoGridValue}>{sample.sheetNumber || ""}</Text>
-            </View>
-          </View>
-        )}
-
-        {/* Lab Ref No. standalone (only if no reference but sheet number exists) */}
-        {!sample.reference && sample.sheetNumber && (
-          <View style={styles.infoGrid}>
-            <View style={styles.infoGridLeft}>
-              <Text style={styles.infoGridLabel}>Lab Ref No.</Text>
-              <Text style={styles.infoGridSep}>:</Text>
-              <Text style={styles.infoGridValue}>{sample.sheetNumber}</Text>
-            </View>
-            <View style={styles.infoGridRight} />
+            {sample.reference && sample.sheetNumber ? (
+              <View style={styles.infoGridRight}>
+                <Text style={styles.infoGridLabel}>Lab Ref No.</Text>
+                <Text style={styles.infoGridSep}>:</Text>
+                <Text style={styles.infoGridValue}>{sample.sheetNumber}</Text>
+              </View>
+            ) : null}
           </View>
         )}
 
@@ -1220,7 +1199,6 @@ function COAPageContent(props: COAPDFProps) {
             <Text style={styles.infoGridSep}>:</Text>
             <Text style={styles.infoGridValue}>{reportDateStr}</Text>
           </View>
-          <View style={styles.infoGridRight} />
         </View>
       </View>
 
