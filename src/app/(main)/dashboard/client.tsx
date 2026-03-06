@@ -21,6 +21,7 @@ import {
   CheckCircle,
   AlertCircle,
   MapPin,
+  Info,
 } from "lucide-react"
 import { format } from "date-fns"
 
@@ -559,6 +560,25 @@ export function DashboardClient({ data }: { data: DashboardData }) {
           Welcome back. Here is an overview of your lab.
         </p>
       </div>
+
+      {/* System Update Notice */}
+      <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-900 dark:bg-blue-950/30">
+        <CardContent className="pt-4 pb-4">
+          <div className="flex gap-3">
+            <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
+            <div className="space-y-1.5 text-sm">
+              <p className="font-semibold text-blue-800 dark:text-blue-300">System Update</p>
+              <ul className="space-y-1 text-blue-700 dark:text-blue-400 list-disc list-inside text-xs">
+                <li>Registration team can now edit registrations even after they are reported.</li>
+                <li>Once the Lab Manager authenticates the changes, the updates will reflect in the Registration, Chemist, and Report sections.</li>
+                <li>Reports are generated with protected headers and footers to prevent editing through third-party tools (e.g., iLovePDF).</li>
+                <li>However, please note that document editing may still be technically possible with some advanced tools.</li>
+                <li>Each report includes a validity link and QR code for verification of the document{"'"}s authenticity.</li>
+              </ul>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <RoleStats data={data} />
 
