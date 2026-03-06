@@ -126,6 +126,7 @@ export async function getReportsForInvoice(clientId: string) {
         },
       },
       invoiceItems: {
+        where: { invoice: { deletedAt: null } },
         select: { id: true },
       },
     },

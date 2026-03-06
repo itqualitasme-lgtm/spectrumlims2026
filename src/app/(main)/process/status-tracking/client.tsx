@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useTransition, useRef, useEffect } from "react"
+import { useState, useMemo, useTransition, useRef, useEffect } from "react"
 import { formatDate } from "@/lib/utils"
 import { type ColumnDef } from "@tanstack/react-table"
 import { Card, CardContent } from "@/components/ui/card"
@@ -70,6 +70,7 @@ export function StatusTrackingClient() {
   const [sampleNumber, setSampleNumber] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
+  const [invoiceFilter, setInvoiceFilter] = useState("all")
   const [isPending, startTransition] = useTransition()
 
   // Customer search
@@ -90,6 +91,14 @@ export function StatusTrackingClient() {
     document.addEventListener("mousedown", handleClick)
     return () => document.removeEventListener("mousedown", handleClick)
   }, [])
+
+  const filteredRegistrations = useMemo(() => {
+    if (invoiceFilter === "all") return registrations
+    if (invoiceFilter === "not_invoiced") return registrations.filter((r) => !r.hasProforma && !r.hasTaxInvoice)
+    if (invoiceFilter === "proforma_only") return registrations.filter((r) => r.hasProforma && !r.hasTaxInvoice)
+    if (invoiceFilter === "invoiced") return registrations.filter((r) => r.hasTaxInvoice)
+    return registrations
+  }, [registrations, invoiceFilter])
 
   function handleCustomerSearch(query: string) {
     setCustomerQuery(query)
@@ -141,6 +150,7 @@ export function StatusTrackingClient() {
     setSampleNumber("")
     setStatusFilter("all")
     setPriorityFilter("all")
+    setInvoiceFilter("all")
     setCustomerQuery("")
     setSelectedCustomer(null)
     setCustomerOptions([])
@@ -339,7 +349,7 @@ export function StatusTrackingClient() {
       "Due", "Tested", "Released", "Sampler", "Registered By", "Reported By",
       "Priority", "Proforma", "Invoice", "Status",
     ]
-    const rows = registrations.map((r) => [
+    const rows = filteredRegistrations.map((r) => [
       r.registrationNumber,
       r.client,
       r.sampleTypes,
@@ -490,6 +500,21 @@ export function StatusTrackingClient() {
               </Select>
             </div>
 
+            <div className="space-y-0.5">
+              <Label className="text-[10px]">Invoice</Label>
+              <Select value={invoiceFilter} onValueChange={setInvoiceFilter}>
+                <SelectTrigger className="h-7 w-[120px] text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="not_invoiced">Not Invoiced</SelectItem>
+                  <SelectItem value="proforma_only">Proforma Only</SelectItem>
+                  <SelectItem value="invoiced">Invoiced</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <Button size="sm" className="h-7 text-xs" onClick={handleSearch} disabled={isPending || !hasFilters}>
               <Search className="mr-1 h-3 w-3" />
               {isPending ? "..." : "Search"}
@@ -500,7 +525,7 @@ export function StatusTrackingClient() {
                   <RotateCcw className="mr-1 h-3 w-3" />
                   Clear
                 </Button>
-                {registrations.length > 0 && (
+                {filteredRegistrations.length > 0 && (
                   <Button size="sm" variant="outline" className="h-7 text-xs" onClick={handleExportCSV}>
                     <Download className="mr-1 h-3 w-3" />
                     Export
@@ -518,7 +543,7 @@ export function StatusTrackingClient() {
             Select a customer, enter a registration number, or choose a date range to search.
           </CardContent>
         </Card>
-      ) : registrations.length === 0 ? (
+      ) : filteredRegistrations.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-muted-foreground text-xs">
             No registrations found for the selected criteria.
@@ -527,7 +552,7 @@ export function StatusTrackingClient() {
       ) : (
         <DataTable
           columns={columns}
-          data={registrations}
+          data={filteredRegistrations}
           searchPlaceholder="Filter results..."
           searchKey="registrationNumber"
           pageSize={20}
