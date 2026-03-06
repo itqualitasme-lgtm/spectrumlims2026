@@ -43,6 +43,17 @@ export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
   // Dynamic import of ESM-only package
   const { pdf } = await import("pdf-to-img")
 
+  // Resolve standard fonts path for pdfjs-dist (needed on Vercel where
+  // the default path resolution fails to find the font files)
+  let standardFontDataUrl: string
+  try {
+    const pdfjsPkg = require.resolve("pdfjs-dist/package.json")
+    standardFontDataUrl = path.join(path.dirname(pdfjsPkg), "standard_fonts") + "/"
+  } catch {
+    // Fallback for Vercel where require.resolve may not work
+    standardFontDataUrl = "/var/task/node_modules/pdfjs-dist/standard_fonts/"
+  }
+
   // Get original page sizes
   const srcDoc = await PDFDocument.load(pdfBuffer)
   const pageSizes = Array.from({ length: srcDoc.getPageCount() }, (_, i) => {
@@ -54,7 +65,7 @@ export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
   const pageImages: Buffer[] = []
   const converter = await pdf(pdfBuffer, {
     scale: 3,
-    docInitParams: { disableAutoFetch: true, useWorkerFetch: false } as any,
+    docInitParams: { standardFontDataUrl, disableAutoFetch: true, useWorkerFetch: false } as any,
   })
   for await (const pageImage of converter) {
     pageImages.push(Buffer.from(pageImage))
