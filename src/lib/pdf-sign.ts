@@ -24,69 +24,42 @@ function getP12Certificate(): Buffer {
 /**
  * Rasterize each PDF page to a high-quality PNG image, then rebuild the PDF
  * with only embedded images — no selectable text, no editable objects, no OCR.
- * Runs rasterization in a child process to avoid ESM/bundler issues.
  */
 export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
-  const { execFileSync } = await import("child_process")
-  const os = await import("os")
+  // Dynamic import of ESM-only package — works in-process on both local and Vercel
+  const { pdf } = await import("pdf-to-img")
 
-  const tmpDir = os.tmpdir()
-  const ts = Date.now()
-  const inputPath = path.join(tmpDir, `raster-in-${ts}.pdf`)
-  const outputPath = path.join(tmpDir, `raster-out-${ts}.pdf`)
+  // Get original page sizes
+  const srcDoc = await PDFDocument.load(pdfBuffer)
+  const pageSizes = Array.from({ length: srcDoc.getPageCount() }, (_, i) => {
+    const p = srcDoc.getPage(i)
+    return p.getSize()
+  })
 
-  fs.writeFileSync(inputPath, pdfBuffer)
-
-  // Build inline script that uses createRequire to resolve modules from project root
-  const projectRoot = process.cwd().replace(/\\/g, "/")
-  const script = `
-    import { createRequire } from "module";
-    import { pathToFileURL } from "url";
-    import { readFileSync, writeFileSync } from "fs";
-    const require = createRequire("${projectRoot}/index.js");
-    const toURL = (p) => pathToFileURL(p).href;
-    const { pdf } = await import(toURL(require.resolve("pdf-to-img")));
-    const { PDFDocument } = await import(toURL(require.resolve("pdf-lib")));
-    const pdfBuffer = readFileSync(process.env.RASTER_INPUT);
-    const srcDoc = await PDFDocument.load(pdfBuffer);
-    const pageSizes = Array.from({ length: srcDoc.getPageCount() }, (_, i) => {
-      const p = srcDoc.getPage(i); return p.getSize();
-    });
-    const pageImages = [];
-    for await (const img of await pdf(pdfBuffer, { scale: 3 })) {
-      pageImages.push(Buffer.from(img));
-    }
-    const destDoc = await PDFDocument.create();
-    for (let i = 0; i < pageImages.length; i++) {
-      const { width, height } = pageSizes[i] || { width: 595, height: 842 };
-      const pngImage = await destDoc.embedPng(pageImages[i]);
-      const page = destDoc.addPage([width, height]);
-      page.drawImage(pngImage, { x: 0, y: 0, width, height });
-    }
-    destDoc.setTitle("Certificate of Quality");
-    destDoc.setAuthor("Spectrum LIMS");
-    destDoc.setSubject("Official Laboratory Report - Do Not Modify");
-    destDoc.setCreator("Spectrum LIMS");
-    destDoc.setProducer("Spectrum LIMS - Protected Document");
-    writeFileSync(process.env.RASTER_OUTPUT, Buffer.from(await destDoc.save()));
-  `
-
-  try {
-    execFileSync("node", ["--input-type=module", "-e", script], {
-      timeout: 30000,
-      stdio: ["pipe", "pipe", "pipe"],
-      env: {
-        ...process.env,
-        RASTER_INPUT: inputPath,
-        RASTER_OUTPUT: outputPath,
-      },
-    })
-
-    return fs.readFileSync(outputPath)
-  } finally {
-    try { fs.unlinkSync(inputPath) } catch {}
-    try { fs.unlinkSync(outputPath) } catch {}
+  // Render each page to PNG at 3x scale for high quality
+  const pageImages: Buffer[] = []
+  const converter = await pdf(pdfBuffer, { scale: 3 })
+  for await (const pageImage of converter) {
+    pageImages.push(Buffer.from(pageImage))
   }
+
+  // Build a new PDF with only the rasterized images
+  const destDoc = await PDFDocument.create()
+  for (let i = 0; i < pageImages.length; i++) {
+    const { width, height } = pageSizes[i] || { width: 595, height: 842 }
+    const pngImage = await destDoc.embedPng(pageImages[i])
+    const page = destDoc.addPage([width, height])
+    page.drawImage(pngImage, { x: 0, y: 0, width, height })
+  }
+
+  destDoc.setTitle("Certificate of Quality")
+  destDoc.setAuthor("Spectrum LIMS")
+  destDoc.setSubject("Official Laboratory Report - Do Not Modify")
+  destDoc.setCreator("Spectrum LIMS")
+  destDoc.setProducer("Spectrum LIMS - Protected Document")
+
+  const result = await destDoc.save()
+  return Buffer.from(result)
 }
 
 export async function signPDF(pdfBuffer: Buffer): Promise<Buffer> {
