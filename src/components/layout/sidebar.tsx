@@ -23,12 +23,12 @@ interface SidebarProps {
 
 export default function Sidebar({ permissions, roleName, hiddenMenuItems = [] }: SidebarProps) {
   const pathname = usePathname()
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("sidebar-collapsed") === "true"
-    }
-    return false
-  })
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    const saved = localStorage.getItem("sidebar-collapsed")
+    if (saved === "true") setCollapsed(true)
+  }, [])
 
   useEffect(() => {
     localStorage.setItem("sidebar-collapsed", String(collapsed))

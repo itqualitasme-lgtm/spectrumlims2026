@@ -12,8 +12,9 @@ export default async function EditSamplePage({ params }: { params: Promise<{ id:
 
   if (!sample) notFound()
 
-  // Only allow editing for pending/registered/assigned samples
-  if (!["pending", "registered", "assigned"].includes(sample.status)) {
+  // Allow editing for pending/registered/assigned/edit samples
+  // "edit" status = authenticator approved an edit request
+  if (!["pending", "registered", "assigned", "edit"].includes(sample.status)) {
     notFound()
   }
 
