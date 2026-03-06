@@ -21,43 +21,10 @@ function getP12Certificate(): Buffer {
   return cachedP12
 }
 
-// Inline ESM script for rasterization — executed as a child process to avoid
-// Next.js Turbopack bundler issues with ESM-only packages (pdf-to-img, pdfjs-dist)
-const RASTERIZE_SCRIPT = `
-import { readFileSync, writeFileSync } from "fs";
-import { pdf } from "pdf-to-img";
-import { PDFDocument } from "pdf-lib";
-const inputPath = process.env.RASTER_INPUT;
-const outputPath = process.env.RASTER_OUTPUT;
-const pdfBuffer = readFileSync(inputPath);
-const srcDoc = await PDFDocument.load(pdfBuffer);
-const pageSizes = Array.from({ length: srcDoc.getPageCount() }, (_, i) => {
-  const p = srcDoc.getPage(i);
-  return p.getSize();
-});
-const pageImages = [];
-for await (const img of await pdf(pdfBuffer, { scale: 3 })) {
-  pageImages.push(Buffer.from(img));
-}
-const destDoc = await PDFDocument.create();
-for (let i = 0; i < pageImages.length; i++) {
-  const { width, height } = pageSizes[i] || { width: 595, height: 842 };
-  const pngImage = await destDoc.embedPng(pageImages[i]);
-  const page = destDoc.addPage([width, height]);
-  page.drawImage(pngImage, { x: 0, y: 0, width, height });
-}
-destDoc.setTitle("Certificate of Quality");
-destDoc.setAuthor("Spectrum LIMS");
-destDoc.setSubject("Official Laboratory Report - Do Not Modify");
-destDoc.setCreator("Spectrum LIMS");
-destDoc.setProducer("Spectrum LIMS - Protected Document");
-writeFileSync(outputPath, Buffer.from(await destDoc.save()));
-`
-
 /**
  * Rasterize each PDF page to a high-quality PNG image, then rebuild the PDF
  * with only embedded images — no selectable text, no editable objects, no OCR.
- * Uses a child process to avoid ESM/bundler issues with Next.js Turbopack.
+ * Runs rasterization in a child process to avoid ESM/bundler issues.
  */
 export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
   const { execFileSync } = await import("child_process")
@@ -70,11 +37,49 @@ export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
 
   fs.writeFileSync(inputPath, pdfBuffer)
 
+  // Build inline script that uses createRequire to resolve modules from project root
+  const projectRoot = process.cwd().replace(/\\/g, "/")
+  const script = `
+    import { createRequire } from "module";
+    import { pathToFileURL } from "url";
+    import { readFileSync, writeFileSync } from "fs";
+    const require = createRequire("${projectRoot}/index.js");
+    const toURL = (p) => pathToFileURL(p).href;
+    const { pdf } = await import(toURL(require.resolve("pdf-to-img")));
+    const { PDFDocument } = await import(toURL(require.resolve("pdf-lib")));
+    const pdfBuffer = readFileSync(process.env.RASTER_INPUT);
+    const srcDoc = await PDFDocument.load(pdfBuffer);
+    const pageSizes = Array.from({ length: srcDoc.getPageCount() }, (_, i) => {
+      const p = srcDoc.getPage(i); return p.getSize();
+    });
+    const pageImages = [];
+    for await (const img of await pdf(pdfBuffer, { scale: 3 })) {
+      pageImages.push(Buffer.from(img));
+    }
+    const destDoc = await PDFDocument.create();
+    for (let i = 0; i < pageImages.length; i++) {
+      const { width, height } = pageSizes[i] || { width: 595, height: 842 };
+      const pngImage = await destDoc.embedPng(pageImages[i]);
+      const page = destDoc.addPage([width, height]);
+      page.drawImage(pngImage, { x: 0, y: 0, width, height });
+    }
+    destDoc.setTitle("Certificate of Quality");
+    destDoc.setAuthor("Spectrum LIMS");
+    destDoc.setSubject("Official Laboratory Report - Do Not Modify");
+    destDoc.setCreator("Spectrum LIMS");
+    destDoc.setProducer("Spectrum LIMS - Protected Document");
+    writeFileSync(process.env.RASTER_OUTPUT, Buffer.from(await destDoc.save()));
+  `
+
   try {
-    execFileSync("node", ["--input-type=module", "-e", RASTERIZE_SCRIPT], {
+    execFileSync("node", ["--input-type=module", "-e", script], {
       timeout: 30000,
       stdio: ["pipe", "pipe", "pipe"],
-      env: { ...process.env, RASTER_INPUT: inputPath, RASTER_OUTPUT: outputPath },
+      env: {
+        ...process.env,
+        RASTER_INPUT: inputPath,
+        RASTER_OUTPUT: outputPath,
+      },
     })
 
     return fs.readFileSync(outputPath)
