@@ -54,8 +54,9 @@ export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
     standardFontDataUrl = "/var/task/node_modules/pdfjs-dist/standard_fonts/"
   }
 
-  // Get original page sizes
+  // Get original page sizes and title
   const srcDoc = await PDFDocument.load(pdfBuffer)
+  const originalTitle = srcDoc.getTitle()
   const pageSizes = Array.from({ length: srcDoc.getPageCount() }, (_, i) => {
     const p = srcDoc.getPage(i)
     return p.getSize()
@@ -80,7 +81,7 @@ export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
     page.drawImage(pngImage, { x: 0, y: 0, width, height })
   }
 
-  destDoc.setTitle("Certificate of Quality")
+  destDoc.setTitle(originalTitle || "Certificate of Quality")
   destDoc.setAuthor("Spectrum LIMS")
   destDoc.setSubject("Official Laboratory Report - Do Not Modify")
   destDoc.setCreator("Spectrum LIMS")
