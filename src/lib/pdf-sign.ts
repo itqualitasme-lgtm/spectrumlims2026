@@ -22,23 +22,38 @@ function getP12Certificate(): Buffer {
 }
 
 /**
- * Flatten the PDF by re-embedding all pages as fixed XObject forms.
- * This removes editable text objects and makes content harder to modify
- * with third-party tools like iLovePDF.
+ * Rasterize each PDF page to a high-quality PNG image, then rebuild the PDF
+ * with only embedded images — no selectable text, no editable objects, no OCR.
  */
-export async function flattenPDF(pdfBuffer: Buffer): Promise<Buffer> {
-  const srcDoc = await PDFDocument.load(pdfBuffer)
-  const destDoc = await PDFDocument.create()
+export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
+  const { pdf } = await import("pdf-to-img")
 
-  // Copy all pages — this re-serializes the content streams
-  const pages = await destDoc.copyPages(srcDoc, srcDoc.getPageIndices())
-  for (const page of pages) {
-    destDoc.addPage(page)
+  const srcDoc = await PDFDocument.load(pdfBuffer)
+  const pageCount = srcDoc.getPageCount()
+  const pageSizes = Array.from({ length: pageCount }, (_, i) => {
+    const p = srcDoc.getPage(i)
+    const { width, height } = p.getSize()
+    return { width, height }
+  })
+
+  // Render each page to PNG at 3x scale for high quality
+  const pages: Buffer[] = []
+  const converter = await pdf(pdfBuffer, { scale: 3 })
+  for await (const pageImage of converter) {
+    pages.push(Buffer.from(pageImage))
   }
 
-  // Set document metadata to discourage editing
-  destDoc.setTitle(srcDoc.getTitle() || "Certificate of Quality")
-  destDoc.setAuthor(srcDoc.getAuthor() || "Spectrum LIMS")
+  // Build a new PDF with only the rasterized images
+  const destDoc = await PDFDocument.create()
+  for (let i = 0; i < pages.length; i++) {
+    const { width, height } = pageSizes[i] || { width: 595, height: 842 }
+    const pngImage = await destDoc.embedPng(pages[i])
+    const page = destDoc.addPage([width, height])
+    page.drawImage(pngImage, { x: 0, y: 0, width, height })
+  }
+
+  destDoc.setTitle("Certificate of Quality")
+  destDoc.setAuthor("Spectrum LIMS")
   destDoc.setSubject("Official Laboratory Report - Do Not Modify")
   destDoc.setCreator("Spectrum LIMS")
   destDoc.setProducer("Spectrum LIMS - Protected Document")
