@@ -371,12 +371,12 @@ const styles = StyleSheet.create({
     borderRightColor: BORDER,
   },
 
-  // Column widths matching reference: Test | Method | Unit | Specification | Result
-  colTest: { width: "25%" },
-  colMethod: { width: "22%" },
-  colUnit: { width: "12%" },
-  colSpec: { width: "21%" },
-  colResult: { width: "20%" },
+  // Column widths: Test | Method | Unit | Specification | Result
+  colTest: { width: "28%" },
+  colMethod: { width: "27%" },
+  colUnit: { width: "10%" },
+  colSpec: { width: "17%" },
+  colResult: { width: "18%" },
 
   // ---- Meta section (below table) ----
   metaSection: {
@@ -1393,17 +1393,29 @@ function COAPageContent(props: COAPDFProps) {
 
 // ============= PDF GENERATION UTILITY =============
 
-import { signPDF } from "@/lib/pdf-sign"
+import { signPDF, flattenPDF } from "@/lib/pdf-sign"
+
+async function securePDF(pdfBuffer: Buffer): Promise<Buffer> {
+  let result = pdfBuffer
+  // Flatten PDF to make content harder to edit with third-party tools
+  try {
+    result = await flattenPDF(result)
+  } catch (e) {
+    console.error("PDF flattening failed, continuing:", e)
+  }
+  // Then digitally sign to detect tampering
+  try {
+    result = await signPDF(result)
+  } catch (e) {
+    console.error("PDF signing failed, returning unsigned PDF:", e)
+  }
+  return result
+}
 
 export async function generateCOAPDF(props: COAPDFProps): Promise<Buffer> {
   const buffer = await renderToBuffer(<COAPDF {...props} />)
   if (!props.showHeaderFooter) return buffer as Buffer
-  try {
-    return await signPDF(buffer as Buffer)
-  } catch (e) {
-    console.error("PDF signing failed, returning unsigned PDF:", e)
-    return buffer as Buffer
-  }
+  return securePDF(buffer as Buffer)
 }
 
 export async function generateBatchCOAPDF(reports: COAPDFProps[]): Promise<Buffer> {
@@ -1413,10 +1425,5 @@ export async function generateBatchCOAPDF(reports: COAPDFProps[]): Promise<Buffe
   const buffer = await renderToBuffer(<COABatchPDF reports={reports} />)
   const skipSigning = reports.some(r => !r.showHeaderFooter)
   if (skipSigning) return buffer as Buffer
-  try {
-    return await signPDF(buffer as Buffer)
-  } catch (e) {
-    console.error("PDF signing failed, returning unsigned PDF:", e)
-    return buffer as Buffer
-  }
+  return securePDF(buffer as Buffer)
 }
