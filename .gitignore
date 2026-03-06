@@ -48,3 +48,6 @@ next-env.d.ts
 *.db-shm
 *.db-wal
 dev.db
+
+# PDF rasterization temp files
+.tmp/

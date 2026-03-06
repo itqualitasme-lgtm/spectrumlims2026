@@ -1390,14 +1390,16 @@ async function securePDF(pdfBuffer: Buffer): Promise<Buffer> {
   // Rasterize PDF pages to images — removes all text/objects, prevents editing and OCR
   try {
     result = await rasterizePDF(result)
-  } catch (e) {
-    console.error("PDF rasterization failed, continuing:", e)
+    console.log("[securePDF] Rasterization OK, size:", result.length)
+  } catch (e: any) {
+    console.error("[securePDF] Rasterization FAILED:", e?.message || e)
+    console.error("[securePDF] Stack:", e?.stack)
   }
   // Then digitally sign to detect tampering
   try {
     result = await signPDF(result)
   } catch (e) {
-    console.error("PDF signing failed, returning unsigned PDF:", e)
+    console.error("[securePDF] Signing failed:", e)
   }
   return result
 }

@@ -24,42 +24,34 @@ function getP12Certificate(): Buffer {
 /**
  * Rasterize each PDF page to a high-quality PNG image, then rebuild the PDF
  * with only embedded images — no selectable text, no editable objects, no OCR.
+ * Uses a child process to avoid ESM/bundler issues with Next.js Turbopack.
  */
 export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
-  const { pdf } = await import("pdf-to-img")
+  const { execFileSync } = await import("child_process")
 
-  const srcDoc = await PDFDocument.load(pdfBuffer)
-  const pageCount = srcDoc.getPageCount()
-  const pageSizes = Array.from({ length: pageCount }, (_, i) => {
-    const p = srcDoc.getPage(i)
-    const { width, height } = p.getSize()
-    return { width, height }
-  })
+  // Write input PDF to a temp file
+  const tmpDir = path.join(process.cwd(), ".tmp")
+  if (!fs.existsSync(tmpDir)) fs.mkdirSync(tmpDir, { recursive: true })
 
-  // Render each page to PNG at 3x scale for high quality
-  const pages: Buffer[] = []
-  const converter = await pdf(pdfBuffer, { scale: 3 })
-  for await (const pageImage of converter) {
-    pages.push(Buffer.from(pageImage))
+  const inputPath = path.join(tmpDir, `raster-in-${Date.now()}.pdf`)
+  const outputPath = path.join(tmpDir, `raster-out-${Date.now()}.pdf`)
+  const scriptPath = path.join(process.cwd(), "scripts", "rasterize-pdf.mjs")
+
+  fs.writeFileSync(inputPath, pdfBuffer)
+
+  try {
+    execFileSync("node", [scriptPath, inputPath, outputPath], {
+      timeout: 30000,
+      stdio: ["pipe", "pipe", "pipe"],
+    })
+
+    const result = fs.readFileSync(outputPath)
+    return result
+  } finally {
+    // Clean up temp files
+    try { fs.unlinkSync(inputPath) } catch {}
+    try { fs.unlinkSync(outputPath) } catch {}
   }
-
-  // Build a new PDF with only the rasterized images
-  const destDoc = await PDFDocument.create()
-  for (let i = 0; i < pages.length; i++) {
-    const { width, height } = pageSizes[i] || { width: 595, height: 842 }
-    const pngImage = await destDoc.embedPng(pages[i])
-    const page = destDoc.addPage([width, height])
-    page.drawImage(pngImage, { x: 0, y: 0, width, height })
-  }
-
-  destDoc.setTitle("Certificate of Quality")
-  destDoc.setAuthor("Spectrum LIMS")
-  destDoc.setSubject("Official Laboratory Report - Do Not Modify")
-  destDoc.setCreator("Spectrum LIMS")
-  destDoc.setProducer("Spectrum LIMS - Protected Document")
-
-  const result = await destDoc.save()
-  return Buffer.from(result)
 }
 
 export async function signPDF(pdfBuffer: Buffer): Promise<Buffer> {
