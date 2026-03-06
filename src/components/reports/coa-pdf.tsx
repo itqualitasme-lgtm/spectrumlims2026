@@ -748,22 +748,32 @@ export function COAPDF({
           </View>
 
           {/* Reference & Lab Ref No. row */}
-          {(sample.reference || sample.sheetNumber) && (
+          {sample.reference && sample.sheetNumber ? (
             <View style={styles.infoGrid}>
               <View style={styles.infoGridLeft}>
-                <Text style={styles.infoGridLabel}>{sample.reference ? "Reference" : "Lab Ref No."}</Text>
+                <Text style={styles.infoGridLabel}>Reference</Text>
                 <Text style={styles.infoGridSep}>:</Text>
-                <Text style={styles.infoGridValue}>{sample.reference || sample.sheetNumber}</Text>
+                <Text style={styles.infoGridValue}>{sample.reference}</Text>
               </View>
-              {sample.reference && sample.sheetNumber ? (
-                <View style={styles.infoGridRight}>
-                  <Text style={styles.infoGridLabel}>Lab Ref No.</Text>
-                  <Text style={styles.infoGridSep}>:</Text>
-                  <Text style={styles.infoGridValue}>{sample.sheetNumber}</Text>
-                </View>
-              ) : null}
+              <View style={styles.infoGridRight}>
+                <Text style={styles.infoGridLabel}>Lab Ref No.</Text>
+                <Text style={styles.infoGridSep}>:</Text>
+                <Text style={styles.infoGridValue}>{sample.sheetNumber}</Text>
+              </View>
             </View>
-          )}
+          ) : sample.reference ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Reference</Text>
+              <Text style={styles.infoSep}>:</Text>
+              <Text style={styles.infoValue}>{sample.reference}</Text>
+            </View>
+          ) : sample.sheetNumber ? (
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Lab Ref No.</Text>
+              <Text style={styles.infoSep}>:</Text>
+              <Text style={styles.infoValue}>{sample.sheetNumber}</Text>
+            </View>
+          ) : null}
 
           {/* Dates: Received & Tested */}
           <View style={styles.infoGrid}>
@@ -784,14 +794,12 @@ export function COAPDF({
           </View>
 
           {/* Date Reported */}
-          <View style={[styles.infoGrid, { borderBottomWidth: 0 }]}>
-            <View style={styles.infoGridLeft}>
-              <Text style={styles.infoGridLabel}>Date Reported</Text>
-              <Text style={styles.infoGridSep}>:</Text>
-              <Text style={styles.infoGridValue}>
-                {formatDateTime(report.reviewedAt || report.createdAt)}
-              </Text>
-            </View>
+          <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+            <Text style={styles.infoLabel}>Date Reported</Text>
+            <Text style={styles.infoSep}>:</Text>
+            <Text style={styles.infoValue}>
+              {formatDateTime(report.reviewedAt || report.createdAt)}
+            </Text>
           </View>
         </View>
 
@@ -1161,22 +1169,32 @@ function COAPageContent(props: COAPDFProps) {
         </View>
 
         {/* Reference & Lab Ref No. row */}
-        {(sample.reference || sample.sheetNumber) && (
+        {sample.reference && sample.sheetNumber ? (
           <View style={styles.infoGrid}>
             <View style={styles.infoGridLeft}>
-              <Text style={styles.infoGridLabel}>{sample.reference ? "Reference" : "Lab Ref No."}</Text>
+              <Text style={styles.infoGridLabel}>Reference</Text>
               <Text style={styles.infoGridSep}>:</Text>
-              <Text style={styles.infoGridValue}>{sample.reference || sample.sheetNumber}</Text>
+              <Text style={styles.infoGridValue}>{sample.reference}</Text>
             </View>
-            {sample.reference && sample.sheetNumber ? (
-              <View style={styles.infoGridRight}>
-                <Text style={styles.infoGridLabel}>Lab Ref No.</Text>
-                <Text style={styles.infoGridSep}>:</Text>
-                <Text style={styles.infoGridValue}>{sample.sheetNumber}</Text>
-              </View>
-            ) : null}
+            <View style={styles.infoGridRight}>
+              <Text style={styles.infoGridLabel}>Lab Ref No.</Text>
+              <Text style={styles.infoGridSep}>:</Text>
+              <Text style={styles.infoGridValue}>{sample.sheetNumber}</Text>
+            </View>
           </View>
-        )}
+        ) : sample.reference ? (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Reference</Text>
+            <Text style={styles.infoSep}>:</Text>
+            <Text style={styles.infoValue}>{sample.reference}</Text>
+          </View>
+        ) : sample.sheetNumber ? (
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLabel}>Lab Ref No.</Text>
+            <Text style={styles.infoSep}>:</Text>
+            <Text style={styles.infoValue}>{sample.sheetNumber}</Text>
+          </View>
+        ) : null}
 
         {/* Dates: Received & Tested */}
         <View style={styles.infoGrid}>
@@ -1193,12 +1211,10 @@ function COAPageContent(props: COAPDFProps) {
         </View>
 
         {/* Date Reported */}
-        <View style={[styles.infoGrid, { borderBottomWidth: 0 }]}>
-          <View style={styles.infoGridLeft}>
-            <Text style={styles.infoGridLabel}>Date Reported</Text>
-            <Text style={styles.infoGridSep}>:</Text>
-            <Text style={styles.infoGridValue}>{reportDateStr}</Text>
-          </View>
+        <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
+          <Text style={styles.infoLabel}>Date Reported</Text>
+          <Text style={styles.infoSep}>:</Text>
+          <Text style={styles.infoValue}>{reportDateStr}</Text>
         </View>
       </View>
 
