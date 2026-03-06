@@ -32,14 +32,12 @@ export async function rasterizePDF(pdfBuffer: Buffer): Promise<Buffer> {
     globalThis.DOMMatrix = canvas.DOMMatrix
   }
 
-  // Pre-load the pdfjs worker module so it's available for the fake worker setup.
-  // On Vercel, the dynamic import of the worker file fails because it's not in the
-  // output bundle. Loading it here forces the bundler to include it.
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs")
-  // @ts-ignore — no type declarations for worker module
-  const pdfjsWorker = await import("pdfjs-dist/legacy/build/pdf.worker.mjs")
-  if (pdfjsWorker.WorkerMessageHandler) {
-    ;(pdfjs as any).PDFWorker._setupFakeWorkerGlobal = Promise.resolve(pdfjsWorker.WorkerMessageHandler)
+  // Pre-load the pdfjs worker into globalThis so pdfjs uses it directly
+  // instead of trying to dynamically import the worker file (which fails on Vercel)
+  if (!(globalThis as any).pdfjsWorker) {
+    // @ts-ignore — no type declarations for worker module
+    const worker = await import("pdfjs-dist/legacy/build/pdf.worker.mjs")
+    ;(globalThis as any).pdfjsWorker = worker
   }
 
   // Dynamic import of ESM-only package
