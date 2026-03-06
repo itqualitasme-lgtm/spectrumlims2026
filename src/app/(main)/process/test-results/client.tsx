@@ -174,6 +174,8 @@ const sampleStatusBadge = (status: string) => {
       return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100 text-[10px] px-1.5 py-0">Testing</Badge>
     case "completed":
       return <Badge className="bg-green-100 text-green-800 hover:bg-green-100 text-[10px] px-1.5 py-0">Completed</Badge>
+    case "reported":
+      return <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[10px] px-1.5 py-0">Authenticated</Badge>
     default:
       return <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{status}</Badge>
   }
@@ -200,6 +202,7 @@ const STATUS_FILTER_OPTIONS = [
   { value: "assigned", label: "Assigned" },
   { value: "testing", label: "Testing" },
   { value: "completed", label: "Completed" },
+  { value: "reported", label: "Authenticated / Reported" },
 ]
 
 // ============= MAIN COMPONENT =============
@@ -303,7 +306,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
   const filteredSamples = useMemo(() => {
     let result = samples
     if (statusFilter === "active") {
-      result = result.filter((s) => s.status !== "completed")
+      result = result.filter((s) => s.status !== "completed" && s.status !== "reported")
     } else if (statusFilter !== "all") {
       if (statusFilter === "revision") {
         result = result.filter((s) => s.reports.length > 0 && s.reports[0].status === "revision")
@@ -403,6 +406,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
   // ============= RENDER =============
 
   const isSaving = selectedSample ? savingIds.has(selectedSample.id) : false
+  const isReadOnly = selectedSample?.status === "reported"
   const hasEnteredValues = selectedSample
     ? selectedSample.testResults.some(
         (tr) => tr.status === "pending" && resultValues[tr.id]?.trim()
@@ -754,36 +758,44 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                   )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-xs text-orange-600 hover:text-orange-700"
-                    onClick={() => {
-                      setRevertReason("")
-                      setRevertOpen(true)
-                    }}
-                  >
-                    <RotateCcw className="mr-1 h-3 w-3" />
-                    Revert to Registration
-                  </Button>
-                  <Button
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => handleSaveSample(selectedSample)}
-                    disabled={isSaving || !hasEnteredValues}
-                  >
-                    {isSaving ? (
-                      <>
-                        <Loader2 className="mr-1 h-3 w-3 animate-spin" />
-                        Saving...
-                      </>
-                    ) : (
-                      <>
-                        <Save className="mr-1 h-3 w-3" />
-                        Save Results
-                      </>
-                    )}
-                  </Button>
+                  {isReadOnly ? (
+                    <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[10px] px-2 py-0.5">
+                      Authenticated — Read Only
+                    </Badge>
+                  ) : (
+                    <>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs text-orange-600 hover:text-orange-700"
+                        onClick={() => {
+                          setRevertReason("")
+                          setRevertOpen(true)
+                        }}
+                      >
+                        <RotateCcw className="mr-1 h-3 w-3" />
+                        Revert to Registration
+                      </Button>
+                      <Button
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => handleSaveSample(selectedSample)}
+                        disabled={isSaving || !hasEnteredValues}
+                      >
+                        {isSaving ? (
+                          <>
+                            <Loader2 className="mr-1 h-3 w-3 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-1 h-3 w-3" />
+                            Save Results
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -902,6 +914,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                   onChange={(e) => handleUnitChange(tr.id, e.target.value)}
                                   placeholder="-"
                                   className="h-6 text-[10px] w-[70px] px-1.5"
+                                  readOnly={isReadOnly}
                                 />
                               </TableCell>
                               <TableCell className="py-1">
@@ -910,6 +923,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                     value={currentValue}
                                     onChange={(e) => handleResultChange(tr.id, e.target.value)}
                                     placeholder="Result..."
+                                    readOnly={isReadOnly}
                                     className={`h-7 text-xs ${
                                       passFail === "fail"
                                         ? "border-red-400 focus-visible:ring-red-400"
@@ -983,6 +997,7 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                         placeholder="Enter remarks to display on the report..."
                         className="text-xs min-h-[60px] resize-none"
                         rows={3}
+                        readOnly={isReadOnly}
                       />
 
                       {/* Manage prefilled remarks */}

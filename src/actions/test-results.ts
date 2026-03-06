@@ -16,7 +16,7 @@ export async function getSamplesForTestEntry() {
   const whereClause: any = {
     labId,
     deletedAt: null,
-    status: { in: ["registered", "assigned", "testing", "completed"] },
+    status: { in: ["registered", "assigned", "testing", "completed", "reported"] },
   }
 
   // Chemists see unassigned (public) samples + their own assigned samples
