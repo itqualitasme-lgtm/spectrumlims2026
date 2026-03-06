@@ -229,8 +229,14 @@ export async function GET(
     }
 
     return new Response(new Uint8Array(pdfBuffer), { status: 200, headers })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating COA PDF:", error)
+    const msg = error?.message || String(error)
+    const stack = error?.stack?.substring(0, 500) || ""
+    const debugMode = new URL(request.url).searchParams.get("debug") === "1"
+    if (debugMode) {
+      return NextResponse.json({ error: msg, stack }, { status: 500 })
+    }
     return NextResponse.json(
       { error: "Failed to generate COA PDF" },
       { status: 500 }
