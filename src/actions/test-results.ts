@@ -12,19 +12,24 @@ export async function getSamplesForTestEntry() {
   const labId = user.labId
   const roleName = user.roleName
 
-  // Show samples that are registered, assigned, testing, or recently completed
+  // Show active samples (any date) + reported samples (last 5 days only)
+  const fiveDaysAgo = new Date()
+  fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5)
+
   const whereClause: any = {
     labId,
     deletedAt: null,
-    status: { in: ["registered", "assigned", "testing", "completed", "reported"] },
+    OR: [
+      { status: { in: ["registered", "assigned", "testing", "completed"] } },
+      { status: "reported", updatedAt: { gte: fiveDaysAgo } },
+    ],
   }
 
   // Chemists see unassigned (public) samples + their own assigned samples
   // Admin/Lab Manager see all
   if (roleName === "Chemist") {
-    whereClause.OR = [
-      { assignedToId: null },
-      { assignedToId: user.id },
+    whereClause.AND = [
+      { OR: [{ assignedToId: null }, { assignedToId: user.id }] },
     ]
   }
 

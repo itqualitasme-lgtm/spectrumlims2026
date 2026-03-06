@@ -200,7 +200,7 @@ const STATUS_FILTER_OPTIONS = [
   { value: "registered", label: "Registered" },
   { value: "assigned", label: "Assigned" },
   { value: "testing", label: "Testing" },
-  { value: "completed", label: "Completed" },
+  { value: "completed", label: "Completed / Authentication Pending" },
   { value: "reported", label: "Authenticated / Reported" },
 ]
 
@@ -535,8 +535,12 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                         {reg.regNumber && (
                           <button
                             type="button"
-                            className={`w-full text-left px-2 py-1.5 bg-muted/60 border-b hover:bg-muted/80 transition-colors ${
-                              hasSelectedSample ? "border-l-2 border-l-primary" : ""
+                            className={`w-full text-left px-2 py-1.5 border-b transition-colors ${
+                              !isCollapsed
+                                ? "bg-primary/10 border-l-2 border-l-primary"
+                                : hasSelectedSample
+                                  ? "bg-muted/60 border-l-2 border-l-primary/50 hover:bg-muted/80"
+                                  : "bg-muted/60 hover:bg-muted/80"
                             }`}
                             onClick={() => toggleRegCollapse(reg.regNumber!)}
                           >
@@ -544,9 +548,9 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                               {isCollapsed ? (
                                 <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
                               ) : (
-                                <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                                <ChevronDown className="h-3 w-3 text-primary shrink-0" />
                               )}
-                              <span className="text-[10px] font-mono font-bold text-foreground">
+                              <span className={`text-[10px] font-mono font-bold ${!isCollapsed ? "text-primary" : "text-foreground"}`}>
                                 {reg.regNumber}
                               </span>
                               <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4">
@@ -577,11 +581,11 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                         )}
                         {/* Expanded content */}
                         {!isCollapsed && reg.typeGroups.map((tg) => (
-                          <div key={`${reg.regNumber}-${tg.typeName}`}>
+                          <div key={`${reg.regNumber}-${tg.typeName}`} className={reg.regNumber ? "bg-muted/20" : ""}>
                             {/* Type sub-header (only for registration groups with known type) */}
                             {reg.regNumber && tg.typeName && (
-                              <div className="px-3 py-0.5 bg-muted/30 border-b flex items-center justify-between">
-                                <span className="text-[10px] font-semibold text-muted-foreground">
+                              <div className="px-3 py-0.5 bg-muted/40 border-b border-border/50 flex items-center justify-between">
+                                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
                                   {tg.typeName}
                                 </span>
                                 <span className="text-[9px] text-muted-foreground">
@@ -610,22 +614,28 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                               const earliestDue = getEarliestDueDate(sample.testResults)
                               const sampleDueStatus = isDueSoon(earliestDue)
 
-                              const statusDot = sample.status === "completed"
-                                ? "bg-green-500"
-                                : sample.status === "testing"
-                                  ? "bg-blue-500"
-                                  : sample.status === "assigned"
-                                    ? "bg-primary"
-                                    : "bg-muted-foreground/40"
+                              const statusDot = sample.status === "reported"
+                                ? "bg-emerald-500"
+                                : sample.status === "completed"
+                                  ? "bg-green-500"
+                                  : sample.status === "testing"
+                                    ? "bg-blue-500"
+                                    : sample.status === "assigned"
+                                      ? "bg-primary"
+                                      : "bg-muted-foreground/40"
 
                               return (
                                 <button
                                   key={sample.id}
                                   type="button"
-                                  className={`w-full text-left px-2.5 py-1.5 hover:bg-muted/50 transition-colors border-b ${
-                                    isSelected ? "bg-muted border-l-2 border-l-primary" : ""
-                                  } ${hasRevision ? "border-l-2 border-l-amber-500" : ""} ${
-                                    isUrgent && !isSelected && !hasRevision ? "border-l-2 border-l-red-500" : ""
+                                  className={`w-full text-left px-2.5 py-1.5 transition-colors border-b border-border/40 ${
+                                    isSelected
+                                      ? "bg-primary/15 border-l-2 border-l-primary shadow-[inset_0_0_0_1px] shadow-primary/10"
+                                      : hasRevision
+                                        ? "border-l-2 border-l-amber-500 hover:bg-muted/50"
+                                        : isUrgent
+                                          ? "border-l-2 border-l-red-500 hover:bg-muted/50"
+                                          : "hover:bg-muted/50"
                                   }`}
                                   onClick={() => {
                                     setSelectedSampleId(sample.id)
