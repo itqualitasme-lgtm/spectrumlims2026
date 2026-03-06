@@ -537,10 +537,10 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                             type="button"
                             className={`w-full text-left px-2 py-1.5 border-b transition-colors ${
                               !isCollapsed
-                                ? "bg-primary/10 border-l-2 border-l-primary"
+                                ? "bg-primary/15 border-l-3 border-l-primary"
                                 : hasSelectedSample
-                                  ? "bg-muted/60 border-l-2 border-l-primary/50 hover:bg-muted/80"
-                                  : "bg-muted/60 hover:bg-muted/80"
+                                  ? "bg-muted/50 border-l-3 border-l-primary/50 hover:bg-muted/70"
+                                  : "bg-muted/50 hover:bg-muted/70"
                             }`}
                             onClick={() => toggleRegCollapse(reg.regNumber!)}
                           >
@@ -581,16 +581,16 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                         )}
                         {/* Expanded content */}
                         {!isCollapsed && reg.typeGroups.map((tg) => (
-                          <div key={`${reg.regNumber}-${tg.typeName}`} className={reg.regNumber ? "bg-muted/20" : ""}>
+                          <div key={`${reg.regNumber}-${tg.typeName}`} className={reg.regNumber ? "border-l-3 border-l-primary/20 ml-0" : ""}>
                             {/* Type sub-header (only for registration groups with known type) */}
                             {reg.regNumber && tg.typeName && (
-                              <div className="px-3 py-0.5 bg-muted/40 border-b border-border/50 flex items-center justify-between">
-                                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                              <div className="px-3 py-1 bg-muted/50 border-b border-border/50 flex items-center justify-between">
+                                <span className="text-[10px] font-semibold text-muted-foreground/80 uppercase tracking-wider">
                                   {tg.typeName}
                                 </span>
-                                <span className="text-[9px] text-muted-foreground">
+                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 h-4">
                                   {tg.samples.length}
-                                </span>
+                                </Badge>
                               </div>
                             )}
                             {/* Samples */}
@@ -628,14 +628,14 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                                 <button
                                   key={sample.id}
                                   type="button"
-                                  className={`w-full text-left px-2.5 py-1.5 transition-colors border-b border-border/40 ${
+                                  className={`w-full text-left px-2.5 py-1.5 transition-colors border-b border-border/30 ${
                                     isSelected
-                                      ? "bg-primary/15 border-l-2 border-l-primary shadow-[inset_0_0_0_1px] shadow-primary/10"
+                                      ? "bg-primary/20 border-l-3 border-l-primary"
                                       : hasRevision
-                                        ? "border-l-2 border-l-amber-500 hover:bg-muted/50"
+                                        ? "border-l-3 border-l-amber-500 hover:bg-muted/40"
                                         : isUrgent
-                                          ? "border-l-2 border-l-red-500 hover:bg-muted/50"
-                                          : "hover:bg-muted/50"
+                                          ? "border-l-3 border-l-red-500 hover:bg-muted/40"
+                                          : "hover:bg-muted/40"
                                   }`}
                                   onClick={() => {
                                     setSelectedSampleId(sample.id)
