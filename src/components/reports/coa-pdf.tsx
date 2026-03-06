@@ -1393,9 +1393,12 @@ function COAPageContent(props: COAPDFProps) {
 
 // ============= PDF GENERATION UTILITY =============
 
+import { signPDF } from "@/lib/pdf-sign"
+
 export async function generateCOAPDF(props: COAPDFProps): Promise<Buffer> {
   const buffer = await renderToBuffer(<COAPDF {...props} />)
-  return buffer as Buffer
+  if (!props.showHeaderFooter) return buffer as Buffer
+  return signPDF(buffer as Buffer)
 }
 
 export async function generateBatchCOAPDF(reports: COAPDFProps[]): Promise<Buffer> {
@@ -1403,5 +1406,7 @@ export async function generateBatchCOAPDF(reports: COAPDFProps[]): Promise<Buffe
     return generateCOAPDF(reports[0])
   }
   const buffer = await renderToBuffer(<COABatchPDF reports={reports} />)
-  return buffer as Buffer
+  const skipSigning = reports.some(r => !r.showHeaderFooter)
+  if (skipSigning) return buffer as Buffer
+  return signPDF(buffer as Buffer)
 }
