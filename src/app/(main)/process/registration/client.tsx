@@ -382,16 +382,16 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
           <span className="text-xs text-muted-foreground">Total</span>
           <Badge variant="secondary" className="text-xs">{registrations.length}</Badge>
         </div>
-        <div className="flex items-center gap-2 rounded-md border px-3 py-1.5 bg-amber-500/10 border-amber-500/30">
+        <div className="flex items-center gap-2 rounded-md border px-3 py-1.5 bg-amber-500/10 border-amber-500/30 cursor-pointer hover:bg-amber-500/20 transition-colors" onClick={() => setStatusFilter("edit_requested")}>
           <span className="text-xs text-amber-700 dark:text-amber-400">Edit Requested</span>
           <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-xs">
             {registrations.filter((r) => r.editRequested).length}
           </Badge>
         </div>
-        <div className="flex items-center gap-2 rounded-md border px-3 py-1.5 bg-cyan-500/10 border-cyan-500/30">
+        <div className="flex items-center gap-2 rounded-md border px-3 py-1.5 bg-cyan-500/10 border-cyan-500/30 cursor-pointer hover:bg-cyan-500/20 transition-colors" onClick={() => setStatusFilter("edit")}>
           <span className="text-xs text-cyan-700 dark:text-cyan-400">Edit Approved</span>
           <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100 text-xs">
-            {registrations.filter((r) => r.revisionCount > 0).length}
+            {registrations.filter((r) => r.status === "edit" || r.samples.some((s) => s.status === "edit")).length}
           </Badge>
         </div>
       </div>
