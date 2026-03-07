@@ -410,13 +410,13 @@ export function UsersClient({
 
       {/* Employee User Dialog */}
       <Dialog open={userDialogOpen} onOpenChange={(open) => { setUserDialogOpen(open); if (!open) setEditingUser(null) }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{editingUser ? "Edit User" : "Add User"}</DialogTitle>
             <DialogDescription>{editingUser ? "Update user details below." : "Fill in the user details below."}</DialogDescription>
           </DialogHeader>
-          <form key={editingUser?.id || "create-user"} onSubmit={handleSubmitUser}>
-            <div className="grid gap-4 py-4">
+          <form key={editingUser?.id || "create-user"} onSubmit={handleSubmitUser} className="flex flex-col overflow-hidden">
+            <div className="grid gap-4 py-4 overflow-y-auto pr-1">
               <div className="grid gap-2">
                 <Label>Name *</Label>
                 <Input name="name" defaultValue={editingUser?.name || ""} placeholder="Full name" />
