@@ -336,7 +336,7 @@ export function StatusTrackingClient() {
         const c = row.original.revisionCount
         return c > 0
           ? <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1.5 py-0">{c}</Badge>
-          : <span className="text-muted-foreground/40 text-xs">0</span>
+          : <span className="text-muted-foreground/30 text-xs">-</span>
       },
     },
     {
@@ -404,7 +404,15 @@ export function StatusTrackingClient() {
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
-    a.download = `status-tracking-${new Date().toISOString().slice(0, 10)}.csv`
+    const filterParts = [
+      "status-tracking",
+      fromDate && toDate ? `${fromDate}-to-${toDate}` : fromDate || toDate || "",
+      selectedCustomer ? selectedCustomer.name.replace(/[^a-zA-Z0-9]/g, "-").slice(0, 20) : "",
+      statusFilter !== "all" ? statusFilter : "",
+      priorityFilter !== "all" ? priorityFilter : "",
+      invoiceFilter !== "all" ? invoiceFilter : "",
+    ].filter(Boolean).join("_")
+    a.download = `${filterParts}-${new Date().toISOString().slice(0, 10)}.csv`
     a.click()
     URL.revokeObjectURL(url)
   }
