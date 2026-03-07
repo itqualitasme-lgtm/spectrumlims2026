@@ -425,7 +425,9 @@ export async function getSample(id: string) {
           enteredBy: { select: { name: true } },
         },
       },
-      reports: true,
+      reports: {
+        where: { deletedAt: null, status: { not: "revision" } },
+      },
     },
   })
 
