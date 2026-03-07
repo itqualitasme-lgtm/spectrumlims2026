@@ -518,7 +518,7 @@ export async function revertToRegistration(sampleId: string, reason: string) {
 
   if (!sample) throw new Error("Sample not found")
 
-  // Reset sample status back to registered and store the reason in notes
+  // Reset sample status back to registered — keep results intact
   const existingNotes = sample.notes || ""
   const revertNote = `[Reverted by ${user.name}: ${reason}]`
   const updatedNotes = existingNotes ? `${existingNotes}\n${revertNote}` : revertNote
@@ -527,30 +527,18 @@ export async function revertToRegistration(sampleId: string, reason: string) {
     where: { id: sampleId },
     data: {
       status: "registered",
-      assignedToId: null,
       notes: updatedNotes,
     },
   })
 
-  // Reset all test results to pending and clear entered values
-  await db.testResult.updateMany({
-    where: { sampleId },
-    data: {
-      status: "pending",
-      resultValue: null,
-      enteredById: null,
-      enteredAt: null,
-    },
-  })
-
-  // Remove/reset any existing reports for this sample
+  // Set existing reports to revision (historical) — keep them, don't delete
   const existingReports = await db.report.findMany({
     where: { sampleId, labId, deletedAt: null },
   })
   for (const report of existingReports) {
     await db.report.update({
       where: { id: report.id },
-      data: { deletedAt: new Date(), deletedById: user.id },
+      data: { status: "revision", deletedAt: null },
     })
   }
 
@@ -560,7 +548,7 @@ export async function revertToRegistration(sampleId: string, reason: string) {
     user.name,
     "process",
     "edit",
-    `Reverted sample ${sample.sampleNumber} to registration: ${reason}${existingReports.length > 0 ? ` (${existingReports.length} report(s) removed)` : ""}`
+    `Reverted sample ${sample.sampleNumber} to registration: ${reason} (results preserved, ${existingReports.length} report(s) set to revision)`
   )
 
   revalidatePath("/process/test-results")
