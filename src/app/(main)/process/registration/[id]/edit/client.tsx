@@ -449,11 +449,11 @@ export function EditSampleClient({
       </div>
 
       {/* Job Details */}
-      <Card>
+      <Card className="overflow-hidden">
         <CardContent className="py-3 px-4">
           {/* Row 1: Customer, Job Type, Priority, Date/Time */}
-          <div className="grid grid-cols-2 md:grid-cols-[1fr_110px_110px_auto] gap-x-3 gap-y-2">
-            <div className="grid gap-0.5">
+          <div className="grid grid-cols-2 md:grid-cols-[minmax(0,1fr)_100px_100px_auto] gap-x-3 gap-y-2">
+            <div className="grid gap-0.5 min-w-0">
               <Label className="text-xs text-muted-foreground">Customer *</Label>
               <AsyncSearchableSelect
                 value={clientId}
@@ -493,13 +493,13 @@ export function EditSampleClient({
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Rec. Date & Time</Label>
               <div className="flex gap-1.5">
-                <Input className="h-9" type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
-                <Input className="h-9 w-[180px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
+                <Input className="h-9 w-[140px]" type="date" value={collectionDate} onChange={(e) => setCollectionDate(e.target.value)} />
+                <Input className="h-9 w-[120px]" type="time" value={collectionTime} onChange={(e) => setCollectionTime(e.target.value)} />
               </div>
             </div>
           </div>
           {/* Row 2: Reference, Location, Sampler, Sampling */}
-          <div className="grid grid-cols-2 md:grid-cols-[1fr_1fr_1.5fr_120px] gap-x-3 gap-y-2 mt-1.5">
+          <div className="grid grid-cols-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.5fr)_120px] gap-x-3 gap-y-2 mt-1.5">
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Reference / PO</Label>
               <Input className="h-9" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="PO number" />
