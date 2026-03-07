@@ -271,6 +271,30 @@ export function EditSampleClient({
       const isReported = ["completed", "reported"].includes(sample.status)
 
       if (isReported) {
+        // Check if any sample fields actually changed before submitting for review
+        const resolvedCollectedById = collectedById && collectedById !== "reception" ? collectedById : undefined
+        const resolvedLocation = collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined)
+
+        const hasFieldChanges =
+          clientId !== sample.clientId ||
+          sampleTypeId !== sample.sampleTypeId ||
+          jobType !== (sample.jobType || "testing") ||
+          priority !== sample.priority ||
+          (reference || undefined) !== (sample.reference || undefined) ||
+          (description || undefined) !== (sample.description || undefined) ||
+          (resolvedCollectedById || null) !== (sample.collectedById || null) ||
+          (resolvedLocation || null) !== (sample.collectionLocation || null) ||
+          (samplePoint || undefined) !== (sample.samplePoint || undefined) ||
+          (quantity || undefined) !== (sample.quantity || undefined) ||
+          (notes || undefined) !== (sample.notes || undefined)
+
+        if (!hasFieldChanges) {
+          // No field changes — parameters were already added directly, no edit review needed
+          toast.success("No field changes to submit. Test parameters were added directly.")
+          router.push(`/process/registration/${sample.id}`)
+          return
+        }
+
         // For reported/completed samples: submit changes for authenticator review
         await submitEditForReview(sample.id, {
           sample: {
@@ -280,8 +304,8 @@ export function EditSampleClient({
             priority,
             reference: reference || undefined,
             description: description || undefined,
-            collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
-            collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
+            collectedById: resolvedCollectedById,
+            collectionLocation: resolvedLocation,
             samplePoint: samplePoint || undefined,
             quantity: quantity || undefined,
             notes: notes || undefined,
@@ -294,8 +318,8 @@ export function EditSampleClient({
             deliveredBy: deliveredBy || undefined,
             sheetNumber: sheetNumber || undefined,
             reference: reference || undefined,
-            collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
-            collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
+            collectionLocation: resolvedLocation,
+            collectedById: resolvedCollectedById,
           } : undefined,
         })
         toast.success("Edit submitted for authenticator review")
