@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { formatDate } from "@/lib/utils"
-import { ArrowLeft, Pencil, UserPlus, Loader2, Printer, Clock } from "lucide-react"
+import { ArrowLeft, Pencil, UserPlus, Loader2, Printer, Clock, ChevronDown, ChevronUp } from "lucide-react"
 import { toast } from "sonner"
 
 import { PageHeader } from "@/components/shared/page-header"
@@ -36,7 +36,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 
-import { assignSample, getChemistsForSelect } from "@/actions/registrations"
+import { assignSample, getChemistsForSelect, getSampleActivityLog } from "@/actions/registrations"
 import { getEditRequestStatus } from "@/actions/edit-requests"
 
 type TestResult = {
@@ -153,6 +153,10 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
     createdAt: string;
   } | null>(null)
 
+  const [activityOpen, setActivityOpen] = useState(false)
+  const [activityLogs, setActivityLogs] = useState<{ id: string; userName: string | null; action: string; details: string | null; createdAt: string }[]>([])
+  const [activityLoading, setActivityLoading] = useState(false)
+
   useEffect(() => {
     getEditRequestStatus(sample.id).then((req) => {
       if (req) setEditRequest({
@@ -162,6 +166,23 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
       })
     }).catch(() => {})
   }, [sample.id])
+
+  const handleToggleActivity = async () => {
+    if (activityOpen) {
+      setActivityOpen(false)
+      return
+    }
+    setActivityLoading(true)
+    try {
+      const logs = await getSampleActivityLog(sample.sampleNumber)
+      setActivityLogs(logs.map(l => ({ ...l, createdAt: l.createdAt.toISOString() })))
+    } catch {
+      toast.error("Failed to load activity log")
+    } finally {
+      setActivityLoading(false)
+      setActivityOpen(true)
+    }
+  }
 
   const handleOpenAssign = async () => {
     try {
@@ -503,6 +524,47 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
             <p className="text-sm text-muted-foreground">No reports for this sample yet.</p>
           )}
         </CardContent>
+      </Card>
+
+      {/* Activity Log */}
+      <Card>
+        <CardHeader className="cursor-pointer select-none py-3" onClick={handleToggleActivity}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <CardTitle className="text-sm">Activity Log</CardTitle>
+            </div>
+            <div className="flex items-center gap-2">
+              {activityLoading && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+              {activityOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+            </div>
+          </div>
+        </CardHeader>
+        {activityOpen && (
+          <CardContent className="pt-0">
+            {activityLogs.length > 0 ? (
+              <div className="space-y-1.5 max-h-[350px] overflow-y-auto">
+                {activityLogs.map((log) => (
+                  <div key={log.id} className="flex items-start gap-3 text-xs border-b border-border/50 pb-1.5 last:border-0">
+                    <span className="text-muted-foreground whitespace-nowrap min-w-[120px]">
+                      {new Date(log.createdAt).toLocaleString("en-GB", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: true })}
+                    </span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                      {log.action}
+                    </Badge>
+                    <span className="text-muted-foreground flex-1 break-words">
+                      <strong className="text-foreground">{log.userName || "System"}</strong>
+                      {" — "}
+                      {log.details || "-"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xs text-muted-foreground">No activity recorded for this sample.</p>
+            )}
+          </CardContent>
+        )}
       </Card>
 
       {/* Assign Dialog */}

@@ -1060,6 +1060,32 @@ export async function deleteRegistration(registrationId: string) {
   return { success: true }
 }
 
+// ============= ACTIVITY LOG =============
+
+export async function getSampleActivityLog(sampleNumber: string) {
+  const session = await getSession()
+  const user = session.user as any
+  const labId = user.labId
+
+  const logs = await db.auditLog.findMany({
+    where: {
+      labId,
+      details: { contains: sampleNumber },
+    },
+    select: {
+      id: true,
+      userName: true,
+      action: true,
+      details: true,
+      createdAt: true,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 50,
+  })
+
+  return logs
+}
+
 export async function getMyCollections() {
   const session = await getSession()
   const user = session.user as any
