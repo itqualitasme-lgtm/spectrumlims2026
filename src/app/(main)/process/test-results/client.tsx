@@ -53,6 +53,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   batchUpdateTestResults,
   revertToRegistration,
+  revertToChemist,
   getReportRemarks,
   getPrefilledRemarks,
   createPrefilledRemark,
@@ -239,6 +240,11 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
   const [revertReason, setRevertReason] = useState("")
   const [revertLoading, setRevertLoading] = useState(false)
 
+  // Revert to chemist dialog
+  const [revertChemistOpen, setRevertChemistOpen] = useState(false)
+  const [revertChemistReason, setRevertChemistReason] = useState("")
+  const [revertChemistLoading, setRevertChemistLoading] = useState(false)
+
   // Remarks state
   const [remarksText, setRemarksText] = useState("")
   const [prefilledRemarksList, setPrefilledRemarksList] = useState<{ id: string; text: string }[]>([])
@@ -399,6 +405,26 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
       toast.error(error.message || "Failed to revert")
     } finally {
       setRevertLoading(false)
+    }
+  }
+
+  const handleRevertToChemist = async () => {
+    if (!selectedSample || !revertChemistReason.trim()) {
+      toast.error("Please provide a reason for reverting")
+      return
+    }
+
+    setRevertChemistLoading(true)
+    try {
+      await revertToChemist(selectedSample.id, revertChemistReason.trim())
+      toast.success(`${selectedSample.sampleNumber} reverted to chemist`)
+      setRevertChemistOpen(false)
+      setRevertChemistReason("")
+      router.refresh()
+    } catch (error: any) {
+      toast.error(error.message || "Failed to revert")
+    } finally {
+      setRevertChemistLoading(false)
     }
   }
 
@@ -768,9 +794,35 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {isReadOnly ? (
-                    <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[10px] px-2 py-0.5">
-                      Authenticated — Read Only
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-emerald-100 text-emerald-800 hover:bg-emerald-100 text-[10px] px-2 py-0.5">
+                        Authenticated
+                      </Badge>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        className="h-7 text-xs"
+                        onClick={() => {
+                          setRevertChemistReason("")
+                          setRevertChemistOpen(true)
+                        }}
+                      >
+                        <RotateCcw className="mr-1 h-3 w-3" />
+                        Revert to Chemist
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs text-orange-600 hover:text-orange-700"
+                        onClick={() => {
+                          setRevertReason("")
+                          setRevertOpen(true)
+                        }}
+                      >
+                        <RotateCcw className="mr-1 h-3 w-3" />
+                        Revert to Registration
+                      </Button>
+                    </div>
                   ) : (
                     <>
                       <Button
@@ -1110,6 +1162,48 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                 </>
               ) : (
                 "Revert to Registration"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revert to Chemist Dialog */}
+      <Dialog open={revertChemistOpen} onOpenChange={setRevertChemistOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>Revert to Chemist</DialogTitle>
+            <DialogDescription>
+              Send {selectedSample?.sampleNumber} back to the chemist for re-testing. Test results will be preserved but the sample will be set back to testing status.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Reason / Remarks *</Label>
+              <Textarea
+                value={revertChemistReason}
+                onChange={(e) => setRevertChemistReason(e.target.value)}
+                placeholder="e.g. Result needs re-checking, wrong value entered..."
+                rows={4}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRevertChemistOpen(false)} disabled={revertChemistLoading}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleRevertToChemist}
+              disabled={revertChemistLoading || !revertChemistReason.trim()}
+            >
+              {revertChemistLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Reverting...
+                </>
+              ) : (
+                "Revert to Chemist"
               )}
             </Button>
           </DialogFooter>

@@ -573,3 +573,54 @@ export async function revertToRegistration(sampleId: string, reason: string) {
 
   return { success: true }
 }
+
+export async function revertToChemist(sampleId: string, reason: string) {
+  const session = await requirePermission("process", "edit")
+  const user = session.user as any
+  const labId = user.labId
+
+  const sample = await db.sample.findFirst({
+    where: { id: sampleId, labId },
+  })
+
+  if (!sample) throw new Error("Sample not found")
+
+  const existingNotes = sample.notes || ""
+  const revertNote = `[Reverted to chemist by ${user.name}: ${reason}]`
+  const updatedNotes = existingNotes ? `${existingNotes}\n${revertNote}` : revertNote
+
+  // Set status back to testing — keep results intact
+  await db.sample.update({
+    where: { id: sampleId },
+    data: {
+      status: "testing",
+      notes: updatedNotes,
+    },
+  })
+
+  // Soft-delete any published/approved reports so they can be re-authenticated
+  const existingReports = await db.report.findMany({
+    where: { sampleId, labId, deletedAt: null },
+  })
+  for (const report of existingReports) {
+    await db.report.update({
+      where: { id: report.id },
+      data: { status: "revision", deletedAt: null },
+    })
+  }
+
+  await logAudit(
+    labId,
+    user.id,
+    user.name,
+    "process",
+    "edit",
+    `Reverted sample ${sample.sampleNumber} to chemist: ${reason}`
+  )
+
+  revalidatePath("/process/test-results")
+  revalidatePath("/process/reports")
+  revalidatePath("/process/authentication")
+
+  return { success: true }
+}
