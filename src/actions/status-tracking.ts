@@ -79,7 +79,7 @@ export async function getStatusTrackingData(filters: {
             select: { status: true, tat: true, dueDate: true, enteredAt: true },
           },
           reports: {
-            where: { deletedAt: null },
+            where: { deletedAt: null, status: { not: "revision" } },
             select: { status: true, publishedAt: true, reviewedBy: { select: { name: true } } },
           },
           invoiceItems: {

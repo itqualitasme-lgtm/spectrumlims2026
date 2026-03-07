@@ -322,9 +322,9 @@ export async function batchUpdateTestResults(
     }
   }
 
-  // Save remarks on the report if provided
+  // Save remarks on the active report if provided (exclude revision reports)
   if (remarks !== undefined) {
-    const report = await db.report.findFirst({ where: { sampleId, labId, deletedAt: null } })
+    const report = await db.report.findFirst({ where: { sampleId, labId, deletedAt: null, status: { not: "revision" } } })
     if (report) {
       await db.report.update({
         where: { id: report.id },
@@ -464,7 +464,7 @@ export async function getReportRemarks(sampleId: string) {
   const user = session.user as any
 
   const report = await db.report.findFirst({
-    where: { sampleId, labId: user.labId, deletedAt: null },
+    where: { sampleId, labId: user.labId, deletedAt: null, status: { not: "revision" } },
     select: { remarks: true },
   })
 

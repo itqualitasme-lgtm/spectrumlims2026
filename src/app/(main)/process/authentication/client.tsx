@@ -94,6 +94,7 @@ type Report = {
     description: string | null
     sampleCondition: string | null
     quantity: string | null
+    notes: string | null
     collectionDate: string | null
     collectionLocation: string | null
     client: { id: string; name: string; company: string | null }
@@ -679,8 +680,13 @@ export function AuthenticationClient({
               {selectedReport.remarks && (
                 <div className="col-span-2 md:col-span-3"><span className="text-muted-foreground">Remarks:</span> <span className="font-medium">{selectedReport.remarks}</span></div>
               )}
-              {selectedReport.sample.registration?.notes && (
-                <div className="col-span-2 md:col-span-3"><span className="text-muted-foreground">Notes:</span> <span className="font-medium">{selectedReport.sample.registration.notes}</span></div>
+              {selectedReport.sample.notes && (
+                <div className={`col-span-2 md:col-span-3 ${selectedReport.sample.notes.includes("[Reverted") ? "rounded-md bg-amber-500/10 border border-amber-500/30 px-2 py-1" : ""}`}>
+                  <span className="text-muted-foreground">Notes:</span> <span className={`font-medium ${selectedReport.sample.notes.includes("[Reverted") ? "text-amber-500" : ""}`}>{selectedReport.sample.notes}</span>
+                </div>
+              )}
+              {selectedReport.sample.registration?.notes && !selectedReport.sample.notes?.includes(selectedReport.sample.registration.notes) && (
+                <div className="col-span-2 md:col-span-3"><span className="text-muted-foreground">Reg. Notes:</span> <span className="font-medium">{selectedReport.sample.registration.notes}</span></div>
               )}
             </div>
           )}

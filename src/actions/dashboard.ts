@@ -54,9 +54,9 @@ export async function getDashboardData() {
     take: 5,
   })
 
-  // Recent reports (last 5)
+  // Recent reports (last 5, exclude revision/deleted)
   const recentReports = await db.report.findMany({
-    where: { labId },
+    where: { labId, deletedAt: null, status: { not: "revision" } },
     include: { sample: { include: { client: true, sampleType: true } } },
     orderBy: { createdAt: "desc" },
     take: 5,
