@@ -365,6 +365,7 @@ export async function getRegistrations() {
       sheetNumber: reg.sheetNumber || null,
       createdAt: reg.createdAt.toISOString(),
       editRequested: reg.samples.some((s) => s.editRequests.some((er) => er.status === "pending")),
+      editRequestedCount: reg.samples.reduce((sum, s) => sum + s.editRequests.filter((er) => er.status === "pending").length, 0),
       revisionCount: reg.samples.reduce((sum, s) => sum + s.editRequests.filter((er) => er.status === "approved").length, 0),
       samples: reg.samples.map((s) => ({
         id: s.id,

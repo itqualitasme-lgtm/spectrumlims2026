@@ -51,6 +51,7 @@ type RegistrationRow = {
   status: string
   sheetNumber: string | null
   editRequested: boolean
+  editRequestedCount: number
   revisionCount: number
   createdAt: string
   samples: { id: string; sampleNumber: string; status: string }[]
@@ -291,6 +292,28 @@ export function RegistrationClient({ registrations }: { registrations: Registrat
       accessorKey: "assignedTo",
       header: "Assigned To",
       cell: ({ row }) => row.original.assignedTo || "-",
+    },
+    {
+      id: "edits",
+      header: "Edits",
+      cell: ({ row }) => {
+        const r = row.original
+        if (!r.editRequested && r.revisionCount === 0) return "-"
+        return (
+          <div className="flex items-center gap-1">
+            {r.editRequestedCount > 0 && (
+              <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1 py-0">
+                R{r.editRequestedCount}
+              </Badge>
+            )}
+            {r.revisionCount > 0 && (
+              <Badge className="bg-cyan-100 text-cyan-800 hover:bg-cyan-100 text-[9px] px-1 py-0">
+                A{r.revisionCount}
+              </Badge>
+            )}
+          </div>
+        )
+      },
     },
     {
       accessorKey: "status",
