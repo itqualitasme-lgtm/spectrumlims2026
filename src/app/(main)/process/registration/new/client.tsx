@@ -719,7 +719,7 @@ export function NewRegistrationClient({
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Drawn By</Label>
-              <Input className="h-9" value={drawnBy} onChange={(e) => setDrawnBy(e.target.value)} placeholder="NP & Spectrum" />
+              <Input className="h-9" value={drawnBy} onChange={(e) => setDrawnBy(e.target.value)} placeholder="e.g. Customer Rep" />
             </div>
             <div className="grid gap-0.5">
               <Label className="text-xs text-muted-foreground">Delivered By</Label>
