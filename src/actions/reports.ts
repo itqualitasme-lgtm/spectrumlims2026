@@ -19,7 +19,7 @@ export async function getReports() {
           client: true,
           sampleType: true,
           assignedTo: { select: { id: true, name: true } },
-          registration: { select: { id: true, registrationNumber: true } },
+          registration: { select: { id: true, registrationNumber: true, isComposite: true } },
           testResults: {
             select: {
               id: true,
@@ -71,6 +71,7 @@ export async function getReportsForAuthentication() {
               sheetNumber: true,
               notes: true,
               registeredAt: true,
+              isComposite: true,
             },
           },
           testResults: {

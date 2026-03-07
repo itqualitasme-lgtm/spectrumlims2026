@@ -131,9 +131,10 @@ export function NewRegistrationClient({
   const [collectionTime, setCollectionTime] = useState("")
   const [sampleCondition, setSampleCondition] = useState("Sealed")
   const [samplingMethod, setSamplingMethod] = useState("NP")
-  const [drawnBy, setDrawnBy] = useState("NP & Spectrum")
+  const [drawnBy, setDrawnBy] = useState("")
   const [deliveredBy, setDeliveredBy] = useState("")
   const [sheetNumber, setSheetNumber] = useState("")
+  const [isComposite, setIsComposite] = useState(true)
 
   // Set date/time on client only to avoid hydration mismatch
   useEffect(() => {
@@ -313,9 +314,22 @@ export function NewRegistrationClient({
     })
   }
 
-  // Handle qty change: expand/contract rows in the group
+  // Composite: qty is just bottle count (no extra rows)
+  // Non-composite: qty expands/contracts rows in the group
+  const [compositeQty, setCompositeQty] = useState<Record<number, number>>({})
+
   const handleQtyChange = (rowId: number, newQty: number) => {
     const qty = Math.max(1, Math.min(99, newQty))
+    if (isComposite) {
+      // Just store the bottle count, don't expand rows
+      setSamples((prev) => {
+        const row = prev.find((s) => s.id === rowId)
+        if (!row) return prev
+        return prev
+      })
+      setCompositeQty((prev) => ({ ...prev, [rowId]: qty }))
+      return
+    }
     setSamples((prev) => {
       const row = prev.find((s) => s.id === rowId)
       if (!row) return prev
@@ -383,9 +397,11 @@ export function NewRegistrationClient({
     setCollectionTime(new Date().toTimeString().slice(0, 5))
     setSampleCondition("Sealed")
     setSamplingMethod("NP")
-    setDrawnBy("NP & Spectrum")
+    setDrawnBy("")
     setDeliveredBy("")
     setSheetNumber("")
+    setIsComposite(true)
+    setCompositeQty({})
     setRegistrationNumber("")
     setRegistrationId("")
     setRegisteredSamples([])
@@ -441,6 +457,7 @@ export function NewRegistrationClient({
         clientId,
         jobType,
         priority,
+        isComposite,
         reference: reference || undefined,
         collectedById: collectedById && collectedById !== "reception" ? collectedById : undefined,
         collectionLocation: collectedById === "reception" ? (collectionLocation || "Reception") : (collectionLocation || undefined),
@@ -480,7 +497,7 @@ export function NewRegistrationClient({
           }
           return {
             sampleTypeId: s.sampleTypeId,
-            qty: 1,
+            qty: isComposite ? (compositeQty[s.id] ?? 1) : 1,
             bottleQty: s.bottleQty,
             samplePoint: s.samplePoint || undefined,
             description: s.description || undefined,
@@ -719,11 +736,42 @@ export function NewRegistrationClient({
       {/* Sample Rows - Table style */}
       <Card>
         <CardContent className="py-2 px-3">
+          {/* Composite toggle */}
+          <div className="flex items-center gap-2 mb-1.5">
+            <label className="flex items-center gap-1.5 cursor-pointer text-xs">
+              <Checkbox checked={isComposite} onCheckedChange={(v) => {
+                const comp = v === true
+                setIsComposite(comp)
+                if (comp) {
+                  // Collapse multi-row groups back to 1 row, store qty as compositeQty
+                  setSamples((prev) => {
+                    const seen = new Set<number>()
+                    const result: SampleRow[] = []
+                    const newCompQty: Record<number, number> = {}
+                    for (const s of prev) {
+                      if (!seen.has(s.groupId)) {
+                        seen.add(s.groupId)
+                        const groupCount = prev.filter((r) => r.groupId === s.groupId).length
+                        if (groupCount > 1) newCompQty[s.id] = groupCount
+                        result.push(s)
+                      }
+                    }
+                    setCompositeQty(newCompQty)
+                    return result
+                  })
+                }
+              }} className="h-3.5 w-3.5" />
+              <span className="font-medium">Composite</span>
+            </label>
+            <span className="text-[10px] text-muted-foreground">
+              {isComposite ? "Multiple bottles = 1 sample & report" : "Each qty = separate sample & report"}
+            </span>
+          </div>
           {/* Column headers */}
           <div className="grid grid-cols-[28px_1fr_60px_100px_1fr_1fr_1fr_80px_28px] gap-x-2 items-center px-1 pb-1 border-b text-[10px] font-medium text-muted-foreground uppercase tracking-wide">
             <span>#</span>
             <span>Sample Type *</span>
-            <span>Qty</span>
+            <span>{isComposite ? "Bottles" : "Qty"}</span>
             <span>Bottle</span>
             <span>Sample Point *</span>
             <span>Description</span>
@@ -758,7 +806,7 @@ export function NewRegistrationClient({
                           min={1}
                           max={25}
                           className="h-8 text-xs text-center"
-                          value={groupRows.length}
+                          value={isComposite ? (compositeQty[row.id] ?? 1) : groupRows.length}
                           onChange={(e) => handleQtyChange(row.id, Math.max(1, Math.min(25, parseInt(e.target.value) || 1)))}
                         />
                         <Select value={row.bottleQty} onValueChange={(v) => updateRow(row.id, { bottleQty: v })}>

@@ -113,6 +113,7 @@ export function UsersClient({
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [userRoleId, setUserRoleId] = useState("")
   const [userSignatureUrl, setUserSignatureUrl] = useState("")
+  const [userStatusValue, setUserStatusValue] = useState("active")
   const [deleteUserOpen, setDeleteUserOpen] = useState(false)
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null)
   const [deletingUserName, setDeletingUserName] = useState("")
@@ -161,23 +162,21 @@ export function UsersClient({
               setEditingUser(row.original)
               setUserRoleId(row.original.roleId)
               setUserSignatureUrl(row.original.signatureUrl || "")
+              setUserStatusValue(row.original.isActive ? "active" : "inactive")
               setUserDialogOpen(true)
             }}>
               <Pencil className="h-4 w-4" />
             </Button>
             {!isSuperAdmin && (
-              <>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => handleToggleUserActive(row.original)}>
-                  {row.original.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                </Button>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => {
-                  setDeletingUserId(row.original.id)
-                  setDeletingUserName(row.original.name)
-                  setDeleteUserOpen(true)
-                }}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`h-8 w-8 p-0 ${row.original.isActive ? "text-destructive hover:text-destructive" : "text-green-600 hover:text-green-600"}`}
+                title={row.original.isActive ? "Deactivate user" : "Activate user"}
+                onClick={() => handleToggleUserActive(row.original)}
+              >
+                {row.original.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+              </Button>
             )}
           </div>
         )
@@ -249,6 +248,7 @@ export function UsersClient({
           roleId: userRoleId, password: password || undefined,
           designation: designation || undefined,
           signatureUrl: userSignatureUrl || undefined,
+          isActive: userStatusValue === "active",
         })
         toast.success("User updated successfully")
       } else {
@@ -456,6 +456,18 @@ export function UsersClient({
                 <Label>Designation</Label>
                 <Input name="designation" defaultValue={editingUser?.designation || ""} placeholder="e.g. Senior Chemist, Lab Manager" />
               </div>
+              {editingUser && editingUser.username !== "admin" && (
+                <div className="grid gap-2">
+                  <Label>Status</Label>
+                  <Select value={userStatusValue} onValueChange={setUserStatusValue}>
+                    <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="inactive">Inactive</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               {editingUser && (
                 <div className="grid gap-2">
                   <Label>Digital Signature</Label>

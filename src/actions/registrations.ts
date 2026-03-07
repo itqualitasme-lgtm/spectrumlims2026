@@ -12,6 +12,7 @@ export async function createRegistration(data: {
   clientId: string
   jobType: string
   priority: string
+  isComposite?: boolean
   reference?: string
   collectedById?: string
   collectionLocation?: string
@@ -100,9 +101,10 @@ export async function createRegistration(data: {
       registeredById: user.id,
       registeredAt: recordDate,
       samplingMethod: data.samplingMethod || "NP",
-      drawnBy: data.drawnBy || "NP & Spectrum",
+      drawnBy: data.drawnBy || "",
       deliveredBy: data.deliveredBy || null,
       sheetNumber: formattedSheet,
+      isComposite: data.isComposite ?? true,
       notes: data.notes || null,
       labId,
     },
@@ -180,7 +182,11 @@ export async function createRegistration(data: {
     }
 
     const groupLetter = groupLetterMap.get(row.sampleTypeId)!
-    const qty = Math.max(1, Math.min(99, row.qty))
+    // Composite: qty is bottle count, create 1 sample
+    // Non-composite: qty creates multiple sub-samples
+    const isComp = data.isComposite ?? true
+    const bottleCount = Math.max(1, Math.min(99, row.qty))
+    const qty = isComp ? 1 : bottleCount
     for (let b = 0; b < qty; b++) {
       const groupNum = groupCounters.get(groupLetter)!
       groupCounters.set(groupLetter, groupNum + 1)
@@ -197,7 +203,7 @@ export async function createRegistration(data: {
           clientId: data.clientId,
           sampleTypeId: row.sampleTypeId,
           description: row.description || null,
-          quantity: row.bottleQty || null,
+          quantity: isComp && bottleCount > 1 ? `${bottleCount} x ${row.bottleQty || "1 Ltr"}` : (row.bottleQty || null),
           sampleCondition: data.sampleCondition || null,
           priority: data.priority || "normal",
           jobType: data.jobType || "testing",
@@ -391,7 +397,7 @@ export async function getSamples() {
       assignedTo: { select: { name: true } },
       collectedBy: { select: { name: true } },
       registeredBy: { select: { name: true } },
-      registration: { select: { id: true, registrationNumber: true } },
+      registration: { select: { id: true, registrationNumber: true, isComposite: true } },
     },
     orderBy: { createdAt: "desc" },
   })
@@ -918,7 +924,7 @@ export async function updateRegistration(
     where: { id: registrationId },
     data: {
       samplingMethod: data.samplingMethod || "NP",
-      drawnBy: data.drawnBy !== undefined ? (data.drawnBy || "NP & Spectrum") : undefined,
+      drawnBy: data.drawnBy !== undefined ? (data.drawnBy || "") : undefined,
       deliveredBy: data.deliveredBy !== undefined ? (data.deliveredBy || null) : undefined,
       sheetNumber: formattedSheet,
       reference: data.reference !== undefined ? (data.reference || null) : undefined,

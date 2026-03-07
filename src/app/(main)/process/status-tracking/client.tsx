@@ -49,6 +49,7 @@ type RegistrationRow = {
   samplerName: string | null
   registeredByName: string | null
   reportedByName: string | null
+  isComposite: boolean
 }
 
 type CustomerOption = { id: string; name: string }
@@ -198,7 +199,10 @@ export function StatusTrackingClient() {
       accessorKey: "sampleCount",
       header: "Qty",
       cell: ({ row }) => (
-        <span className="text-[10px] font-medium">{row.original.sampleCount}</span>
+        <span className="text-[10px] font-medium">
+          {row.original.sampleCount}
+          {row.original.isComposite && <span className="ml-1 text-[9px] text-muted-foreground" title="Composite">C</span>}
+        </span>
       ),
     },
     {
@@ -367,7 +371,7 @@ export function StatusTrackingClient() {
 
   function handleExportCSV() {
     const headers = [
-      "Reg #", "Customer", "Type", "Qty", "PO/Ref", "Sheet#", "Sampling",
+      "Reg #", "Customer", "Type", "Qty", "Composite", "PO/Ref", "Sheet#", "Sampling",
       "Drawn By", "Delivered By", "Collected", "Location", "Tests", "Received",
       "Due", "Tested", "Released", "Sampler", "Registered By", "Reported By",
       "Priority", "Proforma", "Invoice", "Revisions", "Status",
@@ -377,6 +381,7 @@ export function StatusTrackingClient() {
       r.client,
       r.sampleTypes,
       r.sampleCount,
+      r.isComposite ? "Yes" : "No",
       r.reference || "",
       r.sheetNumber || "",
       r.samplingMethod || "",

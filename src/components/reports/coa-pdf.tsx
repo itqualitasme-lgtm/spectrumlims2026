@@ -727,7 +727,7 @@ export function COAPDF({
             <View style={styles.infoGridRight}>
               <Text style={styles.infoGridLabel}>Sample Drawn By</Text>
               <Text style={styles.infoGridSep}>:</Text>
-              <Text style={styles.infoGridValue}>{sample.drawnBy || "NP & Spectrum"}</Text>
+              <Text style={styles.infoGridValue}>{sample.drawnBy || "NP"}</Text>
             </View>
           </View>
 
@@ -737,7 +737,7 @@ export function COAPDF({
               <Text style={styles.infoGridLabel}>No. of Samples</Text>
               <Text style={styles.infoGridSep}>:</Text>
               <Text style={styles.infoGridValue}>
-                {sample.sampleCount ? `${sample.sampleCount} x ${sample.quantity || "Bottle"}` : sample.quantity || "-"}
+                {sample.quantity || "-"}
               </Text>
             </View>
             <View style={styles.infoGridRight}>
@@ -1143,7 +1143,7 @@ function COAPageContent(props: COAPDFProps) {
           <View style={styles.infoGridRight}>
             <Text style={styles.infoGridLabel}>Sample Drawn By</Text>
             <Text style={styles.infoGridSep}>:</Text>
-            <Text style={styles.infoGridValue}>{sample.drawnBy || "NP & Spectrum"}</Text>
+            <Text style={styles.infoGridValue}>{sample.drawnBy || "NP"}</Text>
           </View>
         </View>
 
@@ -1153,7 +1153,7 @@ function COAPageContent(props: COAPDFProps) {
             <Text style={styles.infoGridLabel}>No. of Samples</Text>
             <Text style={styles.infoGridSep}>:</Text>
             <Text style={styles.infoGridValue}>
-              {sample.sampleCount ? `${sample.sampleCount} x ${sample.quantity || "Bottle"}` : sample.quantity || "-"}
+              {sample.quantity || "-"}
             </Text>
           </View>
           <View style={styles.infoGridRight}>

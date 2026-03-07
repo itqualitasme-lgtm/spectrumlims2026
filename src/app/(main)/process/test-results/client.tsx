@@ -105,7 +105,7 @@ type Sample = {
   assignedTo: { name: string } | null
   sampleCondition: string | null
   collectionDate: string | null
-  registration: { id: string; registrationNumber: string; samplingMethod: string; drawnBy: string; deliveredBy: string | null; sheetNumber: string | null } | null
+  registration: { id: string; registrationNumber: string; samplingMethod: string; drawnBy: string; deliveredBy: string | null; sheetNumber: string | null; isComposite: boolean } | null
   notes: string | null
   testResults: TestResult[]
   reports: { reportNumber: string; summary: string | null; status: string; reviewedBy: { name: string } | null }[]
@@ -869,7 +869,8 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                 {selectedSample.sampleCondition && <span>Condition: {selectedSample.sampleCondition}</span>}
                 {selectedSample.assignedTo && <span>Assigned: {selectedSample.assignedTo.name}</span>}
                 {selectedSample.reference && <span>Ref: {selectedSample.reference}</span>}
-                {selectedSample.quantity && <span>Size: {selectedSample.quantity}</span>}
+                {selectedSample.registration?.isComposite && <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Composite</Badge>}
+                {selectedSample.quantity && <span>Qty: {selectedSample.quantity}</span>}
                 {selectedSample.description && <span>Desc: {selectedSample.description}</span>}
                 {selectedSample.registration?.drawnBy && <span>Drawn By: {selectedSample.registration.drawnBy}</span>}
                 {selectedSample.notes && !selectedSample.notes.includes("[Reverted") && <span>Notes: {selectedSample.notes}</span>}

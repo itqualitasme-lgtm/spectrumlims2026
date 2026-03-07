@@ -218,9 +218,10 @@ model Registration {
   registeredById       String?
   registeredAt         DateTime?
   samplingMethod       String    @default("NP")
-  drawnBy              String    @default("NP & Spectrum")
+  drawnBy              String    @default("")
   deliveredBy          String?
   sheetNumber          String?
+  isComposite          Boolean   @default(false)
   notes                String?
   labId                String
   createdAt            DateTime  @default(now())

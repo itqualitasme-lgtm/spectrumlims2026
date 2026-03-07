@@ -77,6 +77,7 @@ type RegistrationInfo = {
   sheetNumber: string | null
   notes: string | null
   registeredAt: string | null
+  isComposite: boolean
 }
 
 type Report = {
@@ -660,8 +661,11 @@ export function AuthenticationClient({
               {selectedReport.sample.sampleCondition && (
                 <div><span className="text-muted-foreground">Condition:</span> <span className="font-medium">{selectedReport.sample.sampleCondition}</span></div>
               )}
+              {selectedReport.sample.registration?.isComposite && (
+                <div><Badge variant="secondary" className="text-[10px] px-1.5 py-0">Composite</Badge></div>
+              )}
               {selectedReport.sample.quantity && (
-                <div><span className="text-muted-foreground">Quantity:</span> <span className="font-medium">{selectedReport.sample.quantity}</span></div>
+                <div><span className="text-muted-foreground">Qty:</span> <span className="font-medium">{selectedReport.sample.quantity}</span></div>
               )}
               {selectedReport.sample.registration?.samplingMethod && (
                 <div><span className="text-muted-foreground">Sampling:</span> <span className="font-medium">{selectedReport.sample.registration.samplingMethod}</span></div>

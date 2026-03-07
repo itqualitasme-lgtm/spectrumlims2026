@@ -215,6 +215,7 @@ export async function getStatusTrackingData(filters: {
         samplerName: reg.collectedBy?.name || null,
         registeredByName: reg.registeredBy?.name || null,
         reportedByName,
+        isComposite: reg.isComposite,
       }
     }),
   }

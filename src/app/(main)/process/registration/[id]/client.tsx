@@ -66,6 +66,7 @@ type RegistrationContext = {
   registrationNumber: string
   samplingMethod: string
   sheetNumber: string | null
+  isComposite: boolean
   samples: { id: string; sampleNumber: string; subSampleNumber: number; status: string; samplePoint: string | null; quantity: string | null; description: string | null; sampleGroup: string | null }[]
 }
 
@@ -335,9 +336,15 @@ export function SampleDetailClient({ sample }: { sample: SampleDetail }) {
                 <p className="text-sm">{sample.reference}</p>
               </div>
             )}
+            {sample.registration?.isComposite && (
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Type</p>
+                <Badge variant="secondary" className="text-xs">Composite</Badge>
+              </div>
+            )}
             {sample.quantity && (
               <div>
-                <p className="text-sm font-medium text-muted-foreground">Quantity</p>
+                <p className="text-sm font-medium text-muted-foreground">Qty</p>
                 <p className="text-sm">{sample.quantity}</p>
               </div>
             )}
