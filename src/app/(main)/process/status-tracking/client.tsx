@@ -53,13 +53,18 @@ type RegistrationRow = {
 
 type CustomerOption = { id: string; name: string }
 
-const statusColors: Record<string, string> = {
-  registered: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
-  assigned: "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300",
-  testing: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300",
-  completed: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300",
-  reported: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
-  mixed: "bg-gray-100 text-gray-700 dark:bg-gray-950 dark:text-gray-300",
+const statusConfig: Record<string, { label: string; color: string }> = {
+  registered: { label: "Registered", color: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300" },
+  assigned: { label: "Assigned", color: "bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300" },
+  testing: { label: "Testing", color: "bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300" },
+  completed: { label: "Completed", color: "bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300" },
+  auth_pending: { label: "Auth. Pending", color: "bg-cyan-100 text-cyan-700 dark:bg-cyan-950 dark:text-cyan-300" },
+  approved: { label: "Approved", color: "bg-emerald-100 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300" },
+  reported: { label: "Reported", color: "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300" },
+  revision_reg: { label: "Rev. Registration", color: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" },
+  revision_chemist: { label: "Rev. Chemist", color: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" },
+  revision_auth: { label: "Rev. Auth. Pending", color: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-300" },
+  mixed: { label: "Mixed", color: "bg-gray-100 text-gray-700 dark:bg-gray-950 dark:text-gray-300" },
 }
 
 
@@ -94,12 +99,19 @@ export function StatusTrackingClient() {
   }, [])
 
   const filteredRegistrations = useMemo(() => {
-    if (invoiceFilter === "all") return registrations
-    if (invoiceFilter === "not_invoiced") return registrations.filter((r) => !r.hasProforma && !r.hasTaxInvoice)
-    if (invoiceFilter === "proforma_only") return registrations.filter((r) => r.hasProforma && !r.hasTaxInvoice)
-    if (invoiceFilter === "invoiced") return registrations.filter((r) => r.hasTaxInvoice)
-    return registrations
-  }, [registrations, invoiceFilter])
+    let filtered = registrations
+
+    // Status filter (client-side since statuses are now computed)
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((r) => r.status === statusFilter)
+    }
+
+    // Invoice filter
+    if (invoiceFilter === "not_invoiced") filtered = filtered.filter((r) => !r.hasProforma && !r.hasTaxInvoice)
+    else if (invoiceFilter === "proforma_only") filtered = filtered.filter((r) => r.hasProforma && !r.hasTaxInvoice)
+    else if (invoiceFilter === "invoiced") filtered = filtered.filter((r) => r.hasTaxInvoice)
+    return filtered
+  }, [registrations, statusFilter, invoiceFilter])
 
   function handleCustomerSearch(query: string) {
     setCustomerQuery(query)
@@ -137,7 +149,6 @@ export function StatusTrackingClient() {
         sampleNumber: sampleNumber.trim() || undefined,
         from: fromDate || undefined,
         to: toDate || undefined,
-        status: statusFilter !== "all" ? statusFilter : undefined,
         priority: priorityFilter !== "all" ? priorityFilter : undefined,
       })
       setRegistrations(result.registrations)
@@ -335,7 +346,7 @@ export function StatusTrackingClient() {
       cell: ({ row }) => {
         const c = row.original.revisionCount
         return c > 0
-          ? <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1.5 py-0">{c}</Badge>
+          ? <span className="text-[10px] font-medium text-amber-600">{c}</span>
           : <span className="text-muted-foreground/30 text-xs">-</span>
       },
     },
@@ -344,9 +355,10 @@ export function StatusTrackingClient() {
       header: "Status",
       cell: ({ row }) => {
         const s = row.original.status
+        const cfg = statusConfig[s] || { label: s, color: "" }
         return (
-          <Badge className={`text-[9px] px-1.5 py-0 ${statusColors[s] || ""}`} variant="outline">
-            {s.charAt(0).toUpperCase() + s.slice(1)}
+          <Badge className={`text-[9px] px-1.5 py-0 whitespace-nowrap ${cfg.color}`} variant="outline">
+            {cfg.label}
           </Badge>
         )
       },
@@ -384,7 +396,7 @@ export function StatusTrackingClient() {
       r.hasProforma ? "Yes" : "No",
       r.hasTaxInvoice ? "Yes" : "No",
       r.revisionCount,
-      r.status.charAt(0).toUpperCase() + r.status.slice(1),
+      statusConfig[r.status]?.label || r.status,
     ])
 
     const escapeCsv = (val: string | number) => {
@@ -491,7 +503,7 @@ export function StatusTrackingClient() {
             <div className="space-y-0.5">
               <Label className="text-[10px]">Status</Label>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="h-7 w-[110px] text-xs">
+                <SelectTrigger className="h-7 w-[140px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -500,7 +512,12 @@ export function StatusTrackingClient() {
                   <SelectItem value="assigned">Assigned</SelectItem>
                   <SelectItem value="testing">Testing</SelectItem>
                   <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="auth_pending">Auth. Pending</SelectItem>
+                  <SelectItem value="approved">Approved</SelectItem>
                   <SelectItem value="reported">Reported</SelectItem>
+                  <SelectItem value="revision_reg">Rev. Registration</SelectItem>
+                  <SelectItem value="revision_chemist">Rev. Chemist</SelectItem>
+                  <SelectItem value="revision_auth">Rev. Auth. Pending</SelectItem>
                 </SelectContent>
               </Select>
             </div>

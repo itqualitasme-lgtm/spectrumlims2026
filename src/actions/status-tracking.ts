@@ -150,10 +150,29 @@ export async function getStatusTrackingData(filters: {
         ? new Date(Math.max(...publishedDates.map((d) => d.getTime())))
         : null
 
-      // Overall status
+      // Revision count: total revision reports across all samples
+      const revisionCount = reg.samples.reduce((sum, s) => sum + (s._count?.reports || 0), 0)
+
+      // Overall status — compute detailed workflow state
       const statuses = reg.samples.map((s) => s.status)
       const allSame = statuses.length > 0 && statuses.every((s) => s === statuses[0])
-      const overallStatus = allSame ? statuses[0] : "mixed"
+      const baseStatus = allSame ? statuses[0] : "mixed"
+      const hasRevisions = revisionCount > 0
+      const hasDraftReport = allReports.some((r) => r.status === "draft")
+      const hasApprovedReport = allReports.some((r) => r.status === "approved")
+
+      let overallStatus = baseStatus
+      if (hasRevisions && baseStatus === "registered") {
+        overallStatus = "revision_reg"
+      } else if (hasRevisions && (baseStatus === "testing" || baseStatus === "assigned")) {
+        overallStatus = "revision_chemist"
+      } else if (hasRevisions && baseStatus === "completed") {
+        overallStatus = "revision_auth"
+      } else if (baseStatus === "completed" && hasDraftReport) {
+        overallStatus = "auth_pending"
+      } else if (baseStatus === "completed" && hasApprovedReport) {
+        overallStatus = "approved"
+      }
 
       // Check proforma & tax invoice status from invoice items
       const allInvoiceItems = reg.samples.flatMap((s) => s.invoiceItems)
@@ -169,9 +188,6 @@ export async function getStatusTrackingData(filters: {
       const reportedByName = publishedReports.length > 0
         ? publishedReports[publishedReports.length - 1].reviewedBy?.name || null
         : null
-
-      // Revision count: total revision reports across all samples
-      const revisionCount = reg.samples.reduce((sum, s) => sum + (s._count?.reports || 0), 0)
 
       return {
         id: reg.id,
@@ -201,11 +217,6 @@ export async function getStatusTrackingData(filters: {
         reportedByName,
       }
     }),
-  }
-
-  // Post-filter by status if specified (status is computed, not a DB field)
-  if (filters.status && filters.status !== "all") {
-    result.registrations = result.registrations.filter((r) => r.status === filters.status)
   }
 
   return result
