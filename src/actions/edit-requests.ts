@@ -8,7 +8,7 @@ import { revalidatePath } from "next/cache"
 // ============= CREATE EDIT REQUEST =============
 
 export async function createEditRequest(sampleId: string, reason: string) {
-  const session = await requirePermission("process", "edit")
+  const session = await requirePermission("process", "create")
   const user = session.user as any
   const labId = user.labId
 
@@ -81,7 +81,7 @@ export async function submitEditForReview(
   sampleId: string,
   proposedData: ProposedEditData
 ) {
-  const session = await requirePermission("process", "edit")
+  const session = await requirePermission("process", "create")
   const user = session.user as any
   const labId = user.labId
 
@@ -412,7 +412,7 @@ export async function getPendingEditRequests() {
 // ============= ACKNOWLEDGE EDIT CHANGES =============
 
 export async function acknowledgeEditChanges(requestId: string) {
-  const session = await requirePermission("process", "edit")
+  const session = await requirePermission("process", "create")
   const user = session.user as any
   const labId = user.labId
 

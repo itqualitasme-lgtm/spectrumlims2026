@@ -183,7 +183,7 @@ export async function getTestResults(sampleId: string) {
 }
 
 export async function updateTestUnit(testResultId: string, unit: string) {
-  const session = await requirePermission("process", "edit")
+  const session = await requirePermission("process", "create")
   const user = session.user as any
 
   const testResult = await db.testResult.findUnique({
@@ -371,7 +371,7 @@ export async function addTestsToSample(
     tat?: number
   }[]
 ) {
-  const session = await requirePermission("process", "edit")
+  const session = await requirePermission("process", "create")
   const user = session.user as any
   const labId = user.labId
 
@@ -413,7 +413,7 @@ export async function addTestsToSample(
     user.id,
     user.name,
     "process",
-    "edit",
+    "create",
     `Added ${tests.length} test parameter(s) to sample ${sample.sampleNumber}`
   )
 
@@ -427,7 +427,7 @@ export async function addTestsToSample(
 }
 
 export async function deleteTestResult(testResultId: string) {
-  const session = await requirePermission("process", "delete")
+  const session = await requirePermission("process", "create")
   const user = session.user as any
   const labId = user.labId
 
@@ -438,6 +438,11 @@ export async function deleteTestResult(testResultId: string) {
 
   if (!testResult || testResult.sample.labId !== labId) {
     throw new Error("Test result not found")
+  }
+
+  // Non-admin/non-lab-manager users can only delete pending tests
+  if (testResult.status !== "pending" && user.roleName !== "Admin" && user.roleName !== "Lab Manager") {
+    throw new Error("Only pending test parameters can be deleted")
   }
 
   await db.testResult.delete({ where: { id: testResultId } })

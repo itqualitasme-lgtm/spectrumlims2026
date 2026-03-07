@@ -721,7 +721,7 @@ export async function updateSample(
     collectionDate?: string
   }
 ) {
-  const session = await requirePermission("process", "edit")
+  const session = await requirePermission("process", "create")
   const user = session.user as any
   const labId = user.labId
 
@@ -889,7 +889,7 @@ export async function updateRegistration(
     notes?: string
   }
 ) {
-  const session = await requirePermission("process", "edit")
+  const session = await requirePermission("process", "create")
   const user = session.user as any
   const labId = user.labId
 
