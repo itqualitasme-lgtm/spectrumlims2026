@@ -872,8 +872,16 @@ export function TestResultsClient({ samples }: { samples: Sample[] }) {
                 {selectedSample.quantity && <span>Size: {selectedSample.quantity}</span>}
                 {selectedSample.description && <span>Desc: {selectedSample.description}</span>}
                 {selectedSample.registration?.drawnBy && <span>Drawn By: {selectedSample.registration.drawnBy}</span>}
-                {selectedSample.notes && <span>Notes: {selectedSample.notes}</span>}
+                {selectedSample.notes && !selectedSample.notes.includes("[Reverted") && <span>Notes: {selectedSample.notes}</span>}
               </div>
+
+              {/* Revert note banner */}
+              {selectedSample.notes?.includes("[Reverted") && (
+                <div className="px-3 py-2 border-b bg-amber-50 dark:bg-amber-950/30 flex items-start gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                  <p className="text-xs font-medium text-amber-800 dark:text-amber-400">{selectedSample.notes}</p>
+                </div>
+              )}
 
               {/* Revision banner */}
               {selectedSample.reports.length > 0 && selectedSample.reports[0].status === "revision" && (

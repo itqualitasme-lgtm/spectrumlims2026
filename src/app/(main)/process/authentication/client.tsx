@@ -343,7 +343,14 @@ export function AuthenticationClient({
     {
       accessorKey: "sample.sampleNumber",
       header: "Sample #",
-      cell: ({ row }) => row.original.sample.sampleNumber,
+      cell: ({ row }) => (
+        <div className="flex items-center gap-1">
+          <span>{row.original.sample.sampleNumber}</span>
+          {row.original.sample.notes?.includes("[Reverted") && (
+            <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1 py-0">Reverted</Badge>
+          )}
+        </div>
+      ),
     },
     {
       id: "client",

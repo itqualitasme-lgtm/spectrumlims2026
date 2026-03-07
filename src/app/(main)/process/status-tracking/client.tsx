@@ -43,6 +43,7 @@ type RegistrationRow = {
   deliveredBy: string | null
   collectionDate: string | null
   collectionLocation: string | null
+  revisionCount: number
   hasProforma: boolean
   hasTaxInvoice: boolean
   samplerName: string | null
@@ -329,6 +330,16 @@ export function StatusTrackingClient() {
       ),
     },
     {
+      accessorKey: "revisionCount",
+      header: "Rev",
+      cell: ({ row }) => {
+        const c = row.original.revisionCount
+        return c > 0
+          ? <Badge className="bg-amber-100 text-amber-800 hover:bg-amber-100 text-[9px] px-1.5 py-0">{c}</Badge>
+          : <span className="text-muted-foreground/40 text-xs">0</span>
+      },
+    },
+    {
       accessorKey: "status",
       header: "Status",
       cell: ({ row }) => {
@@ -347,7 +358,7 @@ export function StatusTrackingClient() {
       "Reg #", "Customer", "Type", "Qty", "PO/Ref", "Sheet#", "Sampling",
       "Drawn By", "Delivered By", "Collected", "Location", "Tests", "Received",
       "Due", "Tested", "Released", "Sampler", "Registered By", "Reported By",
-      "Priority", "Proforma", "Invoice", "Status",
+      "Priority", "Proforma", "Invoice", "Revisions", "Status",
     ]
     const rows = filteredRegistrations.map((r) => [
       r.registrationNumber,
@@ -372,6 +383,7 @@ export function StatusTrackingClient() {
       r.priority.charAt(0).toUpperCase() + r.priority.slice(1),
       r.hasProforma ? "Yes" : "No",
       r.hasTaxInvoice ? "Yes" : "No",
+      r.revisionCount,
       r.status.charAt(0).toUpperCase() + r.status.slice(1),
     ])
 

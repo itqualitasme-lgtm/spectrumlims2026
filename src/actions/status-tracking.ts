@@ -82,6 +82,11 @@ export async function getStatusTrackingData(filters: {
             where: { deletedAt: null, status: { not: "revision" } },
             select: { status: true, publishedAt: true, reviewedBy: { select: { name: true } } },
           },
+          _count: {
+            select: {
+              reports: { where: { status: "revision" } },
+            },
+          },
           invoiceItems: {
             select: {
               invoice: {
@@ -165,6 +170,9 @@ export async function getStatusTrackingData(filters: {
         ? publishedReports[publishedReports.length - 1].reviewedBy?.name || null
         : null
 
+      // Revision count: total revision reports across all samples
+      const revisionCount = reg.samples.reduce((sum, s) => sum + (s._count?.reports || 0), 0)
+
       return {
         id: reg.id,
         registrationNumber: reg.registrationNumber,
@@ -175,6 +183,7 @@ export async function getStatusTrackingData(filters: {
         priority: reg.priority,
         status: overallStatus,
         testCount: totalTests,
+        revisionCount,
         registeredAt: reg.registeredAt?.toISOString() || reg.createdAt.toISOString(),
         dueDate: maxDueDate?.toISOString() || null,
         testedDate: testedDate?.toISOString() || null,
