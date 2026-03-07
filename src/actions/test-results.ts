@@ -258,21 +258,10 @@ export async function batchUpdateTestResults(
   // Get the sample for logging
   const sample = await db.sample.findUnique({ where: { id: sampleId } })
 
-  // Check for existing reports (for revision reset and auto-create)
-  const existingReports = await db.report.findMany({
-    where: { sampleId, labId, deletedAt: null },
-    orderBy: { createdAt: "desc" },
+  // Check for existing active reports (exclude revision — those are historical)
+  const activeReports = await db.report.findMany({
+    where: { sampleId, labId, deletedAt: null, status: { not: "revision" } },
   })
-
-  // Reset any revision reports to draft whenever chemist saves results
-  for (const report of existingReports) {
-    if (report.status === "revision") {
-      await db.report.update({
-        where: { id: report.id },
-        data: { status: "draft", reviewedById: null, reviewedAt: null },
-      })
-    }
-  }
 
   if (pendingResults === 0) {
     // All tests completed - update sample status to "completed"
@@ -281,8 +270,8 @@ export async function batchUpdateTestResults(
       data: { status: "completed" },
     })
 
-    // Auto-create a report if none exist for this sample
-    if (existingReports.length === 0) {
+    // Auto-create a report if no active (non-revision) report exists
+    if (activeReports.length === 0) {
       // Get default template
       const defaultTemplate = await db.reportTemplate.findFirst({
         where: { labId, isDefault: true },

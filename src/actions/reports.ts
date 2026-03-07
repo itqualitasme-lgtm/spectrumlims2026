@@ -52,7 +52,7 @@ export async function getReportsForAuthentication() {
   const labId = user.labId
 
   const reports = await db.report.findMany({
-    where: { labId, deletedAt: null, status: { in: ["draft", "review", "revision"] } },
+    where: { labId, deletedAt: null, status: { in: ["draft", "review"] } },
     include: {
       sample: {
         include: {
